@@ -1,0 +1,8 @@
+In order to use FLI usb camera, you need to install the USB driver and the library first.
+
+- USB driver
+It's under 'c/fli-usb-1.3'. Run 'make' to build the kernel module, then copy it to the appropriate location.
+
+- Library file
+It's under 'c/libfli-1.104'. Type 'make' to build it.
+
