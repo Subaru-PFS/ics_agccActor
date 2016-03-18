@@ -3,7 +3,7 @@
 from actorcore.Actor import Actor
 import camera
 
-class AgcActor(Actor):
+class AgccActor(Actor):
     def __init__(self, name, productName=None, configFile=None, debugLevel=30):
         # This sets up the connections to/from the hub, the logger, and the twisted reactor.
         #
@@ -25,7 +25,7 @@ class AgcActor(Actor):
 # To work
 
 def main():
-    actor = AgcActor('agc', productName='agcActor')
+    actor = AgccActor('agcc', productName='agccActor')
     actor.run()
 
 if __name__ == '__main__':

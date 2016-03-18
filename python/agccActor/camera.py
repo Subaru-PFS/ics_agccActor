@@ -19,7 +19,7 @@ class Camera(object):
             cam = fli_camera.Camera(n)
             cam.open()
             for k in range(nCams):
-                if cam.devsn == config.get('agc', 'cam' + str(k + 1)):
+                if cam.devsn == config.get('agcc', 'cam' + str(k + 1)):
                     self.cams[k] = cam
                     cam.agcid = k
                     break

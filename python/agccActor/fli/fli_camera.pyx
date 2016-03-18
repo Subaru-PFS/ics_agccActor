@@ -373,6 +373,7 @@ class Camera:
         cdef int i, id = self.id
         cdef long res
         cdef size_t xsize = self.xsize, ysize = self.ysize
+        cdef unsigned short[:, ::1] mv
 
         if self.isDataReady():
             res = 0
@@ -383,7 +384,8 @@ class Camera:
                         break
             if res != 0:
                 raise FliError("FLIGrabRow failed")
-            self.data = np.asarray(<unsigned short[:self.ysize, :self.xsize]> buffer[self.id])
+            mv = <unsigned short[:self.ysize, :self.xsize]> buffer[self.id]
+            self.data = np.asarray(mv)
             self.tend = time.time()
             self.wfits()
             self.status = READY

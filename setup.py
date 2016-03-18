@@ -6,16 +6,16 @@ import numpy
 
 FLI_module = Extension(
     "fli_camera",
-    ["python/agcActor/fli/fli_camera.pyx"],
+    ["python/agccActor/fli/fli_camera.pyx"],
     library_dirs = ["c/libfli-1.104"],
     libraries = ["fli"],
     include_dirs = ["c/libfli-1.104",
-                    "python/agcActor/fli",
+                    "python/agccActor/fli",
                     numpy.get_include()],
 )
 
 sdss3tools.setup(
-    description = "Subaru PFI AGC actor.",
+    description = "Subaru PFI AGCC actor.",
     cmdclass = {"build_ext": build_ext},
     ext_modules = [FLI_module]
 )

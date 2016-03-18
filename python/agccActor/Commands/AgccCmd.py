@@ -12,7 +12,7 @@ from opscore.utility.qstr import qstr
 
 nCams = 6
 
-class AgcCmd(object):
+class AgccCmd(object):
 
     def __init__(self, actor):
         # This lets us access the rest of the actor.
@@ -37,7 +37,7 @@ class AgcCmd(object):
         ]
 
         # Define typed command arguments for the above commands.
-        self.keys = keys.KeysDictionary("agc_agc", (1, 1),
+        self.keys = keys.KeysDictionary("agcc_agcc", (1, 1),
                                         keys.Key("time", types.Float(), help="The exposure time"),
                                         keys.Key("cameras", types.String(), help="List of active cameras[1-8]"),
                                         keys.Key("bx", types.Int(), help="Serial Binning"),
