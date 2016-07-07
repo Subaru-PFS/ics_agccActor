@@ -222,8 +222,8 @@ class Camera(object):
 			else:
 				hdr.update('SHUTTER', 'OPEN', 'shutter status')
 			hdr.update('CCDAREA', '[%d:%d,%d:%d]' % cam.expArea, 'image area')
-			hdr.update('REGION1', '[%d:%d,%d]' % cam.regions[0], 'region 1')
-			hdr.update('REGION2', '[%d:%d,%d]' % cam.regions[1], 'region 2')
+			hdr.update('REGION1', '[%d,%d,%d]' % cam.regions[0], 'region 1')
+			hdr.update('REGION2', '[%d,%d,%d]' % cam.regions[1], 'region 2')
 			hdulist.append(hdu)
 
 		hdulist.writeto(filename, checksum=True, clobber=True)
