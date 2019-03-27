@@ -15,6 +15,7 @@ FLI_module = Extension(
 )
 
 sdss3tools.setup(
+    name = "agcc",
     description = "Subaru PFI AGCC actor.",
     cmdclass = {"build_ext": build_ext},
     ext_modules = [FLI_module]

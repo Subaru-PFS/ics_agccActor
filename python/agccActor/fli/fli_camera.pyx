@@ -261,18 +261,18 @@ class Camera:
             return
         hdu = pyfits.PrimaryHDU(self.data)
         hdr = hdu.header
-        hdr.update('DATE', self.timestamp, 'exposure begin date')
-        hdr.update('INSTRUME', self.devname, 'this instrument')
-        hdr.update('SERIAL', self.devsn, 'serial number')
-        hdr.update('EXPTIME', self.exptime, 'exposure time (ms)')
-        hdr.update('VBIN', self.vbin, 'vertical binning')
-        hdr.update('HBIN', self.hbin, 'horizontal binning')
-        hdr.update('CCD-TEMP', self.getTemperature(), 'CCD temperature')
+        hdr.set('DATE', self.timestamp, 'exposure begin date')
+        hdr.set('INSTRUME', self.devname.decode("utf-8"), 'this instrument')
+        hdr.set('SERIAL', self.devsn.decode("utf-8"), 'serial number')
+        hdr.set('EXPTIME', self.exptime, 'exposure time (ms)')
+        hdr.set('VBIN', self.vbin, 'vertical binning')
+        hdr.set('HBIN', self.hbin, 'horizontal binning')
+        hdr.set('CCD-TEMP', self.getTemperature(), 'CCD temperature')
         if(self.dark != 0):
-            hdr.update('SHUTTER', 'CLOSE', 'shutter status')
+            hdr.set('SHUTTER', 'CLOSE', 'shutter status')
         else:
-            hdr.update('SHUTTER', 'OPEN', 'shutter status')
-        hdr.update('CCDAREA', '[%d:%d,%d:%d]' % self.expArea, 'image area')
+            hdr.set('SHUTTER', 'OPEN', 'shutter status')
+        hdr.set('CCDAREA', '[%d:%d,%d:%d]' % self.expArea, 'image area')
         hdu.writeto(filename, clobber=True, checksum=True)
         self.filename = filename
 

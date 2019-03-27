@@ -2,6 +2,7 @@
 
 from actorcore.Actor import Actor
 import camera
+from importlib import reload
 
 class AgccActor(Actor):
     def __init__(self, name, productName=None, configFile=None, debugLevel=30):
