@@ -19,7 +19,7 @@ class Camera(object):
             cam = fli_camera.Camera(n)
             cam.open()
             for k in range(nCams):
-                if cam.devsn.decode("utf-8") == config.get('agcc', 'cam' + str(k + 1)):
+                if cam.devsn == config.get('agcc', 'cam' + str(k + 1)):
                     self.cams[k] = cam
                     cam.agcid = k
                     break
@@ -37,7 +37,7 @@ class Camera(object):
                 else:
                     tempstr = '<%5.1f>' % self.cams[n].temp
                 cmd.inform('text="[%d] %s S/N=%s status=%s temp=%s bin=(%d,%d) corner=(%d,%d) size=(%d,%d)"'
-                           % (n + 1, self.cams[n].devname.decode("utf-8"), self.cams[n].devsn.decode("utf-8"), self.cams[n].getStatusStr(),
+                           % (n + 1, self.cams[n].devname, self.cams[n].devsn, self.cams[n].getStatusStr(),
                            tempstr, self.cams[n].hbin, self.cams[n].vbin, self.cams[n].expArea[0],
                            self.cams[n].expArea[1], self.cams[n].expArea[2] - self.cams[n].expArea[0],
                            self.cams[n].expArea[3] - self.cams[n].expArea[1]))
@@ -250,8 +250,8 @@ class Camera(object):
 
         for n in range(nCams):
             if self.cams[n] != None and self.cams[n].isReady():
-                s0 = self.cams[n].getModeString(0).decode("utf-8")
-                s1 = self.cams[n].getModeString(1).decode("utf-8")
+                s0 = self.cams[n].getModeString(0)
+                s1 = self.cams[n].getModeString(1)
                 if cmd:
                     cmd.inform('text="mode 0: %s"' % (s0))
                     cmd.inform('text="mode 1: %s"' % (s1))

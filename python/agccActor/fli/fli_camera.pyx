@@ -38,7 +38,7 @@ def numberOfCamera():
 
 def getLibVersion():
     """Get the current library version"""
-    return <bytes> libver
+    return libver.decode('utf-8')
 
 class Camera:
     """FLI usb camera"""
@@ -80,12 +80,12 @@ class Camera:
             res = FLIGetModel(dev[id], buff, BUFF_SIZE)
         if res != 0:
             raise FliError("FLIGetModel failed")
-        self.devname = <bytes> buff
+        self.devname = buff.decode('utf-8')
         with nogil:
             res = FLIGetSerialString(dev[id], buff, BUFF_SIZE)
         if res != 0:
             raise FliError("FLIGetSerialString failed")
-        self.devsn = <bytes> buff
+        self.devsn = buff.decode('utf-8')
         with nogil:
             res = FLIGetHWRevision(dev[id], &ltmp)
         if res != 0:
@@ -262,8 +262,8 @@ class Camera:
         hdu = pyfits.PrimaryHDU(self.data)
         hdr = hdu.header
         hdr.set('DATE', self.timestamp, 'exposure begin date')
-        hdr.set('INSTRUME', self.devname.decode("utf-8"), 'this instrument')
-        hdr.set('SERIAL', self.devsn.decode("utf-8"), 'serial number')
+        hdr.set('INSTRUME', self.devname, 'this instrument')
+        hdr.set('SERIAL', self.devsn, 'serial number')
         hdr.set('EXPTIME', self.exptime, 'exposure time (ms)')
         hdr.set('VBIN', self.vbin, 'vertical binning')
         hdr.set('HBIN', self.hbin, 'horizontal binning')
@@ -322,7 +322,7 @@ class Camera:
         """Fetch the next image filename"""
 
         self.exposureID += 1
-        path = os.path.join("$ICS_MHS_DATA_ROOT", 'agc')
+        path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
         path = os.path.expandvars(os.path.expanduser(path))
         if not os.path.isdir(path):
             os.makedirs(path, 0o755)
@@ -429,7 +429,7 @@ class Camera:
             res = FLIGetCameraModeString(dev[id], cmode, buff, BUFF_SIZE)
         if res != 0:
             raise FliError("FLIGetCameraModeString failed")
-        return <bytes> buff
+        return buff.decode('utf-8')
 
     def getMode(self):
         """Get the camera mode string"""
