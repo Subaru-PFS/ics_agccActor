@@ -44,6 +44,7 @@
 #include <linux/version.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <fcntl.h>
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,14))
 #include <linux/usb/ch9.h>
@@ -73,6 +74,12 @@ long linux_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
   struct usb_device_descriptor usbdesc;
   fliusb_string_descriptor_t strdesc; 
   int confg, r;
+
+  if ((io->fd = open(name, O_RDWR)) == -1)
+  {
+    xfree(io);
+    return -errno;
+  }
 
   if (ioctl(io->fd, FLIUSB_GET_DEVICE_DESCRIPTOR, &usbdesc) == -1)
   {
@@ -112,7 +119,7 @@ long linux_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
   }
   else
   {
-    DEVICE->devinfo.serial = xstrndup(strdesc.buf, sizeof(strdesc.buf));
+    DEVICE->devinfo.serial = xstrndup((char *) strdesc.buf, sizeof(strdesc.buf));
   }
   
   confg = 0;
@@ -252,5 +259,14 @@ long linux_bulkread(flidev_t dev, void *buf, long *rlen)
 
 long linux_usb_disconnect(flidev_t dev)
 {
-  return 0;
+  fli_unixio_t *io;
+
+  io = DEVICE->io_data;
+
+	long err = 0;
+	
+ 	if (io->fd != (-1))
+		err = close(io->fd);
+	
+  return err;
 }

@@ -187,6 +187,7 @@ typedef struct _flidevdesc_t {
   /* System-specific functions */
   long (*fli_lock)(flidev_t dev);
   long (*fli_unlock)(flidev_t dev);
+  long (*fli_trylock)(flidev_t dev);
 
   /* Domain-specific functions */
   long (*fli_io)(flidev_t dev, void *buf, long *wlen, long *rlen);

@@ -7,9 +7,9 @@ import numpy
 FLI_module = Extension(
     "fli_camera",
     ["python/agccActor/fli/fli_camera.pyx"],
-    library_dirs = ["c/libfli-1.104"],
-    libraries = ["fli"],
-    include_dirs = ["c/libfli-1.104",
+    library_dirs = ["c/libfli-1.999.1-180223"],
+    libraries = ["usb-1.0", "fli"],
+    include_dirs = ["c/libfli-1.999.1-180223",
                     "python/agccActor/fli",
                     numpy.get_include()],
 )

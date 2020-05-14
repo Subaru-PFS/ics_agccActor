@@ -158,13 +158,13 @@ typedef struct _mac_device_info
 long mac_fli_list(flidomain_t domain, char ***names);
 
 long mac_fli_connect(flidev_t dev, char *name, long domain);
-long mac_fli_disconnect(flidev_t dev);
+long mac_fli_disconnect(flidev_t dev, fli_unixio_t *io);
 
 long mac_usb_connect(flidev_t dev, fli_unixio_t *io, char *name);
 IOReturn mac_usb_configure_device(IOUSBDeviceInterface182 **dev);
 IOReturn mac_usb_find_interfaces(flidev_t dev, IOUSBDeviceInterface182 **device);
 
-long mac_usb_disconnect(flidev_t dev);
+long mac_usb_disconnect(flidev_t dev, fli_unixio_t *io);
 
 long mac_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
 

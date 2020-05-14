@@ -177,7 +177,7 @@ long fli_filter_focuser_open(flidev_t dev)
 
   CHKDEVICE(dev);
 
-  DEVICE->io_timeout = 200;
+  DEVICE->io_timeout = 2000;
 
   wlen = 2;
   rlen = 2;
@@ -1294,7 +1294,7 @@ static long fli_getstepperstatus(flidev_t dev, flistatus_t *status)
 	/* Older hardware */
 	if (fdata->hwtype < 0xfe)
 	{
-		long pos;
+		long pos = 0;
 		if ((r = fli_getstepsremaining(dev, &pos)) == 0)
 		{
 			*status = FLI_FOCUSER_STATUS_LEGACY;
@@ -1662,7 +1662,7 @@ static long fli_getfiltername(flidev_t dev, long filter, char *name, size_t len)
 			{
 				to = 256 + wp1 * 8;
 
-				if ((bi != 0) && (*(fdata->nameinfobuf + to) != '\0'));
+				if ((bi != 0) && (*(fdata->nameinfobuf + to) != '\0'))
 				{
 					name[bi] = '/';
 					bi ++;

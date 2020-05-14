@@ -53,6 +53,9 @@ class Camera:
         self.agcid = -1
         self.abort = 0
 
+    def debugInfo(self):
+        return dev[self.id], listDomain[self.id], listName[self.id]
+
     def getStatusStr(self):
         return(Status[self.status])
 
@@ -67,7 +70,7 @@ class Camera:
         cdef long x1, x2, y1, y2
 
         if dev[id] != FLI_INVALID_DEVICE:
-            raise FliError("Device alreasy opened")
+            raise FliError("Device already opened")
         with nogil:
             res = FLIOpen(&dev[id], listName[id], listDomain[id])
         if res != 0:

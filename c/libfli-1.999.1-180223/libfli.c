@@ -187,9 +187,15 @@ static long fli_freelist(char **names)
 /* This is for FLI INTERNAL USE ONLY */
 #ifdef _WIN32
 long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
-#else
+#elif defined(__APPLE__) && !defined(__LIBUSB__)
+long mac_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
+#define usb_bulktransfer mac_bulktransfer
+#elif defined(__LINUX__)
 long linux_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
 #define usb_bulktransfer linux_bulktransfer
+#else 
+long libusb_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
+#define usb_bulktransfer libusb_bulktransfer
 #endif
 
 LIBFLIAPI FLIStartVideoMode(flidev_t dev)

@@ -1030,6 +1030,7 @@ long fli_camera_usb_get_temperature(flidev_t dev, double *temperature)
 long fli_camera_usb_grab_row(flidev_t dev, void *buff, size_t width)
 {
   flicamdata_t *cam = DEVICE->device_data;
+  int abort = 0;
 
 	if(width > (size_t) (cam->image_area.lr.x - cam->image_area.ul.x))
 	{
@@ -1287,7 +1288,7 @@ long fli_camera_usb_grab_row(flidev_t dev, void *buff, size_t width)
 		case FLIUSB_PROLINE_ID:
 		{
 			long rlen = 0, rtotal = 0;
-			int abort = 0, index = 0;
+			int index = 0;
 
 			/*
 			 * cam->gbuf_siz -- size of the grab buffer (bytes)
@@ -1718,6 +1719,11 @@ long fli_camera_usb_grab_row(flidev_t dev, void *buff, size_t width)
 		default:
 			debug(FLIDEBUG_WARN, "Hmmm, shouldn't be here, operation on NO camera...");
 			break;
+	}
+
+	if(abort)
+	{
+		return -EIO;
 	}
 
 	return 0;

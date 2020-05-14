@@ -252,9 +252,9 @@ long mac_fli_connect(flidev_t dev, char *name, long domain)
             break;
             
         default:
+            mac_usb_disconnect(dev,io);
             close(io->fd);
             free(io);
-            mac_usb_disconnect(dev);
             return -EINVAL;
     }
     
@@ -280,10 +280,9 @@ long mac_fli_connect(flidev_t dev, char *name, long domain)
 // Disconnect device
 //
 //==========================================================================
-long mac_fli_disconnect(flidev_t dev)
+long mac_fli_disconnect(flidev_t dev, fli_unixio_t *io)
 {
     int err = 0;
-    fli_unixio_t *io;
     
     CHKDEVICE(dev);
     
@@ -296,7 +295,7 @@ long mac_fli_disconnect(flidev_t dev)
     switch(DEVICE->domain)
     {
         case FLIDOMAIN_USB:
-            err = mac_usb_disconnect(dev);
+            err = mac_usb_disconnect(dev,io);
             break;
             
         default:
@@ -738,7 +737,7 @@ IOReturn mac_usb_find_interfaces(flidev_t dev, IOUSBDeviceInterface182 **device)
 // Delete USB interface Data
 //
 //==========================================================================
-long mac_usb_disconnect(flidev_t dev)
+long mac_usb_disconnect(flidev_t dev, fli_unixio_t *io)
 {
     debug(FLIDEBUG_INFO, "mac_usb_disconnect");
           
