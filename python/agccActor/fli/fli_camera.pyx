@@ -5,6 +5,7 @@ from libc.string cimport strcpy, strlen
 from cython.view cimport array
 import numpy as np
 import astropy.io.fits as pyfits
+from datetime import datetime
 import time
 import os
 
@@ -52,6 +53,7 @@ class Camera:
         self.exposureID = 0
         self.agcid = -1
         self.abort = 0
+        self.temp = None
 
     def debugInfo(self):
         return dev[self.id], listDomain[self.id], listName[self.id]
@@ -120,6 +122,7 @@ class Camera:
             raise FliError("FLIGetArrayArea failed")
         self.defaultExpArea = (x1, y1, x2, y2)
         self.setFrame(x1, y1, x2 - x1, y2 - y1)
+        self.regions = ((0, 0, 0), (0, 0, 0))
 
         # allocate image buffer
         buffer[self.id] = <unsigned short *> malloc(x2 * y2 * sizeof(unsigned short))
@@ -260,8 +263,7 @@ class Camera:
             else:
                 filename = self.getNextFilename("object")
         if(self.data.size == 0):
-            print "No image available"
-            return
+            raise FliError("No image available")
         hdu = pyfits.PrimaryHDU(self.data)
         hdr = hdu.header
         hdr.set('DATE', self.timestamp, 'exposure begin date')
@@ -329,7 +331,8 @@ class Camera:
         path = os.path.expandvars(os.path.expanduser(path))
         if not os.path.isdir(path):
             os.makedirs(path, 0o755)
-        return os.path.join(path, 'AGC%d_%s_%06d.fits' % (self.agcid + 1, expType, self.exposureID))
+        return os.path.join(path, 'AGC%d_%s_%06d_%s.fits' % \
+               (self.agcid + 1, expType, self.exposureID, self.timestamp))
 
     def cancelExposure(self):
         """Cancel current exposure"""
@@ -349,8 +352,7 @@ class Camera:
         cdef int id = self.id
 
         if self.status != READY:
-            print "Camera not ready, abort expose command"
-            return
+            raise FliError("Camera not ready, abort expose command")
         self.dark = dark
         if dark:
             ftype = FLI_FRAME_TYPE_DARK
@@ -372,13 +374,24 @@ class Camera:
         self.exposeHandler()
 
     def exposeHandler(self):
-        """Check if the exposure is done and write the image"""
+        # Check if the exposure is done and write the image
         cdef int i, id = self.id
         cdef long res
         cdef size_t xsize = self.xsize, ysize = self.ysize
         cdef unsigned short[:, ::1] mv
 
-        if self.isDataReady():
+        while not self.isCameraReady():
+            time.sleep(POLL_TIME)
+
+        if self.abort != 0:
+            # Exposure aborted
+            self.abort = 0
+            self.tend = 0
+        elif not self.isDataReady():
+            # Something wrong??
+            self.tend = 0
+        else:
+            # Read data
             res = 0
             with nogil:
                 for i in range(ysize):
@@ -390,24 +403,9 @@ class Camera:
             mv = <unsigned short[:self.ysize, :self.xsize]> buffer[self.id]
             self.data = np.asarray(mv)
             self.tend = time.time()
-            self.wfits()
-            self.status = READY
-        elif self.abort != 0:
-            self.abort = 0
-            self.tend = 0
-            self.abortHandler()
-        else:
-            time.sleep(POLL_TIME)
-            self.exposeHandler()
+#            self.wfits()
 
-    def abortHandler(self):
-        """Check if the camera is ready after abort exposure"""
-
-        if self.isCameraReady():
-            self.status = READY
-        else:
-            time.sleep(POLL_TIME)
-            self.abortHandler()
+        self.status = READY
 
     def expose_test(self):
         """Return the test image"""
@@ -419,8 +417,8 @@ class Camera:
                      self.expArea[2] - self.expArea[0])
         self.data = np.ones(shape=imagesize).astype('u2')
         self.tend = time.time()
-        filename = self.getNextFilename("test")
-        self.wfits(filename)
+#        filename = self.getNextFilename("test")
+#        self.wfits(filename)
 
     def getModeString(self, mode):
         """Get the camera mode string"""
@@ -471,4 +469,3 @@ FLISetDebugLevel(NULL, FLIDEBUG_NONE)
 if FLIGetLibVersion(libver, LIBVERSIZE) != 0:
     raise FliError("FLIGetLibVersion failed")
 EnumerateCameras()
-
