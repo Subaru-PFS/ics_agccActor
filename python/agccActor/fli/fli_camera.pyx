@@ -59,10 +59,19 @@ class Camera:
         return dev[self.id], listDomain[self.id], listName[self.id]
 
     def getStatusStr(self):
-        return(Status[self.status])
+        return Status[self.status]
+
+    def isClosed(self):
+        return self.status == CLOSED
 
     def isReady(self):
         return self.status == READY
+
+    def isExposing(self):
+        return self.status == EXPOSING
+
+    def isSetmode(self):
+        return self.status == SETMODE
 
     def open(self):
         """Open the camera device"""

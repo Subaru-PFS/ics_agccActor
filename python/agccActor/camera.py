@@ -1,19 +1,13 @@
-import numpy
-from datetime import datetime
 import fli_camera
 from threading import Thread
-import astropy.io.fits as pyfits
-import os
-import photometry
+from expose import Exposure
+import writeFits
 
 nCams = 6
 POLL_TIME = 0.02
 SEQ_IDLE = 0
 SEQ_RUNNING = 1
 SEQ_ABORT = 2
-CAM_NONEXISTENT = 0
-CAM_READY = 1
-CAM_BUSY = 2
 
 class Camera(object):
     """ Subaru PFI AG cameras """
@@ -23,10 +17,9 @@ class Camera(object):
 
         self.numberOfCamera = fli_camera.numberOfCamera()
         self.cams = [None, None, None, None, None, None]
-        self.cam_stat = [CAM_NONEXISTENT] * nCams
         self.seq_stat = [SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE]
         self.seq_count = [0, 0, 0, 0, 0, 0]
-        self.seq_filename = ["", "", "", "", "", ""]
+#        self.seq_filename = ["", "", "", "", "", ""]
         temp = float(config.get('agcc', 'temperature'))
 
         for n in range(self.numberOfCamera):
@@ -35,7 +28,6 @@ class Camera(object):
             for k in range(nCams):
                 if cam.devsn == config.get('agcc', 'cam' + str(k + 1)):
                     self.cams[k] = cam
-                    self.cam_stat[k] = CAM_READY
                     cam.agcid = k
                     cam.setTemperature(temp)
                     cam.regions = ((0, 0, 0), (0, 0, 0))
@@ -98,13 +90,14 @@ class Camera(object):
         if cmd:
             cmd.inform('text="Receive expose command"')
 
+        active_cams = [self.cams[n] for n in cams_available]
         if expType == 'test':
             for n in cams_available:
                 self.cams[n].expose_test()
                 if not combined:
-                    self.wfits(cmd, self.cams[n])
+                    writeFits.wfits(cmd, self.cams[n])
             if combined:
-                self.wfits_combined(cmd, cams_available)
+                writeFits.wfits_combined(cmd, active_cams)
             for n in cams_available:
                 if cmd:
                     tread = self.cams[n].tend - self.cams[n].tstart
@@ -117,122 +110,8 @@ class Camera(object):
             else:
                 dflag = False
 
-            thrs = []
-            for n in cams_available:
-                thr = Thread(target=self.expose_thr, args=(n, expTime_ms, dflag, cmd, combined))
-                thr.start()
-                thrs.append(thr)
-            for thr in thrs:
-                thr.join()
-
-            if combined and self.cams[cams_available[0]].tend > 0:
-                self.wfits_combined(cmd, cams_available)
-            if cmd:
-                cmd.finish()
-
-    def expose_thr(self, n, expTime_ms, dflag, cmd, combined):
-        """ Concurrent exposure thread for camera readouts """
-        self.cam_stat[n] = CAM_BUSY
-        if cmd:
-            cmd.inform('stat_cam%d="BUSY"' % (n + 1))
-
-        cam = self.cams[n]
-        cam.setExpTime(expTime_ms)
-        cam.expose(dark=dflag)
-        self.cam_stat[n] = CAM_READY
-
-        if cmd:
-            if cam.tend > 0:
-                tread = cam.tend - cam.tstart
-                cmd.inform('text="AGC[%d]: Retrieve camera data in %.2fs"' % (n + 1, tread))
-            else:
-                cmd.inform('text="AGC[%d]: Exposure aborted"' % (n + 1))
-            cmd.inform('stat_cam%d="READY"' % (n + 1))
-
-        if cam.tend > 0 and not combined:
-            self.wfits(cmd, cam)
-
-    def wfits(self, cmd, cam):
-        """Write the image to a FITS file"""
-
-        path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
-        path = os.path.expandvars(os.path.expanduser(path))
-        if not os.path.isdir(path):
-            os.makedirs(path, 0o755)
-
-        tstart = datetime.fromtimestamp(cam.tstart)
-        mtimestamp = tstart.strftime("%Y%m%d_%H%M%S%f")[:-5]
-        filename = os.path.join(path, 'agcc_c%d_%s.fits' % \
-               (cam.agcid + 1, mtimestamp))
-
-        if(cam.data.size == 0):
-            cmd.warn('text="No image available for AGC[%d]"' % (cam.agcid + 1))
-            return
-        hdu = pyfits.PrimaryHDU(cam.data)
-        hdr = hdu.header
-        hdr.set('DATE', cam.timestamp, 'exposure begin date')
-        hdr.set('INSTRUME', cam.devname, 'this instrument')
-        hdr.set('SERIAL', cam.devsn, 'serial number')
-        hdr.set('EXPTIME', cam.exptime, 'exposure time (ms)')
-        hdr.set('VBIN', cam.vbin, 'vertical binning')
-        hdr.set('HBIN', cam.hbin, 'horizontal binning')
-        hdr.set('CCD-TEMP', cam.getTemperature(), 'CCD temperature')
-        if(cam.dark != 0):
-            hdr.set('SHUTTER', 'CLOSE', 'shutter status')
-        else:
-            hdr.set('SHUTTER', 'OPEN', 'shutter status')
-        hdr.set('CCDAREA', '[%d:%d,%d:%d]' % cam.expArea, 'image area')
-        hdu.writeto(filename, clobber=True, checksum=True)
-        cam.filename = filename
-        if cmd:
-            cmd.inform('fits_cam%d="%s"' % (cam.agcid + 1, filename))
-
-    def wfits_combined(self, cmd, cams, seq_id=-1):
-        """Write the images to a FITS file"""
-
-        path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
-        path = os.path.expandvars(os.path.expanduser(path))
-        if not os.path.isdir(path):
-            os.makedirs(path, 0o755)
-        if len(cams) > 0:
-            now = datetime.fromtimestamp(self.cams[cams[0]].tstart)
-        else:
-            now = datetime.now()
-        mtimestamp = now.strftime("%Y%m%d_%H%M%S%f")[:-5]
-        filename = os.path.join(path, 'agcc_s%d_%s.fits' % (seq_id + 1, mtimestamp))
-
-        hdulist = pyfits.HDUList([pyfits.PrimaryHDU()])
-        for n in range(6):
-            extname = "cam%d" % (n + 1)
-            if not n in cams:
-                hdulist.append(pyfits.ImageHDU(name=extname))
-                continue
-            cam = self.cams[n]
-            hdu = pyfits.ImageHDU(cam.data, name=extname)
-            hdr = hdu.header
-            hdr.set('DATE', cam.timestamp, 'exposure begin date')
-            hdr.set('INSTRUME', cam.devname, 'this instrument')
-            hdr.set('SERIAL', cam.devsn, 'serial number')
-            hdr.set('EXPTIME', cam.exptime, 'exposure time (ms)')
-            hdr.set('VBIN', cam.vbin, 'vertical binning')
-            hdr.set('HBIN', cam.hbin, 'horizontal binning')
-            hdr.set('CCD-TEMP', cam.getTemperature(), 'CCD temperature')
-            if(cam.dark != 0):
-                hdr.set('SHUTTER', 'CLOSE', 'shutter status')
-            else:
-                hdr.set('SHUTTER', 'OPEN', 'shutter status')
-            hdr.set('CCDAREA', '[%d:%d,%d:%d]' % cam.expArea, 'image area')
-            hdr.set('REGION1', '[%d,%d,%d]' % cam.regions[0], 'region 1')
-            hdr.set('REGION2', '[%d,%d,%d]' % cam.regions[1], 'region 2')
-            hdulist.append(hdu)
-
-        hdulist.writeto(filename, checksum=True, clobber=True)
-        if seq_id >= 0:
-            photometry.measure(hdulist)
-            self.seq_filename[seq_id] = filename
-        if cmd:
-            cmd.inform('fits_seq%d="%s"' % (seq_id + 1, filename))
-#            cmd.inform('stat_seq%d="%s"' % (seq_id + 1, "0, 0, 0, 0, 0, 0"))
+            exp_thr = Exposure(active_cams, expTime_ms, dflag, cmd, combined)
+            exp_thr.start()
 
     def abort(self, cmd, cams):
         """ Abort current exposure
@@ -456,18 +335,11 @@ class Camera(object):
         if cmd:
             cmd.inform('inused_seq%d="YES"' % (seq_id + 1))
 
+        active_cams = [self.cams[n] for n in cams_available]
         while self.seq_stat[seq_id] == SEQ_RUNNING and self.seq_count[seq_id] < count:
-            thrs = []
-            for n in cams_available:
-                thr = Thread(target=self.expose_thr, args=(n, expTime_ms, False, cmd, combined))
-                thr.start()
-                thrs.append(thr)
-
-            for thr in thrs:
-                thr.join()
-
-            if combined and self.cams[cams_available[0]].tend > 0:
-                self.wfits_combined(cmd, cams_available, seq_id)
+            exp_thr = Exposure(active_cams, expTime_ms, False, cmd, combined, seq_id)
+            exp_thr.start()
+            exp_thr.join()
 
             self.seq_count[seq_id] += 1
             if cmd:
@@ -512,9 +384,4 @@ class Camera(object):
     def camera_stat(self, cam_id):
         """ Return the status of a camera """
 
-        if self.cam_stat[cam_id] == CAM_NONEXISTENT:
-            return "NONEXISTENT"
-        elif self.cam_stat[cam_id] == CAM_BUSY:
-            return "BUSY"
-        else:
-            return "READY"
+        return self.cams[cam_id].getStatusStr()
