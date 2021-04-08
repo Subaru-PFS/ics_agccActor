@@ -1,6 +1,5 @@
 import threading
 import writeFits
-import camera
 
 class Exposure(threading.Thread):
     def __init__(self, cams, expTime_ms, dflag, cmd=None, combined=False, seq_id=-1):
@@ -47,7 +46,7 @@ class Exposure(threading.Thread):
 
         if self.combined and self.cams[0].tend > 0:
             writeFits.wfits_combined(self.cmd, self.cams, self.seq_id)
-        if self.cmd and self.seq_id <= 0:
+        if self.cmd and self.seq_id < 0:
             self.cmd.finish()
 
     def expose_thr(self, cam):

@@ -1,13 +1,10 @@
 import fli_camera
-from threading import Thread
 from expose import Exposure
+from setmode import SetMode
+from sequence import Sequence, SEQ_IDLE, SEQ_RUNNING, SEQ_ABORT
 import writeFits
 
 nCams = 6
-POLL_TIME = 0.02
-SEQ_IDLE = 0
-SEQ_RUNNING = 1
-SEQ_ABORT = 2
 
 class Camera(object):
     """ Subaru PFI AG cameras """
@@ -19,7 +16,6 @@ class Camera(object):
         self.cams = [None, None, None, None, None, None]
         self.seq_stat = [SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE]
         self.seq_count = [0, 0, 0, 0, 0, 0]
-#        self.seq_filename = ["", "", "", "", "", ""]
         temp = float(config.get('agcc', 'temperature'))
 
         for n in range(self.numberOfCamera):
@@ -198,19 +194,9 @@ class Camera(object):
                 else:
                     cams_available.append(n)
 
-        thrs = []
-        for n in cams_available:
-            thr = Thread(target=self.cams[n].setMode, args=(mode,))
-            thr.start()
-            thrs.append(thr)
-            if cmd:
-                cmd.inform('text="Send setmode(%d) command to AGC[%d]"' % (mode, n + 1))
-
-        for thr in thrs:
-            thr.join()
-        if cmd:
-            cmd.inform('text="Camera setmode command done"')
-            cmd.finish()
+        active_cams = [self.cams[n] for n in cams_available]
+        setmode_thr = SetMode(active_cams, mode, cmd)
+        setmode_thr.start()
 
     def getmode(self, cmd, cams):
         """ Get camera readout mode
@@ -336,24 +322,8 @@ class Camera(object):
             cmd.inform('inused_seq%d="YES"' % (seq_id + 1))
 
         active_cams = [self.cams[n] for n in cams_available]
-        while self.seq_stat[seq_id] == SEQ_RUNNING and self.seq_count[seq_id] < count:
-            exp_thr = Exposure(active_cams, expTime_ms, False, cmd, combined, seq_id)
-            exp_thr.start()
-            exp_thr.join()
-
-            self.seq_count[seq_id] += 1
-            if cmd:
-                cmd.inform('text="Sequence [%d] count [%d] done"' % \
-                           (seq_id + 1, self.seq_count[seq_id]))
-
-        self.seq_stat[seq_id] = SEQ_IDLE
-        if cmd:
-            cmd.inform('inused_seq%d="NO"' % (seq_id + 1))
-            if self.seq_count[seq_id] >= count:
-                cmd.inform('text="Sequence [%d] finished"' % (seq_id + 1))
-            else:
-                cmd.inform('text="Sequence [%d] aborted"' % (seq_id + 1))
-            cmd.finish()
+        sequence_thr = Sequence(active_cams, expTime_ms, seq_id, count, self.seq_stat, self.seq_count, combined, cmd)
+        sequence_thr.start()
 
     def stopsequence(self, cmd, seq_id):
         """ Stop a exposure sequence
