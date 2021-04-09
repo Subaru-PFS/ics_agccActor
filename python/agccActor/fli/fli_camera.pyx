@@ -355,7 +355,7 @@ class Camera:
             if res != 0:
                 raise FliError("FLIEndExposure failed")
 
-    def expose(self, dark=False):
+    def expose(self, dark=False, blocking=True):
         """Do exposure and return the image"""
         cdef long ftype, res
         cdef int id = self.id
@@ -379,8 +379,8 @@ class Camera:
             res = FLIExposeFrame(dev[id])
         if res != 0:
             raise FliError("FLIExposeFrame failed")
-        time.sleep(self.exptime / 1000.)
-        self.exposeHandler()
+        if blocking:
+            self.exposeHandler()
 
     def exposeHandler(self):
         # Check if the exposure is done and write the image
@@ -389,7 +389,7 @@ class Camera:
         cdef size_t xsize = self.xsize, ysize = self.ysize
         cdef unsigned short[:, ::1] mv
 
-        while not self.isCameraReady():
+        while not self.isDataReady():
             time.sleep(POLL_TIME)
 
         if self.abort != 0:
