@@ -96,7 +96,7 @@ class Camera(object):
                 writeFits.wfits_combined(cmd, active_cams)
             for n in cams_available:
                 if cmd:
-                    tread = self.cams[n].tend - self.cams[n].tstart
+                    tread = self.cams[n].getTotalTime()
                     cmd.inform('text="AGC[%d]: Retrieve camera data in %.2fs"' % (n + 1, tread))
                     cmd.finish()
         else:

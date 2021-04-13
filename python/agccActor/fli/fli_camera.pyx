@@ -8,6 +8,7 @@ import astropy.io.fits as pyfits
 from datetime import datetime
 import time
 import os
+import threading
 
 cdef void EnumerateCameras() nogil:
     cdef char file[MAX_PATH]
@@ -54,24 +55,35 @@ class Camera:
         self.agcid = -1
         self.abort = 0
         self.temp = None
+        self.lock = threading.Lock()
 
     def debugInfo(self):
         return dev[self.id], listDomain[self.id], listName[self.id]
 
     def getStatusStr(self):
-        return Status[self.status]
+        with self.lock:
+            status = self.status
+        return Status[status]
 
     def isClosed(self):
-        return self.status == CLOSED
+        with self.lock:
+            status = self.status
+        return status == CLOSED
 
     def isReady(self):
-        return self.status == READY
+        with self.lock:
+            status = self.status
+        return status == READY
 
     def isExposing(self):
-        return self.status == EXPOSING
+        with self.lock:
+            status = self.status
+        return status == EXPOSING
 
     def isSetmode(self):
-        return self.status == SETMODE
+        with self.lock:
+            status = self.status
+        return status == SETMODE
 
     def open(self):
         """Open the camera device"""
@@ -135,7 +147,8 @@ class Camera:
 
         # allocate image buffer
         buffer[self.id] = <unsigned short *> malloc(x2 * y2 * sizeof(unsigned short))
-        self.status = READY
+        with self.lock:
+            self.status = READY
 
     def close(self):
         """Close the camera device"""
@@ -147,7 +160,8 @@ class Camera:
             FLIClose(dev[id])
             dev[id] = FLI_INVALID_DEVICE
             free(buffer[id])
-        self.status = CLOSED
+        with self.lock:
+            self.status = CLOSED
 
     def setExpTime(self, exptime):
         """Set the exposure time in ms"""
@@ -158,7 +172,8 @@ class Camera:
             res = FLISetExposureTime(dev[id], cexptime)
         if res != 0:
             raise FliError("FLISetExposureTime failed")
-        self.exptime = exptime
+        with self.lock:
+            self.exptime = exptime
 
     def setHBin(self, hbin):
         """Set the horizontal binning"""
@@ -169,7 +184,8 @@ class Camera:
             res = FLISetHBin(dev[id], chbin)
         if res != 0:
             raise FliError("FLISetHBin failed")
-        self.hbin = hbin
+        with self.lock:
+            self.hbin = hbin
 
     def setVBin(self, vbin):
         """Set the vertical binning"""
@@ -180,7 +196,8 @@ class Camera:
             res = FLISetVBin(dev[id], cvbin)
         if res != 0:
             raise FliError("FLISetVBin failed")
-        self.vbin = vbin
+        with self.lock:
+            self.vbin = vbin
 
     def setFrame(self, x1, y1, width, height):
         """Set the image area"""
@@ -192,9 +209,10 @@ class Camera:
             res = FLISetImageArea(dev[id], cx1, cy1, cx2, cy2)
         if res != 0:
             raise FliError("FLISetImageArea failed")
-        self.xsize = width
-        self.ysize = height
-        self.expArea = (cx1, cy1, cx2, cy2)
+        with self.lock:
+            self.xsize = width
+            self.ysize = height
+            self.expArea = (cx1, cy1, cx2, cy2)
 
     def resetFrame(self):
         """Reset the image area"""
@@ -202,18 +220,23 @@ class Camera:
         cdef long res
         cdef long x1, y1, x2, y2
 
-        if self.hbin != 1:
+        with self.lock:
+            hbin = self.hbin
+            vbin = self.vbin
+        if hbin != 1:
             self.setHBin(1)
-        if self.vbin != 1:
+        if vbin != 1:
             self.setVBin(1)
-        self.expArea = self.defaultExpArea
-        x1, y1, x2, y2 = self.expArea
+        with self.lock:
+            self.expArea = self.defaultExpArea
+            x1, y1, x2, y2 = self.expArea
         with nogil:
             res = FLISetImageArea(dev[id], x1, y1, x2, y2)
         if res != 0:
             raise FliError("FLISetImageArea failed")
-        self.xsize = x2 - x1
-        self.ysize = y2 - y1
+        with self.lock:
+            self.xsize = x2 - x1
+            self.ysize = y2 - y1
 
     def setTemperature(self, temp):
         """Set the CCD temperature"""
@@ -225,7 +248,8 @@ class Camera:
             res = FLISetTemperature(dev[id], ctemp)
         if res != 0:
             raise FliError("FLISetTemperature failed")
-        self.temp = temp
+        with self.lock:
+            self.temp = temp
 
     def getTemperature(self):
         """Get the CCD temperature"""
@@ -266,29 +290,34 @@ class Camera:
     def wfits(self, filename=None):
         """Write the image to a FITS file"""
 
+        with self.lock:
+            dark = self.dark
         if not filename:
-            if self.dark != 0:
+            if dark != 0:
                 filename = self.getNextFilename("dark")
             else:
                 filename = self.getNextFilename("object")
-        if(self.data.size == 0):
-            raise FliError("No image available")
-        hdu = pyfits.PrimaryHDU(self.data)
+        with self.lock:
+            if(self.data.size == 0):
+                raise FliError("No image available")
+            hdu = pyfits.PrimaryHDU(self.data)
         hdr = hdu.header
-        hdr.set('DATE', self.timestamp, 'exposure begin date')
-        hdr.set('INSTRUME', self.devname, 'this instrument')
-        hdr.set('SERIAL', self.devsn, 'serial number')
-        hdr.set('EXPTIME', self.exptime, 'exposure time (ms)')
-        hdr.set('VBIN', self.vbin, 'vertical binning')
-        hdr.set('HBIN', self.hbin, 'horizontal binning')
-        hdr.set('CCD-TEMP', self.getTemperature(), 'CCD temperature')
-        if(self.dark != 0):
-            hdr.set('SHUTTER', 'CLOSE', 'shutter status')
-        else:
-            hdr.set('SHUTTER', 'OPEN', 'shutter status')
-        hdr.set('CCDAREA', '[%d:%d,%d:%d]' % self.expArea, 'image area')
+        with self.lock:
+            hdr.set('DATE', self.timestamp, 'exposure begin date')
+            hdr.set('INSTRUME', self.devname, 'this instrument')
+            hdr.set('SERIAL', self.devsn, 'serial number')
+            hdr.set('EXPTIME', self.exptime, 'exposure time (ms)')
+            hdr.set('VBIN', self.vbin, 'vertical binning')
+            hdr.set('HBIN', self.hbin, 'horizontal binning')
+            hdr.set('CCD-TEMP', self.getTemperature(), 'CCD temperature')
+            if dark != 0:
+                hdr.set('SHUTTER', 'CLOSE', 'shutter status')
+            else:
+                hdr.set('SHUTTER', 'OPEN', 'shutter status')
+            hdr.set('CCDAREA', '[%d:%d,%d:%d]' % self.expArea, 'image area')
         hdu.writeto(filename, clobber=True, checksum=True)
-        self.filename = filename
+        with self.lock:
+            self.filename = filename
 
     def getDeviceStatus(self):
         """Get the device status"""
@@ -335,21 +364,28 @@ class Camera:
     def getNextFilename(self, expType):
         """Fetch the next image filename"""
 
-        self.exposureID += 1
+        with self.lock:
+            self.exposureID += 1
+            exposureID = self.exposureID
         path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
         path = os.path.expandvars(os.path.expanduser(path))
         if not os.path.isdir(path):
             os.makedirs(path, 0o755)
+        with self.lock:
+            timestamp = self.timestamp
         return os.path.join(path, 'AGC%d_%s_%06d_%s.fits' % \
-               (self.agcid + 1, expType, self.exposureID, self.timestamp))
+               (self.agcid + 1, expType, exposureID, timestamp))
 
     def cancelExposure(self):
         """Cancel current exposure"""
         cdef long res
         cdef int id = self.id
 
-        if self.status == EXPOSING:
-            self.abort = 1
+        with self.lock:
+            status = self.status
+        if status == EXPOSING:
+            with self.lock:
+                self.abort = 1
             with nogil:
                 res = FLIEndExposure(dev[id])
             if res != 0:
@@ -360,9 +396,12 @@ class Camera:
         cdef long ftype, res
         cdef int id = self.id
 
-        if self.status != READY:
+        with self.lock:
+            status = self.status
+        if status != READY:
             raise FliError("Camera not ready, abort expose command")
-        self.dark = dark
+        with self.lock:
+            self.dark = dark
         if dark:
             ftype = FLI_FRAME_TYPE_DARK
         else:
@@ -371,10 +410,12 @@ class Camera:
             res = FLISetFrameType(dev[id], ftype)
         if res != 0:
             raise FliError("FLISetFrameType failed")
-        self.tstart = time.time()
-        self.timestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(self.tstart))
+        with self.lock:
+            self.tstart = time.time()
+            self.timestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(self.tstart))
 
-        self.status = EXPOSING
+        with self.lock:
+            self.status = EXPOSING
         with nogil:
             res = FLIExposeFrame(dev[id])
         if res != 0:
@@ -386,19 +427,26 @@ class Camera:
         # Check if the exposure is done and write the image
         cdef int i, id = self.id
         cdef long res
-        cdef size_t xsize = self.xsize, ysize = self.ysize
+        cdef size_t xsize, ysize
         cdef unsigned short[:, ::1] mv
 
+        with self.lock:
+            xsize = self.xsize
+            ysize = self.ysize
         while not self.isDataReady():
             time.sleep(POLL_TIME)
 
-        if self.abort != 0:
+        with self.lock:
+            abort = self.abort
+        if abort != 0:
             # Exposure aborted
-            self.abort = 0
-            self.tend = 0
+            with self.lock:
+                self.abort = 0
+                self.tend = 0
         elif not self.isDataReady():
             # Something wrong??
-            self.tend = 0
+            with self.lock:
+                self.tend = 0
         else:
             # Read data
             res = 0
@@ -409,23 +457,26 @@ class Camera:
                         break
             if res != 0:
                 raise FliError("FLIGrabRow failed")
-            mv = <unsigned short[:self.ysize, :self.xsize]> buffer[self.id]
-            self.data = np.asarray(mv)
-            self.tend = time.time()
+            mv = <unsigned short[:ysize, :xsize]> buffer[self.id]
+            with self.lock:
+                self.data = np.asarray(mv)
+                self.tend = time.time()
 #            self.wfits()
 
-        self.status = READY
+        with self.lock:
+            self.status = READY
 
     def expose_test(self):
         """Return the test image"""
 
-        self.dark = 1
-        self.tstart = time.time()
-        self.timestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(self.tstart))
-        imagesize = (self.expArea[3] - self.expArea[1],
-                     self.expArea[2] - self.expArea[0])
-        self.data = np.ones(shape=imagesize).astype('u2')
-        self.tend = time.time()
+        with self.lock:
+            self.dark = 1
+            self.tstart = time.time()
+            self.timestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(self.tstart))
+            imagesize = (self.expArea[3] - self.expArea[1],
+                         self.expArea[2] - self.expArea[0])
+            self.data = np.ones(shape=imagesize).astype('u2')
+            self.tend = time.time()
 #        filename = self.getNextFilename("test")
 #        self.wfits(filename)
 
@@ -457,12 +508,23 @@ class Camera:
         cdef int id = self.id
         cdef long res, cmode = mode
 
-        self.status = SETMODE
+        with self.lock:
+            self.status = SETMODE
         with nogil:
             res = FLISetCameraMode(dev[id], cmode)
         if res != 0:
             raise FliError("FLISetCameraMode failed")
-        self.status = READY
+        with self.lock:
+            self.status = READY
+
+    def getTotalTime(self):
+        """ get the total readout + exposure time in second """
+        with self.lock:
+            if self.tend == 0:
+                total = -1
+            else:
+                total = self.tend - self.tstart
+        return total
 
 
 # module initialization

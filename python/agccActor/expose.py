@@ -44,7 +44,7 @@ class Exposure(threading.Thread):
         for thr in thrs:
             thr.join()
 
-        if self.combined and self.cams[0].tend > 0:
+        if self.combined and self.cams[0].getTotalTime() > 0:
             writeFits.wfits_combined(self.cmd, self.cams, self.seq_id)
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
@@ -58,13 +58,13 @@ class Exposure(threading.Thread):
         cam.setExpTime(self.expTime_ms)
         cam.expose(dark=self.dflag)
 
+        tread = cam.getTotalTime()
         if self.cmd:
-            if cam.tend > 0:
-                tread = cam.tend - cam.tstart
+            if tread > 0:
                 self.cmd.inform('text="AGC[%d]: Retrieve camera data in %.2fs"' % (n + 1, tread))
             else:
                 self.cmd.inform('text="AGC[%d]: Exposure aborted"' % (n + 1))
             self.cmd.inform('stat_cam%d="READY"' % (n + 1))
 
-        if cam.tend > 0 and not self.combined:
+        if tread > 0 and not self.combined:
             writeFits.wfits(self.cmd, cam)
