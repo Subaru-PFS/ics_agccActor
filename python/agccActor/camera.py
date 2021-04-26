@@ -1,4 +1,3 @@
-import fli_camera
 from expose import Exposure
 from setmode import SetMode
 from sequence import Sequence, SEQ_IDLE, SEQ_RUNNING, SEQ_ABORT
@@ -12,24 +11,40 @@ class Camera(object):
     def __init__(self, config):
         """ connect to AG cameras """
 
-        self.numberOfCamera = fli_camera.numberOfCamera()
+        simulator = int(config.get('agcc', 'simulator'))
         self.cams = [None, None, None, None, None, None]
         self.seq_stat = [SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE]
         self.seq_count = [0, 0, 0, 0, 0, 0]
         temp = float(config.get('agcc', 'temperature'))
 
-        for n in range(self.numberOfCamera):
-            cam = fli_camera.Camera(n)
-            cam.open()
-            for k in range(nCams):
-                if cam.devsn == config.get('agcc', 'cam' + str(k + 1)):
-                    self.cams[k] = cam
-                    cam.agcid = k
-                    cam.setTemperature(temp)
-                    cam.regions = ((0, 0, 0), (0, 0, 0))
-                    break
-            else:
-                cam.close()
+        if simulator == 0:
+            from fli import fli_camera
+
+            self.numberOfCamera = fli_camera.numberOfCamera()
+            for n in range(self.numberOfCamera):
+                cam = fli_camera.Camera(n)
+                cam.open()
+                for k in range(nCams):
+                    if cam.devsn == config.get('agcc', 'cam' + str(k + 1)):
+                        self.cams[k] = cam
+                        cam.agcid = k
+                        cam.setTemperature(temp)
+                        cam.regions = ((0, 0, 0), (0, 0, 0))
+                        break
+                else:
+                    cam.close()
+        else:
+            from fli import fake_camera
+
+            self.numberOfCamera = fake_camera.numberOfCamera()
+            for n in range(self.numberOfCamera):
+                devsn = config.get('agcc', 'cam' + str(n + 1))
+                cam = fake_camera.Camera(n, devsn)
+                cam.open()
+                self.cams[n] = cam
+                cam.agcid = n
+                cam.setTemperature(temp)
+                cam.regions = ((0, 0, 0), (0, 0, 0))
 
     def sendStatusKeys(self, cmd):
         """ Send our status keys to the given command. """ 

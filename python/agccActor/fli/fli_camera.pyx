@@ -5,7 +5,6 @@ from libc.string cimport strcpy, strlen
 from cython.view cimport array
 import numpy as np
 import astropy.io.fits as pyfits
-from datetime import datetime
 import time
 import os
 import threading
@@ -315,7 +314,7 @@ class Camera:
             else:
                 hdr.set('SHUTTER', 'OPEN', 'shutter status')
             hdr.set('CCDAREA', '[%d:%d,%d:%d]' % self.expArea, 'image area')
-        hdu.writeto(filename, clobber=True, checksum=True)
+        hdu.writeto(filename, overwrite=True, checksum=True)
         with self.lock:
             self.filename = filename
 
@@ -420,8 +419,11 @@ class Camera:
             res = FLIExposeFrame(dev[id])
         if res != 0:
             raise FliError("FLIExposeFrame failed")
+
+        thr = threading.Thread(target=self.exposeHandler)
+        thr.start()
         if blocking:
-            self.exposeHandler()
+            thr.join()
 
     def exposeHandler(self):
         # Check if the exposure is done and write the image
@@ -442,10 +444,6 @@ class Camera:
             # Exposure aborted
             with self.lock:
                 self.abort = 0
-                self.tend = 0
-        elif not self.isDataReady():
-            # Something wrong??
-            with self.lock:
                 self.tend = 0
         else:
             # Read data
