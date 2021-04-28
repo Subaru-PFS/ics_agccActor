@@ -36,7 +36,7 @@ def wfits(cmd, cam):
 
     cam.filename = filename
     if cmd:
-        cmd.inform('fits_cam%d="%s"' % (cam.agcid + 1, filename))
+        cmd.inform('agc%d_fitsname="%s"' % (cam.agcid + 1, filename))
 
 def wfits_combined(cmd, cams, seq_id=-1):
     """Write the images to a FITS file"""
@@ -50,7 +50,10 @@ def wfits_combined(cmd, cams, seq_id=-1):
     else:
         now = datetime.now()
     mtimestamp = now.strftime("%Y%m%d_%H%M%S%f")[:-5]
-    filename = os.path.join(path, 'agcc_s%d_%s.fits' % (seq_id + 1, mtimestamp))
+    if seq_id >= 0:
+        filename = os.path.join(path, 'agcc_s%d_%s.fits' % (seq_id + 1, mtimestamp))
+    else:
+        filename = os.path.join(path, 'agcc_%s.fits' % mtimestamp)
 
     hdulist = pyfits.HDUList([pyfits.PrimaryHDU()])
     for n in range(6):
@@ -83,4 +86,7 @@ def wfits_combined(cmd, cams, seq_id=-1):
 
     hdulist.writeto(filename, checksum=True, clobber=True)
     if cmd:
-        cmd.inform('fits_seq%d="%s"' % (seq_id + 1, filename))
+        if seq_id >= 0:
+            cmd.inform('agc_seq%d="%s"' % (seq_id + 1, filename))
+        else:
+            cmd.inform('agc_fitsname="%s"' % filename)
