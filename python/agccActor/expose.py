@@ -1,5 +1,6 @@
 import threading
 import writeFits
+import os
 
 class Exposure(threading.Thread):
     exp_lock = threading.Lock()
@@ -30,6 +31,22 @@ class Exposure(threading.Thread):
         self.combined = combined
         self.seq_id = seq_id
 
+        # get nframe keyword, unique for each exposure
+        path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
+        path = os.path.expandvars(os.path.expanduser(path))
+        if not os.path.isdir(path):
+            os.makedirs(path, 0o755)
+        filename = os.path.join(path, 'nframe.txt')
+
+        with Exposure.exp_lock:
+            if os.path.isfile(filename):
+                with open(filename, 'r') as f:
+                    self.nframe = int(f.read()) + 1
+            else:
+                self.nframe = 1
+            with open(filename, 'w') as f:
+                f.write(str(self.nframe))
+
     def run(self):
         # check if any camera is available
         if len(self.cams) <= 0:
@@ -58,7 +75,7 @@ class Exposure(threading.Thread):
                 self.cmd.inform('agc_exposing=%d' % Exposure.n_busy)
 
         if self.combined and self.cams[0].getTotalTime() > 0:
-            writeFits.wfits_combined(self.cmd, self.cams, self.seq_id)
+            writeFits.wfits_combined(self.cmd, self.cams, self.nframe, self.seq_id)
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
 
@@ -80,4 +97,4 @@ class Exposure(threading.Thread):
             self.cmd.inform('agc%d_stat="READY"' % (n + 1))
 
         if tread > 0 and not self.combined:
-            writeFits.wfits(self.cmd, cam)
+            writeFits.wfits(self.cmd, cam, self.nframe)

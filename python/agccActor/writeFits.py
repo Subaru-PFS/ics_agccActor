@@ -2,7 +2,7 @@ import astropy.io.fits as pyfits
 import os
 from datetime import datetime
 
-def wfits(cmd, cam):
+def wfits(cmd, cam, nframe):
     """Write the image to a FITS file"""
 
     path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
@@ -32,13 +32,14 @@ def wfits(cmd, cam):
     else:
         hdr.set('SHUTTER', 'OPEN', 'shutter status')
     hdr.set('CCDAREA', '[%d:%d,%d:%d]' % cam.expArea, 'image area')
+    hdr.set('NFRAME', nframe, 'unique key for exposure')
     hdu.writeto(filename, clobber=True, checksum=True)
 
     cam.filename = filename
     if cmd:
         cmd.inform('agc%d_fitsname="%s"' % (cam.agcid + 1, filename))
 
-def wfits_combined(cmd, cams, seq_id=-1):
+def wfits_combined(cmd, cams, nframe, seq_id=-1):
     """Write the images to a FITS file"""
 
     path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
@@ -80,8 +81,10 @@ def wfits_combined(cmd, cams, seq_id=-1):
         else:
             hdr.set('SHUTTER', 'OPEN', 'shutter status')
         hdr.set('CCDAREA', '[%d:%d,%d:%d]' % cam.expArea, 'image area')
-        hdr.set('REGION1', '[%d,%d,%d]' % cam.regions[0], 'region 1')
-        hdr.set('REGION2', '[%d,%d,%d]' % cam.regions[1], 'region 2')
+        hdr.set('NFRAME', nframe, 'unique key for exposure')
+        if seq_id >= 0:
+            hdr.set('REGION1', '[%d,%d,%d]' % cam.regions[0], 'region 1')
+            hdr.set('REGION2', '[%d,%d,%d]' % cam.regions[1], 'region 2')
         hdulist.append(hdu)
 
     hdulist.writeto(filename, checksum=True, clobber=True)
