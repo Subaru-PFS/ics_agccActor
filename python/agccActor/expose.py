@@ -73,6 +73,7 @@ class Exposure(threading.Thread):
             Exposure.n_busy -= len(self.cams)
             if self.cmd:
                 self.cmd.inform('agc_exposing=%d' % Exposure.n_busy)
+                self.cmd.inform('agc_frameid=%d' % self.nframe)
 
         if self.combined and self.cams[0].getTotalTime() > 0:
             writeFits.wfits_combined(self.cmd, self.cams, self.nframe, self.seq_id)
@@ -83,7 +84,7 @@ class Exposure(threading.Thread):
         """ Concurrent exposure thread for camera readouts """
         n = cam.agcid
         if self.cmd:
-            self.cmd.inform('agc%d_stat="BUSY"' % (n + 1))
+            self.cmd.inform('agc%d_stat=1' % (n + 1))
 
         cam.setExpTime(self.expTime_ms)
         cam.expose(dark=self.dflag)
@@ -94,7 +95,7 @@ class Exposure(threading.Thread):
                 self.cmd.inform('text="AGC[%d]: Retrieve camera data in %.2fs"' % (n + 1, tread))
             else:
                 self.cmd.inform('text="AGC[%d]: Exposure aborted"' % (n + 1))
-            self.cmd.inform('agc%d_stat="READY"' % (n + 1))
+            self.cmd.inform('agc%d_stat=0' % (n + 1))
 
         if tread > 0 and not self.combined:
             writeFits.wfits(self.cmd, cam, self.nframe)
