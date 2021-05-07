@@ -21,7 +21,7 @@ def getLibVersion():
 class Camera:
     """FLI usb camera"""
 
-    def __init__(self, id, devsn):
+    def __init__(self, id, devsn, imgPath=None):
         """(id) : index of the camera device"""
         if id < 0 or id >= numCams:
             raise FliError("Camera[%d] not available" % id)
@@ -36,6 +36,16 @@ class Camera:
         self.hwRevision = 256
         self.fwRevision = 512
         self.mode = 0
+
+        # read simulated image, contains single or 6 image extensions
+        if imgPath is not None:
+            hdulist = pyfits.open(imgPath)
+            if len(hdulist) == 7:
+                self.rawdata = hdulist[id+1].data.astype(np.uint16)
+            else:
+                self.rawdata = hdulist[0].data.astype(np.uint16)
+        else:
+            self.rawdata = np.zeros((1033, 1072), dtype=np.uint16)
         self.lock = threading.Lock()
 
     def getStatusStr(self):
@@ -79,6 +89,7 @@ class Camera:
             self.status = READY
             self.visibleExpArea = (24, 9, 1048, 1033)
             self.defaultExpArea = (0, 0, 1072, 1033)
+            self.expArea = (0, 0, 1072, 1033)
             self.regions = ((0, 0, 0), (0, 0, 0))
 
     def close(self):
@@ -235,7 +246,7 @@ class Camera:
             else:
                 xsize = self.xsize
                 ysize = self.ysize
-                self.data = np.zeros((ysize, xsize), dtype=np.uint16)
+                self.data = self.rawdata[self.expArea[1]:self.expArea[3], self.expArea[0]:self.expArea[2]]
                 self.tend = time.time()
             self.status = READY
 

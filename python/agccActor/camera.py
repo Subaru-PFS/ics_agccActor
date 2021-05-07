@@ -2,6 +2,7 @@ from expose import Exposure
 from setmode import SetMode
 from sequence import Sequence, SEQ_IDLE, SEQ_RUNNING, SEQ_ABORT
 import writeFits
+import os
 
 nCams = 6
 
@@ -37,9 +38,15 @@ class Camera(object):
             from fli import fake_camera
 
             self.numberOfCamera = fake_camera.numberOfCamera()
+            simImagePath = config.get('agcc', 'simulatedImagePath')
+            if len(simImagePath) == 0:
+                simImagePath = None
+            else:
+                simImagePath = os.path.expandvars(simImagePath)
+
             for n in range(self.numberOfCamera):
                 devsn = config.get('agcc', 'cam' + str(n + 1))
-                cam = fake_camera.Camera(n, devsn)
+                cam = fake_camera.Camera(n, devsn, simImagePath)
                 cam.open()
                 self.cams[n] = cam
                 cam.agcid = n
