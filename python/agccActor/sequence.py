@@ -6,7 +6,7 @@ SEQ_RUNNING = 1
 SEQ_ABORT = 2
 
 class Sequence(threading.Thread):
-    def __init__(self, cams, expTime_ms, seq_id, count, seq_stat, seq_count, combined, cmd=None):
+    def __init__(self, cams, expTime_ms, seq_id, count, seq_stat, seq_count, combined, centroid, cmd=None):
         """ Run exposure command
 
         Args:
@@ -17,6 +17,7 @@ class Sequence(threading.Thread):
            seq_stat    - seq_stat in Camera class
            seq_count   - seq_count in Camera class
            combined    - True if Multiple FITS files else Single FITS file
+           centroid    - True if do centroid else don't
            cmd         - a Command object to report to. Ignored if None.
 
         Returns:
@@ -33,6 +34,7 @@ class Sequence(threading.Thread):
         self.seq_stat = seq_stat
         self.seq_count = seq_count
         self.combined = combined
+        self.centroid = centroid
         self.cmd = cmd
 
     def run(self):
@@ -44,7 +46,7 @@ class Sequence(threading.Thread):
             return
 
         while self.seq_stat[self.seq_id] == SEQ_RUNNING and self.seq_count[self.seq_id] < self.count:
-            exp_thr = Exposure(self.cams, self.expTime_ms, False, self.cmd, self.combined, self.seq_id)
+            exp_thr = Exposure(self.cams, self.expTime_ms, False, self.cmd, self.combined, self.centroid, self.seq_id)
             exp_thr.start()
             exp_thr.join()
 

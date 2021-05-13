@@ -1,12 +1,14 @@
+import multiprocessing
 import threading
 import writeFits
+import photometry
 import os
 
 class Exposure(threading.Thread):
     exp_lock = threading.Lock()
     n_busy = 0
 
-    def __init__(self, cams, expTime_ms, dflag, cmd=None, combined=False, seq_id=-1):
+    def __init__(self, cams, expTime_ms, dflag, cmd=None, combined=False, centroid=False, seq_id=-1):
         """ Run exposure command
 
         Args:
@@ -15,6 +17,7 @@ class Exposure(threading.Thread):
            dflag       - true for dark exposure
            cmd         - a Command object to report to. Ignored if None.
            combined    - Multiple FITS files/Single FITS file
+           centroid    - True if do centroid else don't
            seq_id      - Sequence id
 
         Returns:
@@ -29,6 +32,7 @@ class Exposure(threading.Thread):
         self.dflag = dflag
         self.cmd = cmd
         self.combined = combined
+        self.centroid = centroid
         self.seq_id = seq_id
 
         # get nframe keyword, unique for each exposure
@@ -97,5 +101,13 @@ class Exposure(threading.Thread):
                 self.cmd.inform('text="AGC[%d]: Exposure aborted"' % (n + 1))
             self.cmd.inform('agc%d_stat=0' % (n + 1))
 
-        if tread > 0 and not self.combined:
-            writeFits.wfits(self.cmd, cam, self.nframe)
+        if tread > 0:
+            if self.centroid:
+                spots = photometry.measure(cam.data)
+                cam.spots = spots
+                if self.cmd:
+                    self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))
+            else:
+                cam.spots = None
+            if not self.combined:
+                writeFits.wfits(self.cmd, cam, self.nframe)

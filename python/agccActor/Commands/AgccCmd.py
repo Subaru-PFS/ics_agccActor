@@ -26,7 +26,7 @@ class AgccCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
-            ('expose', '@(test|dark|object) [<exptime>] [<cameras>] [<combined>]', self.expose),
+            ('expose', '@(test|dark|object) [<exptime>] [<cameras>] [<combined>] [<centroid>]', self.expose),
             ('abort', '[<cameras>]', self.abort),
             ('reconnect', '', self.reconnect),
             ('setframe', '[<cameras>] [<bx>] [<by>] <cx> <cy> <sx> <sy>', self.setframe),
@@ -59,6 +59,7 @@ class AgccCmd(object):
                                         keys.Key("sequence", types.Int(), help="Sequence ID"),
                                         keys.Key("count", types.Int(), help="Number of exposures in sequence"),
                                         keys.Key("combined", types.Int(), help="0/1: multiple FITS files/single FITS file"),
+                                        keys.Key("centroid", types.Int(), help="0/1: if 1 do centroid else don't"),
                                         )
 
 
@@ -89,14 +90,21 @@ class AgccCmd(object):
 
         cmdKeys = cmd.cmd.keywords
         expType = cmdKeys[0].name
+
         if 'exptime' in cmdKeys:
             expTime = cmdKeys['exptime'].values[0]
         else:
             expTime = 0.0
+
         combined = True
         if 'combined' in cmdKeys:
             if cmdKeys['combined'].values[0] == 0:
                 combined = False
+
+        centroid = False
+        if 'centroid' in cmdKeys:
+            if cmdKeys['centroid'].values[0] == 1:
+                centroid = True
 
         cams = []
         if 'cameras' in cmdKeys:
@@ -112,7 +120,7 @@ class AgccCmd(object):
             for k in range(nCams):
                 cams.append(k)
 
-        self.actor.camera.expose(cmd, expTime, expType, cams, combined)
+        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid)
 
     def abort(self, cmd):
         """Abort an exposure"""

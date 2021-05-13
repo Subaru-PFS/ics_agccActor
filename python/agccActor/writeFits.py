@@ -32,8 +32,25 @@ def wfits(cmd, cam, nframe):
     else:
         hdr.set('SHUTTER', 'OPEN', 'shutter status')
     hdr.set('CCDAREA', '[%d:%d,%d:%d]' % cam.expArea, 'image area')
-    hdr.set('NFRAME', nframe, 'unique key for exposure')
-    hdu.writeto(filename, clobber=True, checksum=True)
+    hdr.set('FRAMEID', nframe, 'unique key for exposure')
+
+    if cam.spots is not None:
+        c1 = pyfits.Column(name='moment_00', format='E', array=cam.spots['m00'])
+        c2 = pyfits.Column(name='centroid_x', format='E', array=cam.spots['m10'])
+        c3 = pyfits.Column(name='centroid_y', format='E', array=cam.spots['m01'])
+        c4 = pyfits.Column(name='moment_20', format='E', array=cam.spots['m20'])
+        c5 = pyfits.Column(name='moment_11', format='E', array=cam.spots['m11'])
+        c6 = pyfits.Column(name='moment_02', format='E', array=cam.spots['m02'])
+        c7 = pyfits.Column(name='peak_x', format='I', array=cam.spots['xpeak'])
+        c8 = pyfits.Column(name='peak_y', format='I', array=cam.spots['ypeak'])
+        c9 = pyfits.Column(name='peak_intensity', format='E', array=cam.spots['peak'])
+        c10 = pyfits.Column(name='background', format='E', array=cam.spots['bg'])
+
+        tbhdu = pyfits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
+        hdulist = pyfits.HDUList([hdu, tbhdu])
+        hdulist.writeto(filename, checksum=True, clobber=True)
+    else:
+        hdu.writeto(filename, clobber=True, checksum=True)
 
     cam.filename = filename
     if cmd:
@@ -81,11 +98,27 @@ def wfits_combined(cmd, cams, nframe, seq_id=-1):
         else:
             hdr.set('SHUTTER', 'OPEN', 'shutter status')
         hdr.set('CCDAREA', '[%d:%d,%d:%d]' % cam.expArea, 'image area')
-        hdr.set('NFRAME', nframe, 'unique key for exposure')
+        hdr.set('FRAMEID', nframe, 'unique key for exposure')
         if seq_id >= 0:
             hdr.set('REGION1', '[%d,%d,%d]' % cam.regions[0], 'region 1')
             hdr.set('REGION2', '[%d,%d,%d]' % cam.regions[1], 'region 2')
         hdulist.append(hdu)
+
+        if cam.spots is not None:
+            c1 = pyfits.Column(name='moment_00', format='E', array=cam.spots['m00'])
+            c2 = pyfits.Column(name='centroid_x', format='E', array=cam.spots['m10'])
+            c3 = pyfits.Column(name='centroid_y', format='E', array=cam.spots['m01'])
+            c4 = pyfits.Column(name='moment_20', format='E', array=cam.spots['m20'])
+            c5 = pyfits.Column(name='moment_11', format='E', array=cam.spots['m11'])
+            c6 = pyfits.Column(name='moment_02', format='E', array=cam.spots['m02'])
+            c7 = pyfits.Column(name='peak_x', format='I', array=cam.spots['xpeak'])
+            c8 = pyfits.Column(name='peak_y', format='I', array=cam.spots['ypeak'])
+            c9 = pyfits.Column(name='peak_intensity', format='E', array=cam.spots['peak'])
+            c10 = pyfits.Column(name='background', format='E', array=cam.spots['bg'])
+
+            tbhdu = pyfits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
+            tbhdu.name = "table%d" % (n + 1)
+            hdulist.append(tbhdu)
 
     hdulist.writeto(filename, checksum=True, clobber=True)
     if cmd:

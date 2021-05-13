@@ -72,7 +72,7 @@ class Camera(object):
             else:
                 cmd.inform('agc%d_stat=2' % (n + 1))
 
-    def expose(self, cmd, expTime, expType, cams, combined):
+    def expose(self, cmd, expTime, expType, cams, combined, centroid):
         """ Generate an 'exposure' image.
 
         Args:
@@ -81,6 +81,7 @@ class Camera(object):
            expType  - ("dark", "object", "test")
            cams     - list of active cameras [1-6]
            combined - Multiple FITS files/Single FITS file
+           centroid - do centroid if True else don't
 
         Returns:
            - NULL
@@ -116,6 +117,7 @@ class Camera(object):
         if expType == 'test':
             for n in cams_available:
                 self.cams[n].expose_test()
+                self.cams[n].spots = None
                 if not combined:
                     writeFits.wfits(cmd, self.cams[n])
             if combined:
@@ -132,7 +134,7 @@ class Camera(object):
             else:
                 dflag = False
 
-            exp_thr = Exposure(active_cams, expTime_ms, dflag, cmd, combined)
+            exp_thr = Exposure(active_cams, expTime_ms, dflag, cmd, combined, centroid)
             exp_thr.start()
 
     def abort(self, cmd, cams):
@@ -315,7 +317,7 @@ class Camera(object):
             cmd.inform('text="setregions command done"')
             cmd.finish()
 
-    def startsequence(self, cmd, seq_id, expTime, count, cams, combined):
+    def startsequence(self, cmd, seq_id, expTime, count, cams, combined, centroid=False):
         """ Start a exposure sequence
 
         Args:
@@ -324,6 +326,7 @@ class Camera(object):
            expTime  - exposure time
            count    - number of exposures
            cams     - list of active cameras [1-6]
+           centroid - True if do centroid else don't
         """
 
         cams_available = []
@@ -348,7 +351,7 @@ class Camera(object):
             cmd.inform('inused_seq%d="YES"' % (seq_id + 1))
 
         active_cams = [self.cams[n] for n in cams_available]
-        sequence_thr = Sequence(active_cams, expTime_ms, seq_id, count, self.seq_stat, self.seq_count, combined, cmd)
+        sequence_thr = Sequence(active_cams, expTime_ms, seq_id, count, self.seq_stat, self.seq_count, combined, centroid, cmd)
         sequence_thr.start()
 
     def stopsequence(self, cmd, seq_id):
