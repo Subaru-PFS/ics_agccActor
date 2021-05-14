@@ -40,8 +40,11 @@ class Camera:
         # read simulated image, contains single or 6 image extensions
         if imgPath is not None:
             hdulist = pyfits.open(imgPath)
-            if len(hdulist) == 7:
-                self.rawdata = hdulist[id+1].data.astype(np.uint16)
+            if len(hdulist) > 1:
+                if hdulist[id+1].data is None:
+                    self.rawdata = np.zeros((1033, 1072), dtype=np.uint16)
+                else:
+                    self.rawdata = hdulist[id+1].data.astype(np.uint16)
             else:
                 self.rawdata = hdulist[0].data.astype(np.uint16)
         else:

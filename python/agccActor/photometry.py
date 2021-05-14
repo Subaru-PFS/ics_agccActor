@@ -26,7 +26,6 @@ def measure(data, thresh=10):
 	result['xpeak'] = spots['xpeak']
 	result['ypeak'] = spots['ypeak']
 	result['peak'] = spots['peak']
-	for n in range(len(spots)):
-		result[n]['bg'] = background[spots['xpeak'], spots['ypeak']]
+	result['bg'] = background[spots['xpeak'], spots['ypeak']]
 
 	return result

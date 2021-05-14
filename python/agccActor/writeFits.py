@@ -102,7 +102,7 @@ def wfits_combined(cmd, cams, nframe, seq_id=-1):
         if seq_id >= 0:
             hdr.set('REGION1', '[%d,%d,%d]' % cam.regions[0], 'region 1')
             hdr.set('REGION2', '[%d,%d,%d]' % cam.regions[1], 'region 2')
-        hdulist.append(hdu)
+        hdulist.insert(n+1, hdu)
 
         if cam.spots is not None:
             c1 = pyfits.Column(name='moment_00', format='E', array=cam.spots['m00'])
