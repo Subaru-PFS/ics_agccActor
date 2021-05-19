@@ -84,7 +84,7 @@ class Exposure(threading.Thread):
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
 
-    def expose_thr(self, cam):
+    def expose_thr(self, cam, multiproc=True):
         """ Concurrent exposure thread for camera readouts """
         n = cam.agcid
         if self.cmd:
@@ -103,7 +103,11 @@ class Exposure(threading.Thread):
 
         if tread > 0:
             if self.centroid:
-                spots = photometry.measure(cam.data)
+                if multiproc:
+                    cam.queue[0].put(cam.data)
+                    spots = cam.queue[1].get()
+                else:
+                    spots = photometry.measure(cam.data)
                 cam.spots = spots
                 if self.cmd:
                     self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))

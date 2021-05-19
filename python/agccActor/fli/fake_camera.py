@@ -233,7 +233,8 @@ class Camera:
         # Check if the exposure is done and write the image
         tstart = time.time();
         with self.lock:
-            exptime = self.exptime / 1000.0
+            # add 350ms readout time
+            exptime = (self.exptime + 350.0) / 1000.0
         while (time.time() - tstart < exptime):
             time.sleep(POLL_TIME)
             with self.lock:

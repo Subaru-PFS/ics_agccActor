@@ -2,6 +2,7 @@ from expose import Exposure
 from setmode import SetMode
 from sequence import Sequence, SEQ_IDLE, SEQ_RUNNING, SEQ_ABORT
 import writeFits
+import photometry
 import os
 
 nCams = 6
@@ -31,6 +32,7 @@ class Camera(object):
                         cam.agcid = k
                         cam.setTemperature(temp)
                         cam.regions = ((0, 0, 0), (0, 0, 0))
+                        cam.queue = photometry.createProc()
                         break
                 else:
                     cam.close()
@@ -52,6 +54,7 @@ class Camera(object):
                 cam.agcid = n
                 cam.setTemperature(temp)
                 cam.regions = ((0, 0, 0), (0, 0, 0))
+                cam.queue = photometry.createProc()
 
     def sendStatusKeys(self, cmd):
         """ Send our status keys to the given command. """ 
