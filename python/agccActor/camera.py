@@ -64,16 +64,16 @@ class Camera(object):
             if self.cams[n] != None:
                 if self.cams[n].isReady():
                     tempstr = '%5.1f' % self.cams[n].getTemperature()
-                    cmd.inform('agc%d_stat=0' % (n + 1))
+                    cmd.inform('agc%d_stat=READY' % (n + 1))
                 else:
                     tempstr = '<%5.1f>' % self.cams[n].temp
-                    cmd.inform('agc%d_stat=1' % (n + 1))
+                    cmd.inform('agc%d_stat=BUSY' % (n + 1))
                 cmd.inform('text="[%d] %s SN=%s status=%s temp=%s regions=%s bin=(%d,%d) expArea=%s"'
                            % (n + 1, self.cams[n].devname, self.cams[n].devsn,
                            self.cams[n].getStatusStr(), tempstr, self.cams[n].regions,
                            self.cams[n].hbin, self.cams[n].vbin, self.cams[n].expArea))
             else:
-                cmd.inform('agc%d_stat=2' % (n + 1))
+                cmd.inform('agc%d_stat=ABSENT' % (n + 1))
 
     def expose(self, cmd, expTime, expType, cams, combined, centroid):
         """ Generate an 'exposure' image.

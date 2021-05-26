@@ -54,7 +54,7 @@ def wfits(cmd, cam, nframe):
 
     cam.filename = filename
     if cmd:
-        cmd.inform('agc%d_fitsfile="%s",%f' % (cam.agcid + 1, filename, cam.tstart))
+        cmd.inform('agc%d_fitsfile="%s",%.1f' % (cam.agcid + 1, filename, cam.tstart))
 
 def wfits_combined(cmd, cams, nframe, seq_id=-1):
     """Write the images to a FITS file"""
@@ -125,4 +125,4 @@ def wfits_combined(cmd, cams, nframe, seq_id=-1):
         if seq_id >= 0:
             cmd.inform('agc_seq%d="%s"' % (seq_id + 1, filename))
         else:
-            cmd.inform('agc_fitsfile="%s",%f' % (filename, cams[0].tstart))
+            cmd.inform('agc_fitsfile="%s",%.1f' % (filename, cams[0].tstart))
