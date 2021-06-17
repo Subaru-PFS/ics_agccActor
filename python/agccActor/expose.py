@@ -3,12 +3,13 @@ import threading
 import writeFits
 import photometry
 import os
+import dbRoutinesAGCC
 
 class Exposure(threading.Thread):
     exp_lock = threading.Lock()
     n_busy = 0
 
-    def __init__(self, cams, expTime_ms, dflag, cmd=None, combined=False, centroid=False, seq_id=-1):
+    def __init__(self, cams, expTime_ms, dflag, cParms, cmd=None, combined=False, centroid=False, seq_id=-1):
         """ Run exposure command
 
         Args:
@@ -33,6 +34,7 @@ class Exposure(threading.Thread):
         self.cmd = cmd
         self.combined = combined
         self.centroid = centroid
+        self.cParms = cParms
         self.seq_id = seq_id
 
         # get nframe keyword, unique for each exposure
@@ -83,6 +85,7 @@ class Exposure(threading.Thread):
             writeFits.wfits_combined(self.cmd, self.cams, self.nframe, self.seq_id)
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
+        
 
     def expose_thr(self, cam, multiproc=True):
         """ Concurrent exposure thread for camera readouts """
@@ -93,6 +96,8 @@ class Exposure(threading.Thread):
         cam.setExpTime(self.expTime_ms)
         cam.expose(dark=self.dflag)
 
+        
+        
         tread = cam.getTotalTime()
         if self.cmd:
             if tread > 0:
@@ -102,13 +107,21 @@ class Exposure(threading.Thread):
             self.cmd.inform('agc%d_stat=READY' % (n + 1))
 
         if tread > 0:
+
+            ##these are placeholders - check ehwere they should be written. 
+            dbRoutinesAGCC.writeVisitToDB(self.nframe)
+            dbRoutinesAGCC.writeExposureToDB(self.nframe,cam.agcid+1)
             if self.centroid:
+
                 if multiproc:
                     cam.queue[0].put(cam.data)
+                    cam.queue[0].put(self.cParms)
                     spots = cam.queue[1].get()
                 else:
-                    spots = photometry.measure(cam.data)
+                    spots = photometry.measure(cam.data,self.cParms)
                 cam.spots = spots
+
+                dbRoutinesAGCC.writeCentroidsToDB(spots,self.nframe,cam.agcid+1)
                 if self.cmd:
                     self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))
             else:

@@ -18,6 +18,8 @@ class AgccCmd(object):
         # This lets us access the rest of the actor.
         self.actor = actor
 
+        self.cParms = None
+
         # Declare the commands we implement. When the actor is started
         # these are registered with the parser, which will call the
         # associated methods when matched. The callbacks will be
@@ -120,7 +122,7 @@ class AgccCmd(object):
             for k in range(nCams):
                 cams.append(k)
 
-        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid)
+        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, self.cParms)
 
     def abort(self, cmd):
         """Abort an exposure"""
@@ -294,7 +296,7 @@ class AgccCmd(object):
             cmd.error('text="exposure time invalid: %f"' % expTime)
             cmd.fail()
         else:
-            self.actor.camera.startsequence(cmd, seq_id, expTime, count, cams, combined)
+            self.actor.camera.startsequence(cmd, seq_id, expTime, count, cams, combined, self.cParms)
 
     def stopsequence(self, cmd):
         """Stop a exposure sequence"""

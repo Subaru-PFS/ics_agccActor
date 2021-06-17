@@ -21,7 +21,7 @@ class Camera(object):
 
         if simulator == 0:
             from fli import fli_camera
-
+            
             self.numberOfCamera = fli_camera.numberOfCamera()
             for n in range(self.numberOfCamera):
                 cam = fli_camera.Camera(n)
@@ -38,6 +38,7 @@ class Camera(object):
                     cam.close()
         else:
             from fli import fake_camera
+
 
             self.numberOfCamera = fake_camera.numberOfCamera()
             simImagePath = config.get('agcc', 'simulatedImagePath')
@@ -75,7 +76,7 @@ class Camera(object):
             else:
                 cmd.inform('agc%d_stat=ABSENT' % (n + 1))
 
-    def expose(self, cmd, expTime, expType, cams, combined, centroid):
+    def expose(self, cmd, expTime, expType, cams, combined, centroid, cParms):
         """ Generate an 'exposure' image.
 
         Args:
@@ -137,7 +138,7 @@ class Camera(object):
             else:
                 dflag = False
 
-            exp_thr = Exposure(active_cams, expTime_ms, dflag, cmd, combined, centroid)
+            exp_thr = Exposure(active_cams, expTime_ms, dflag, cParms, cmd, combined, centroid)
             exp_thr.start()
 
     def abort(self, cmd, cams):
@@ -320,7 +321,7 @@ class Camera(object):
             cmd.inform('text="setregions command done"')
             cmd.finish()
 
-    def startsequence(self, cmd, seq_id, expTime, count, cams, combined, centroid=False):
+    def startsequence(self, cmd, seq_id, expTime, count, cams, combined, cParms, centroid=False):
         """ Start a exposure sequence
 
         Args:
@@ -354,7 +355,7 @@ class Camera(object):
             cmd.inform('inused_seq%d="YES"' % (seq_id + 1))
 
         active_cams = [self.cams[n] for n in cams_available]
-        sequence_thr = Sequence(active_cams, expTime_ms, seq_id, count, self.seq_stat, self.seq_count, combined, centroid, cmd)
+        sequence_thr = Sequence(active_cams, expTime_ms, seq_id, count, self.seq_stat, self.seq_count, combined, centroid, cParm, cmd)
         sequence_thr.start()
 
     def stopsequence(self, cmd, seq_id):

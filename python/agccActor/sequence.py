@@ -6,7 +6,7 @@ SEQ_RUNNING = 1
 SEQ_ABORT = 2
 
 class Sequence(threading.Thread):
-    def __init__(self, cams, expTime_ms, seq_id, count, seq_stat, seq_count, combined, centroid, cmd=None):
+    def __init__(self, cams, expTime_ms, seq_id, count, seq_stat, seq_count, combined, centroid, cParm, cmd=None):
         """ Run exposure command
 
         Args:
@@ -35,6 +35,7 @@ class Sequence(threading.Thread):
         self.seq_count = seq_count
         self.combined = combined
         self.centroid = centroid
+        self.cParm = cParm
         self.cmd = cmd
 
     def run(self):
@@ -46,7 +47,7 @@ class Sequence(threading.Thread):
             return
 
         while self.seq_stat[self.seq_id] == SEQ_RUNNING and self.seq_count[self.seq_id] < self.count:
-            exp_thr = Exposure(self.cams, self.expTime_ms, False, self.cmd, self.combined, self.centroid, self.seq_id)
+            exp_thr = Exposure(self.cams, self.expTime_ms, False, self.cParms, self.cmd, self.combined, self.centroid, self.seq_id)
             exp_thr.start()
             exp_thr.join()
 

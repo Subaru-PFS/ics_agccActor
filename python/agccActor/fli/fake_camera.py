@@ -37,6 +37,10 @@ class Camera:
         self.fwRevision = 512
         self.mode = 0
 
+        aa=open("check.dat","w")
+        print(imgPath,file=aa)
+        aa.close()
+        
         # read simulated image, contains single or 6 image extensions
         if imgPath is not None:
             hdulist = pyfits.open(imgPath)
