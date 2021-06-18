@@ -51,24 +51,6 @@ def getCentroidParams(cmd):
 
 def getCentroids(image,cParms):
 
-    aa=open("check.txt","w")
-    print("here",file=aa)
-    aa.close()
-    aa=open("check.txt","a")
-
-    #path = os.path.join(os.environ['ICS_AGCCACTOR_DIR'],"etc","agccDefaultCentroidParameters.yaml")
-    #print(path,file=aa)
-    #aa.close()
-    #aa=open("check.txt","a")
-    #
-    #with open(path, 'r') as inFile:
-    #    defaultParms=yaml.safe_load(inFile)
-    #centParam=defaultParms['values']
-    
-    print(cParms,file=aa)
-    aa.close()
-    aa=open("check.txt","a")
-    
     #get thresholds
     a,b,c=sigmaclip(image,cParms['threshSigma'],cParms['threshSigma'])
     
@@ -76,12 +58,9 @@ def getCentroids(image,cParms):
     threshFind=a.std()*cParms['findSigma']
     threshCent=a.std()*cParms['centSigma']
     globalBack=a.mean()
-    print(threshFind,threshCent,globalBack,file=aa)
-    aa.close()
     
     #centroid
 
-    print(cParms['fwhmx'],cParms['fwhmy'],threshFind,threshCent,cParms['boxFind'],cParms['boxCent'],cParms['nmin'],cParms['nmax'],cParms['maxIt'],globalBack,0)
     a=centroid.centroid_only(image.astype('<i4')-int(globalBack),cParms['fwhmx'],cParms['fwhmy'],threshFind,threshCent,cParms['boxFind'],cParms['boxCent'],cParms['nmin'],cParms['nmax'],cParms['maxIt'],0,0)
     
     #reformat

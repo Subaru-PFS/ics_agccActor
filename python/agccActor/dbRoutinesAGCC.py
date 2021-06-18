@@ -34,10 +34,6 @@ def connectToDB(hostname='117.56.225.230',port='5432',dbname='opdb',username='pf
 def writeVisitToDB(nFrame):
 
     db=connectToDB()
-
-    ff=open("check.txt","a")
-    print("here3",file=ff)
-    ff.close()
     
     df = pd.DataFrame({'pfs_visit_id': [nFrame], 'pfs_visit_description': ['']})
     db.insert('pfs_visit', df)

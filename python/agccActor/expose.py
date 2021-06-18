@@ -114,9 +114,6 @@ class Exposure(threading.Thread):
                 else:
                     spots,centroids = photometry.measure(cam.data,self.cParms)
                 cam.spots = spots
-                ff=open("check.txt","a")
-                print("here2",file=ff)
-                ff.close()
 
                 #self.cmd.inform('text="here"')
                 dbRoutinesAGCC.writeVisitToDB(self.nframe)
