@@ -32,7 +32,7 @@ def measure(data, cParms):
 
     return spots
 
-def createProc(cParms):
+def createProc():
     """ multiprocessing for photometry """
     def worker(in_q, out_q, cParms):
         while (True):
