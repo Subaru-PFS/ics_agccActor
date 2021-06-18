@@ -10,6 +10,8 @@ import opscore.protocols.types as types
 
 from opscore.utility.qstr import qstr
 
+import centroidTools as ct
+
 nCams = 6
 
 class AgccCmd(object):
@@ -17,6 +19,7 @@ class AgccCmd(object):
     def __init__(self, actor):
         # This lets us access the rest of the actor.
         self.actor = actor
+        
 
         # Declare the commands we implement. When the actor is started
         # these are registered with the parser, which will call the
@@ -40,6 +43,9 @@ class AgccCmd(object):
             ('stopsequence', '<sequence>', self.stopsequence),
             ('inusesequence', '<sequence>', self.inusesequence),
             ('inusecamera', '<camera>', self.inusecamera),
+            ('setCentroidParams','[<fwhmx>] [<fwhmy>] [<boxFind>] [<boxCent>] [<nmin>] [<nmax>] [<maxIt>]',
+             self.setCentroidParams),
+
         ]
 
         # Define typed command arguments for the above commands.
@@ -60,6 +66,18 @@ class AgccCmd(object):
                                         keys.Key("count", types.Int(), help="Number of exposures in sequence"),
                                         keys.Key("combined", types.Int(), help="0/1: multiple FITS files/single FITS file"),
                                         keys.Key("centroid", types.Int(), help="0/1: if 1 do centroid else don't"),
+                                                                                keys.Key("fwhmx", types.Float(), help="X fwhm for centroid routine"),
+                                        keys.Key("fwhmy", types.Float(), help="Y fwhm for centroid routine"),
+                                        keys.Key("boxFind", types.Int(), help="box size for finding spots"),
+                                        keys.Key("boxCent", types.Int(), help="box size for centroiding spots"),
+                                        keys.Key("nmin", types.Int(), help="minimum number of points for spot"),
+                                        keys.Key("nmax", types.Int(), help="max number of points for spot"),
+                                        keys.Key("maxIt", types.Int(), help="maximum number of iterations for centroiding"),
+                                        keys.Key("findSigma", types.Float(), help="threshhold for finding spots"),
+                                        keys.Key("centSigma", types.Float(), help="threshhold for calculating moments of spots"),
+                                        keys.Key("threshSigma", types.Float(), help="threshhold calculating background level"),
+                                        keys.Key("threshFact", types.Float(), help="factor for engineering threshold measurements"),
+
                                         )
 
 
@@ -105,6 +123,7 @@ class AgccCmd(object):
         if 'centroid' in cmdKeys:
             if cmdKeys['centroid'].values[0] == 1:
                 centroid = True
+                self.setCentroidParams(cmd)
 
         cams = []
         if 'cameras' in cmdKeys:
@@ -120,7 +139,7 @@ class AgccCmd(object):
             for k in range(nCams):
                 cams.append(k)
 
-        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid)
+        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid,self.cParms)
 
     def abort(self, cmd):
         """Abort an exposure"""
@@ -329,3 +348,12 @@ class AgccCmd(object):
         cmd.respond('stat_cam%d="%s"' % (cam_id + 1, stat))
         cmd.finish()
 
+    def setCentroidParams(self, cmd):
+
+        """
+        top level routine for setting centroid parameters. Reads the defaults from teh config fil,e
+        then changes any specified in the keywords argument. 
+
+        """
+
+        self.cParms = ct.getCentroidParams(cmd)

@@ -75,7 +75,7 @@ class Camera(object):
             else:
                 cmd.inform('agc%d_stat=ABSENT' % (n + 1))
 
-    def expose(self, cmd, expTime, expType, cams, combined, centroid):
+    def expose(self, cmd, expTime, expType, cams, combined, centroid, cParms):
         """ Generate an 'exposure' image.
 
         Args:
@@ -137,7 +137,7 @@ class Camera(object):
             else:
                 dflag = False
 
-            exp_thr = Exposure(active_cams, expTime_ms, dflag, cmd, combined, centroid)
+            exp_thr = Exposure(active_cams, expTime_ms, dflag, cParms, cmd, combined, centroid)
             exp_thr.start()
 
     def abort(self, cmd, cams):

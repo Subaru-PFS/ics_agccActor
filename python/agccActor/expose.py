@@ -4,11 +4,13 @@ import writeFits
 import photometry
 import os
 
+import dbRoutinesAGCC as dbRoutinesAGCC
+
 class Exposure(threading.Thread):
     exp_lock = threading.Lock()
     n_busy = 0
 
-    def __init__(self, cams, expTime_ms, dflag, cmd=None, combined=False, centroid=False, seq_id=-1):
+    def __init__(self, cams, expTime_ms, dflag, cParms, cmd=None, combined=False, centroid=False, seq_id=-1):
         """ Run exposure command
 
         Args:
@@ -33,6 +35,7 @@ class Exposure(threading.Thread):
         self.cmd = cmd
         self.combined = combined
         self.centroid = centroid
+        self.cParms = cParms
         self.seq_id = seq_id
 
         # get nframe keyword, unique for each exposure
@@ -105,10 +108,21 @@ class Exposure(threading.Thread):
             if self.centroid:
                 if multiproc:
                     cam.queue[0].put(cam.data)
+                    cam.queue[0].put(self.cParms)
                     spots = cam.queue[1].get()
+                    centroids = cam.queue[1].get()
                 else:
-                    spots = photometry.measure(cam.data)
+                    spots,centroids = photometry.measure(cam.data,self.cParms)
                 cam.spots = spots
+                ff=open("check.txt","a")
+                print("here2",file=ff)
+                ff.close()
+
+                #self.cmd.inform('text="here"')
+                dbRoutinesAGCC.writeVisitToDB(self.nframe)
+                dbRoutinesAGCC.writeExposureToDB(self.nframe,cam.agcid+1)
+                dbRoutinesAGCC.writeCentroidsToDB(centroids,self.nframe,cam.agcid+1)
+                
                 if self.cmd:
                     self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))
             else:
