@@ -31,11 +31,11 @@ def connectToDB(hostname='117.56.225.230',port='5432',dbname='opdb',username='pf
     return db
 
 
-def writeVisitToDB(nFrame):
+def writeVisitToDB(pfsVisitId):
 
     db=connectToDB()
     
-    df = pd.DataFrame({'pfs_visit_id': [nFrame], 'pfs_visit_description': ['']})
+    df = pd.DataFrame({'pfs_visit_id': [pfsVisitId], 'pfs_visit_description': ['']})
     db.insert('pfs_visit', df)
 
     try:
@@ -44,14 +44,14 @@ def writeVisitToDB(nFrame):
         pass
     
 
-def writeExposureToDB(visitId,cameraId):
+def writeExposureToDB(visitId,exposureId):
 
-    db=connectToDB(hostname='localhost',port='5432',dbname='opdb',username='karr',passwd=None)
-    df = pd.DataFrame({'pfs_visit_id': [visitId], 'agc_exposure_id': [visitId*100+cameraId], 'agc_camera_id': [cameraId]})
+    db=connectToDB()
+    df = pd.DataFrame({'pfs_visit_id': [visitId], 'agc_exposure_id': [exposureId]})
     db.insert('agc_exposure', df)
 
             
-def writeCentroidsToDB(centroids,visitId,cameraID):
+def writeCentroidsToDB(centroids,visitId,exposureId,cameraId):
 
     """
     write the centroids to the database
@@ -68,44 +68,16 @@ def writeCentroidsToDB(centroids,visitId,cameraID):
 
     #create array of frameIDs (same for all spots)
     visitIds=np.repeat(visitId,sz[0]).astype('int')
+    exposureIds=np.repeat(exposureId,sz[0]).astype('int')
+    cameraIds=np.repeat(cameraId,sz[0]).astype('int')
     #make a data frame
     frame[:,0]=visitIds
-    frame[:,1]=visitIds*100+np.repeat(cameraID,sz[0]).astype('int')
-    frame[:,2]=np.repeat(cameraID,sz[0]).astype('int')
+    frame[:,1]=exposureIds
+    frame[:,2]=cameraIds
     frame[:,3:]=centroids
     
     columns=['pfs_visit_id','agc_exposure_id','agc_camera_id','spot_id','image_moment_00_pix','centroid_x_pix','centroid_y_pix','central_image_moment_20_pix','central_image_moment_11_pix','central_image_moment_02_pix','peak_pixel_x_pix','peak_pixel_y_pix','peak_intensity','background','flags']
 
     
-    df=pd.DataFrame(frame,columns=columns)
-    db.insert("agc_data",df)
-
-def writeExposuretoDB(centroids,visitId,cameraID):
-
-    """
-    write the centroids to the database
-    table=mcs_data
-    variables=spot_id,mcs_center_x_pix,mcs_center_y_pix
-              mcs_second_moment_x_pix,mcs_second_moment_y_pix,
-              mcs_second_moment_xy_pix,bgvalue,peakvalue
-    """
-
-
-    db=connectToDB()
-
-    #get size of array
-    sz=centroids.shape
-    
-    #create array of frameIDs (same for all spots)
-    visitIds=np.repeat(visitId,sz[0]).astype('int')
-    #make a data frame
-    frame=np.zeros((sz[0],15))
-    frame[:,0]=visitIds
-    frame[:,1]=visitIds*100+np.repeat(cameraID,sz[0]).astype('int')
-    frame[:,2]=np.repeat(cameraID,sz[0]).astype('int')
-    frame[:,3:]=centroids
-    #column names
-    columns=['pfs_visit_id','agc_exposure_id','agc_camera_id','spot_id','centroid_x_pix','centroid_y_pix','peak_pixel_x_pix','peak_pixel_y_pix','central_image_moment_20_pix','central_image_moment_02_pix','central_image_moment_11_pix','peak_intensity','image_moment_00_pix','background','flags']
-
     df=pd.DataFrame(frame,columns=columns)
     db.insert("agc_data",df)

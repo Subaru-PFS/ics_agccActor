@@ -11,7 +11,7 @@ import opscore.protocols.types as types
 from opscore.utility.qstr import qstr
 
 import centroidTools as ct
-
+import dbRoutinesAGCC as dbRoutinesAGCC
 nCams = 6
 
 class AgccCmd(object):
@@ -29,7 +29,7 @@ class AgccCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
-            ('expose', '@(test|dark|object) [<exptime>] [<cameras>] [<combined>] [<centroid>]', self.expose),
+            ('expose', '@(test|dark|object) <pfsVisitId> [<exptime>] [<cameras>] [<combined>] [<centroid>]', self.expose),
             ('abort', '[<cameras>]', self.abort),
             ('reconnect', '', self.reconnect),
             ('setframe', '[<cameras>] [<bx>] [<by>] <cx> <cy> <sx> <sy>', self.setframe),
@@ -43,6 +43,7 @@ class AgccCmd(object):
             ('stopsequence', '<sequence>', self.stopsequence),
             ('inusesequence', '<sequence>', self.inusesequence),
             ('inusecamera', '<camera>', self.inusecamera),
+            ('insertVisit', '<pfsVisitId>', self.insertVisit),
             ('setCentroidParams','[<fwhmx>] [<fwhmy>] [<boxFind>] [<boxCent>] [<nmin>] [<nmax>] [<maxIt>]',
              self.setCentroidParams),
 
@@ -64,6 +65,7 @@ class AgccCmd(object):
                                         keys.Key("regions", types.String(), help="Regions of interest, x1,y1,d1,x2,y2,d2"),
                                         keys.Key("sequence", types.Int(), help="Sequence ID"),
                                         keys.Key("count", types.Int(), help="Number of exposures in sequence"),
+                                        keys.Key("pfsVisitId", types.Int(), help="pfs_visit_id assigned by IIC"),
                                         keys.Key("combined", types.Int(), help="0/1: multiple FITS files/single FITS file"),
                                         keys.Key("centroid", types.Int(), help="0/1: if 1 do centroid else don't"),
                                                                                 keys.Key("fwhmx", types.Float(), help="X fwhm for centroid routine"),
@@ -103,11 +105,19 @@ class AgccCmd(object):
         cmd.inform('text="Present!"')
         cmd.finish()
 
+    def insertVisit(self, cmd):
+
+        cmdKeys = cmd.cmd.keywords
+        pfsVisitId = cmdKeys['pfsVisitId'].values[0]
+        dbRoutinesAGCC.writeVisitToDB(pfsVisitId)
+        cmd.finish()
+
     def expose(self, cmd):
         """Take an exposure. combined=0/1."""
 
         cmdKeys = cmd.cmd.keywords
         expType = cmdKeys[0].name
+        pfsVisitId = cmdKeys['pfsVisitId'].values[0]
 
         if 'exptime' in cmdKeys:
             expTime = cmdKeys['exptime'].values[0]
@@ -123,7 +133,7 @@ class AgccCmd(object):
         if 'centroid' in cmdKeys:
             if cmdKeys['centroid'].values[0] == 1:
                 centroid = True
-                self.setCentroidParams(cmd)
+        self.setCentroidParams(cmd)
 
         cams = []
         if 'cameras' in cmdKeys:
@@ -139,7 +149,7 @@ class AgccCmd(object):
             for k in range(nCams):
                 cams.append(k)
 
-        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid,self.cParms)
+        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, pfsVisitId, self.cParms)
 
     def abort(self, cmd):
         """Abort an exposure"""

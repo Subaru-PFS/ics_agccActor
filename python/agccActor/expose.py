@@ -10,7 +10,7 @@ class Exposure(threading.Thread):
     exp_lock = threading.Lock()
     n_busy = 0
 
-    def __init__(self, cams, expTime_ms, dflag, cParms, cmd=None, combined=False, centroid=False, seq_id=-1):
+    def __init__(self, cams, expTime_ms, dflag, cParms, pfsVisitId, cmd = None, combined = False, centroid = False, seq_id = -1):
         """ Run exposure command
 
         Args:
@@ -35,8 +35,10 @@ class Exposure(threading.Thread):
         self.cmd = cmd
         self.combined = combined
         self.centroid = centroid
+        self.pfsVisitId = pfsVisitId
         self.cParms = cParms
         self.seq_id = seq_id
+
 
         # get nframe keyword, unique for each exposure
         path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
@@ -53,6 +55,7 @@ class Exposure(threading.Thread):
                 self.nframe = 1
             with open(filename, 'w') as f:
                 f.write(str(self.nframe))
+        dbRoutinesAGCC.writeExposureToDB(self.pfsVisitId,self.nframe)
 
     def run(self):
         # check if any camera is available
@@ -103,6 +106,7 @@ class Exposure(threading.Thread):
             else:
                 self.cmd.inform('text="AGC[%d]: Exposure aborted"' % (n + 1))
             self.cmd.inform('agc%d_stat=READY' % (n + 1))
+        
 
         if tread > 0:
             if self.centroid:
@@ -115,10 +119,8 @@ class Exposure(threading.Thread):
                     spots,centroids = photometry.measure(cam.data,self.cParms)
                 cam.spots = spots
 
-                #self.cmd.inform('text="here"')
-                dbRoutinesAGCC.writeVisitToDB(self.nframe)
-                dbRoutinesAGCC.writeExposureToDB(self.nframe,cam.agcid+1)
-                dbRoutinesAGCC.writeCentroidsToDB(centroids,self.nframe,cam.agcid+1)
+
+                dbRoutinesAGCC.writeCentroidsToDB(centroids,self.pfsVisitId, self.nframe,cam.agcid)
                 
                 if self.cmd:
                     self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))
