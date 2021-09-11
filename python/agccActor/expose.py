@@ -41,7 +41,9 @@ class Exposure(threading.Thread):
 
 
         # get nframe keyword, unique for each exposure
-        path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
+        #path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
+        path = os.path.join('/data/raw', time.strftime('%Y-%m-%d', time.gmtime()), 'agcc')
+
         path = os.path.expandvars(os.path.expanduser(path))
         if not os.path.isdir(path):
             os.makedirs(path, 0o755)
@@ -55,6 +57,8 @@ class Exposure(threading.Thread):
                 self.nframe = 1
             with open(filename, 'w') as f:
                 f.write(str(self.nframe))
+            import random
+            self.nframe = random.randint(1, 9999)
         dbRoutinesAGCC.writeExposureToDB(self.pfsVisitId,self.nframe)
 
     def run(self):
