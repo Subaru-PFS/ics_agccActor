@@ -5,7 +5,8 @@ from datetime import datetime
 def wfits(cmd, cam, nframe):
     """Write the image to a FITS file"""
 
-    path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
+    #path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
+    path = os.path.join('/data/raw', time.strftime('%Y-%m-%d', time.gmtime()), 'agcc')
     path = os.path.expandvars(os.path.expanduser(path))
     if not os.path.isdir(path):
         os.makedirs(path, 0o755)
@@ -59,7 +60,8 @@ def wfits(cmd, cam, nframe):
 def wfits_combined(cmd, cams, nframe, seq_id=-1):
     """Write the images to a FITS file"""
 
-    path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
+    #path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
+    path = os.path.join('/data/raw', time.strftime('%Y-%m-%d', time.gmtime()), 'agcc')
     path = os.path.expandvars(os.path.expanduser(path))
     if not os.path.isdir(path):
         os.makedirs(path, 0o755)
