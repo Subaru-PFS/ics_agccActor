@@ -29,7 +29,7 @@ class AgccCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
-            ('expose', '@(test|dark|object) <pfsVisitId> [<exptime>] [<cameras>] [<combined>] [<centroid>]', self.expose),
+            ('expose', '@(test|dark|object) <pfsVisitId> [<exptime>] [<cameras>] [<combined>] [<centroid>] [<cMethod>]', self.expose),
             ('abort', '[<cameras>]', self.abort),
             ('reconnect', '', self.reconnect),
             ('setframe', '[<cameras>] [<bx>] [<by>] <cx> <cy> <sx> <sy>', self.setframe),
@@ -135,6 +135,10 @@ class AgccCmd(object):
                 centroid = True
         self.setCentroidParams(cmd)
 
+        centroidMethod = "fast"
+        if 'centroidMethod' in cmdKeys:
+            centroidMethod = cmdKeys['centroidMethod'].values[0]
+            
         cams = []
         if 'cameras' in cmdKeys:
             camList = cmdKeys['cameras'].values[0]
@@ -149,7 +153,7 @@ class AgccCmd(object):
             for k in range(nCams):
                 cams.append(k)
 
-        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, pfsVisitId, self.cParms)
+        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, pfsVisitId, self.cParms, cMethod)
 
     def abort(self, cmd):
         """Abort an exposure"""
