@@ -6,15 +6,7 @@ import numpy as np
 #import pathlib
 #import sys
 
-#import pandas as pd
-#from scipy.stats import sigmaclip
-#import copy
-#import dbRoutinesAGCC 
-
-#from scipy.stats import sigmaclip
-#rootPath=os.path.join(os.environ['ICS_MHS_ROOT'])
-#dbPath=os.path.join(rootPath,"devel/spt_operational_databasepython/opdb-0.1-py3.8.egg/")
-#sys.path.insert(1, dbPath)
+import pandas as pd
 
 from opdb import opdb
 

@@ -11,7 +11,6 @@ def measure(data,cParms,cMethod):
     """ measure centroid positions """
     _data = data.astype('float', copy=True)
  
-    reload(ct)
 
     if(cMethod == 'fast'): 
         spots = ct.getCentroids(_data,cParms)
@@ -33,17 +32,17 @@ def measure(data,cParms,cMethod):
         spots = sep.extract(_data, thresh, rms)
         result = np.zeros(len(spots), dtype=spotDtype)
 
-    	# need to ckeck if the following definition are correct
-    	result['m00'] = spots[:,9]
-    	result['m10'] = spots[:,1]
-    	result['m01'] = spots[:,2]
-    	result['m20'] = spots[:,5]
-    	result['m11'] = spots[:,7]
-    	result['m02'] = spots[:,6]
-    	result['xpeak'] = spots[:,3]
-    	result['ypeak'] = spots[:,4]
-    	result['peak'] = spots[:,8]
-    	result['bg'] = spots[:,10]
+        # need to ckeck if the following definition are correct
+        result['m00'] = spots[:,9]
+        result['m10'] = spots[:,1]
+        result['m01'] = spots[:,2]
+        result['m20'] = spots[:,5]
+        result['m11'] = spots[:,7]
+        result['m02'] = spots[:,6]
+        result['xpeak'] = spots[:,3]
+        result['ypeak'] = spots[:,4]
+        result['peak'] = spots[:,8]
+        result['bg'] = spots[:,10]
 
     return result,spots
 
