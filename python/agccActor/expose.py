@@ -10,7 +10,7 @@ class Exposure(threading.Thread):
     exp_lock = threading.Lock()
     n_busy = 0
 
-    def __init__(self, cams, expTime_ms, dflag, cParms, pfsVisitId, cmd = None, combined = False, centroid = False, seq_id = -1):
+    def __init__(self, cams, expTime_ms, dflag, cParms, pfsVisitId, cMethod, cmd = None, combined = False, centroid = False, seq_id = -1):
         """ Run exposure command
 
         Args:
@@ -38,6 +38,7 @@ class Exposure(threading.Thread):
         self.pfsVisitId = pfsVisitId
         self.cParms = cParms
         self.seq_id = seq_id
+        self.cMethod = cMethod
 
 
         # get nframe keyword, unique for each exposure
@@ -117,10 +118,11 @@ class Exposure(threading.Thread):
                 if multiproc:
                     cam.queue[0].put(cam.data)
                     cam.queue[0].put(self.cParms)
+                    cam.queue[0].put(self.cMethod)
                     spots = cam.queue[1].get()
                     centroids = cam.queue[1].get()
                 else:
-                    spots,centroids = photometry.measure(cam.data,self.cParms)
+                    spots,centroids = photometry.measure(cam.data,self.cParms,self.cMethod)
                 cam.spots = spots
 
 
