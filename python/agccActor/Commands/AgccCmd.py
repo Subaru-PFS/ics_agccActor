@@ -135,9 +135,9 @@ class AgccCmd(object):
                 centroid = True
         self.setCentroidParams(cmd)
 
-        centroidMethod = "fast"
-        if 'centroidMethod' in cmdKeys:
-            centroidMethod = cmdKeys['centroidMethod'].values[0]
+        cMethod = "fast"
+        if 'cMethod' in cmdKeys:
+            cMethod = cmdKeys['cMethod'].values[0]
             
         cams = []
         if 'cameras' in cmdKeys:
