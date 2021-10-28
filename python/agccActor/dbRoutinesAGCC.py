@@ -21,9 +21,9 @@ def writeVisitToDB(pfsVisitId):
     db=connectToDB()
     
     df = pd.DataFrame({'pfs_visit_id': [pfsVisitId], 'pfs_visit_description': ['']})
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', None)
-    print('pfs_visit', df)
+    #pd.set_option('display.max_columns', None)
+    #pd.set_option('display.width', None)
+    #print('pfs_visit', df)
 
     try:
         db.insert('pfs_visit', df)
@@ -35,9 +35,9 @@ def writeExposureToDB(visitId,exposureId):
 
     db=connectToDB()
     df = pd.DataFrame({'pfs_visit_id': [visitId], 'agc_exposure_id': [exposureId]})
-    db.insert('agc_exposure', df)
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', None)
+    #db.insert('agc_exposure', df)
+    #pd.set_option('display.max_columns', None)
+    #pd.set_option('display.width', None)
     print('agc_exposure', df)
 
             
@@ -73,6 +73,6 @@ def writeCentroidsToDB(centroids,visitId,exposureId,cameraId):
     df=pd.DataFrame(frame,columns=columns)
     
     db.insert("agc_data",df)
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', None)
-    print("agc_data", df)
+    #pd.set_option('display.max_columns', None)
+    #pd.set_option('display.width', None)
+    #print("agc_data", df)
