@@ -4,7 +4,7 @@ from importlib import reload
 import multiprocessing as mp
 import sep
 
-spotDtype = np.dtype(dict(names=['m00', 'm10', 'm01', 'm20', 'm11', 'm02', 'xpeak', 'ypeak', 'peak', 'bg'],
+spotDtype = np.dtype(dict(names=['image_moment_00_pix', 'centroid_x_pix', 'centroid_y_pix', 'central_image_moment_20_pix', 'central_image_moment_11_pix', 'central_image_moment_02_pix', 'peak_pixel_x_pix', 'peak_pixel_y_pix', 'peak_intensity', 'background'],
                           formats=['f4', 'f4', 'f4', 'f4', 'f4' ,'f4', 'i2', 'i2', 'f4', 'f4']))
 
 def measure(data,cParms,cMethod,thresh=10):
@@ -12,23 +12,22 @@ def measure(data,cParms,cMethod,thresh=10):
     _data = data.astype('float', copy=True)
 
 
-    if(cMethod == 'fast'): 
+    if(cMethod == 'win'): 
         spots = ct.getCentroids(_data,cParms)
         result = np.zeros(len(spots), dtype=spotDtype)
         # need to ckeck if the following definition are correct
-        result['m00'] = spots[:,9]
-        result['m10'] = spots[:,1]
-        result['m01'] = spots[:,2]
-        result['m20'] = spots[:,5]
-        result['m11'] = spots[:,7]
-        result['m02'] = spots[:,6]
-        result['xpeak'] = spots[:,3]
-        result['ypeak'] = spots[:,4]
-        result['peak'] = spots[:,8]
-        result['bg'] = spots[:,10]
-
+        result['image_moment_00_pix'] = spots[:,9]
+        result['centroid_x_pix'] = spots[:,1]
+        result['centroid_y_pix'] = spots[:,2]
+        result['central_image_moment_20_pix'] = spots[:,5]
+        result['central_image_moment_11_pix'] = spots[:,7]
+        result['central_image_moment_02_pix'] = spots[:,6]
+        result['peak_pixel_x_pix'] = spots[:,3]
+        result['peak_pixel_y_pix'] = spots[:,4]
+        result['peak_intensity'] = spots[:,8]
+        result['background'] = spots[:,10]
         
-    if(cMethod == 'slow'):
+    if(cMethod == 'sep'):
 
         bgClass = sep.Background(_data)
         background = bgClass.back()
@@ -37,21 +36,19 @@ def measure(data,cParms,cMethod,thresh=10):
 
         spots = sep.extract(_data, thresh, rms)
         result = np.zeros(len(spots), dtype=spotDtype)
-        result['m00'] = spots['flux']
-        result['m10'] = spots['x']
-        result['m01'] = spots['y']
-        result['m20'] = spots['x2']
-        result['m11'] = spots['xy']
-        result['m02'] = spots['y2']
-        result['xpeak'] = spots['xpeak']
-        result['ypeak'] = spots['ypeak']
-        result['peak'] = spots['peak']
-        result['bg'] = background[spots['xpeak'], spots['ypeak']]
 
-        # need to ckeck if the following definition are correct
+        result['image_moment_00_pix'] = spots['flux']
+        result['centroid_x_pix'] = spots['x']
+        result['centroid_y_pix'] = spots['y']
+        result['central_image_moment_20_pix'] = spots['x2']
+        result['central_image_moment_11_pix'] = spots['xy']
+        result['central_image_moment_02_pix'] = spots['y2']
+        result['peak_pixel_x_pix'] = spots['xpeak']
+        result['peak_pixel_y_pix'] = spots['ypeak']
+        result['peak_intensity'] = spots['peak']
+        result['background'] = background[spots['xpeak'], spots['ypeak']]
 
-
-    return result,spots
+    return result
 
 def createProc():
     """ multiprocessing for photometry """

@@ -79,7 +79,8 @@ class AgccCmd(object):
                                         keys.Key("centSigma", types.Float(), help="threshhold for calculating moments of spots"),
                                         keys.Key("threshSigma", types.Float(), help="threshhold calculating background level"),
                                         keys.Key("threshFact", types.Float(), help="factor for engineering threshold measurements"),
-
+                                        keys.Key("threshFact", types.Float(), help="factor for engineering threshold measurements"),
+                                        keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
                                         )
 
 
@@ -135,7 +136,7 @@ class AgccCmd(object):
                 centroid = True
         self.setCentroidParams(cmd)
 
-        cMethod = "fast"
+        cMethod = "win"
         if 'cMethod' in cmdKeys:
             cMethod = cmdKeys['cMethod'].values[0]
             
