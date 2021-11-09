@@ -37,7 +37,7 @@ def wfits(cmd, cam, nframe):
     hdr.set('FRAMEID', nframe, 'unique key for exposure')
 
     if cam.spots is not None:
-        c1 = pyfits.Column(name='moment_00', format='E', array=cam.spots['m00'])
+        c1 = pyfits.Column(name='moment_00', format='E', array=cam.spots['image_moment_00_pix'])
         c2 = pyfits.Column(name='centroid_x', format='E', array=cam.spots['centroid_x_pix'])
         c3 = pyfits.Column(name='centroid_y', format='E', array=cam.spots['centroid_y_pix'])
         c4 = pyfits.Column(name='moment_20', format='E', array=cam.spots['central_image_moment_20_pix'])
@@ -108,16 +108,16 @@ def wfits_combined(cmd, cams, nframe, seq_id=-1):
         hdulist.insert(n+1, hdu)
 
         if cam.spots is not None:
-            c1 = pyfits.Column(name='moment_00', format='E', array=cam.spots['m00'])
-            c2 = pyfits.Column(name='centroid_x', format='E', array=cam.spots['m10'])
-            c3 = pyfits.Column(name='centroid_y', format='E', array=cam.spots['m01'])
-            c4 = pyfits.Column(name='moment_20', format='E', array=cam.spots['m20'])
-            c5 = pyfits.Column(name='moment_11', format='E', array=cam.spots['m11'])
-            c6 = pyfits.Column(name='moment_02', format='E', array=cam.spots['m02'])
-            c7 = pyfits.Column(name='peak_x', format='I', array=cam.spots['xpeak'])
-            c8 = pyfits.Column(name='peak_y', format='I', array=cam.spots['ypeak'])
-            c9 = pyfits.Column(name='peak_intensity', format='E', array=cam.spots['peak'])
-            c10 = pyfits.Column(name='background', format='E', array=cam.spots['bg'])
+            c1 = pyfits.Column(name='moment_00', format='E', array=cam.spots['image_moment_00_pix'])
+            c2 = pyfits.Column(name='centroid_x', format='E', array=cam.spots['centroid_x_pix'])
+            c3 = pyfits.Column(name='centroid_y', format='E', array=cam.spots['centroid_y_pix'])
+            c4 = pyfits.Column(name='moment_20', format='E', array=cam.spots['central_image_moment_20_pix'])
+            c5 = pyfits.Column(name='moment_11', format='E', array=cam.spots['central_image_moment_11_pix'])
+            c6 = pyfits.Column(name='moment_02', format='E', array=cam.spots['central_image_moment_02_pix'])
+            c7 = pyfits.Column(name='peak_x', format='I', array=cam.spots['peak_pixel_x_pix'])
+            c8 = pyfits.Column(name='peak_y', format='I', array=cam.spots['peak_pixel_y_pix'])
+            c9 = pyfits.Column(name='peak_intensity', format='E', array=cam.spots['peak_intensity'])
+            c10 = pyfits.Column(name='background', format='E', array=cam.spots['background'])
 
             tbhdu = pyfits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
             tbhdu.name = "table%d" % (n + 1)

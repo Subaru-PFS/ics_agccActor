@@ -58,9 +58,8 @@ def createProc():
             cParms = in_q.get()
             cMethod = in_q.get()
             
-            result, centroids = measure(data,cParms,cMethod)
+            result = measure(data,cParms,cMethod)
             out_q.put(result)
-            out_q.put(centroids)
 
     in_q = mp.Queue()
     out_q = mp.Queue()

@@ -4,7 +4,7 @@ import numpy as np
 from opdb import opdb
 
 
-def connectToDB(hostname='117.56.225.230',port='5432',dbname='opdb',username='pfs',passwd=None):
+def connectToDB(hostname='db-ics',port='5432',dbname='opdb',username='pfs',passwd=None):
 
     """
     connect to DB
@@ -91,7 +91,7 @@ def writeCentroidsToDB(result,visitId,exposureId,cameraId):
 
     for n1,n2 in zip(dbHeaders,recHeaders):
         if(n1 != n2):
-            df=df.rename(columns={n2:n1}
+            df=df.rename(columns={n2:n1})
 
     
     db.insert("agc_data",df)
