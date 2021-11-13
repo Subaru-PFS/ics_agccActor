@@ -37,7 +37,7 @@ class AgccCmd(object):
             ('getmode', '[<cameras>]', self.getmode),
             ('setmode', '<mode> [<cameras>]', self.setmode),
             ('getmodestring', '', self.getmodestring),
-            ('settemperature', '<temperature>', self.settemperature),
+            ('settemperature', '[<cameras>] <temperature>', self.settemperature),
             ('setregions', '<camera> <regions>', self.setregions),
             ('startsequence', '<sequence> <exptime> <count> <cameras> [<combined>]', self.startsequence),
             ('stopsequence', '<sequence>', self.stopsequence),
@@ -286,7 +286,12 @@ class AgccCmd(object):
 
         cmdKeys = cmd.cmd.keywords
         temperature = cmdKeys['temperature'].values[0]
-        self.actor.camera.settemperature(cmd, temperature)
+        if 'cameras' in cmdKeys:
+            camList = cmdKeys['cameras'].values[0]
+            for n in camList:
+                self.actor.camera.setcamtemperature(cmd, n, temperature)
+        else:
+            self.actor.camera.settemperature(cmd, temperature)
 
     def setregions(self, cmd):
         """Set regoins of interest"""

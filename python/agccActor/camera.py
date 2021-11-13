@@ -270,6 +270,20 @@ class Camera(object):
         if cmd:
             cmd.fail('text="camera busy or none attached, command ignored"')
 
+    def setcamtemperature(self, cmd, cam, temp):
+        """ Set CCD temperature for indivisual camera 
+        Args:
+           cmd     - a Command object to report to. Ignored if None.
+           temp    - CCD temperature
+        """
+        busy = False
+        if self.cams[cam].isReady():
+            self.cams[cam].setTemperature(temp)
+        else:
+            busy = True
+            if cmd:
+                cmd.warn('text="Camera [%d] is busy"' % cam)
+
     def settemperature(self, cmd, temp):
         """ Set CCD temperature
 
