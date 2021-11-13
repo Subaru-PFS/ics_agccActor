@@ -292,6 +292,7 @@ class AgccCmd(object):
                 self.actor.camera.setcamtemperature(cmd, n, temperature)
         else:
             self.actor.camera.settemperature(cmd, temperature)
+        cmd.finish('text="Setting camera TEC finished!"')
 
     def setregions(self, cmd):
         """Set regoins of interest"""
