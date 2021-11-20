@@ -168,10 +168,11 @@ class AgccCmd(object):
                     return
                 cams.append(k)
         else:
-            for k in range(nCams):
-                cams.append(k)
+            cams = self.actor.camera.runningCameras()
+            cmd.inform(f'text="found cameras: {cams}"')
 
-        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, pfsVisitId, self.cParms, cMethod)
+        self.actor.camera.expose(cmd, expTime, expType, cams,
+                                 combined, centroid, pfsVisitId, self.cParms, cMethod)
 
     def abort(self, cmd):
         """Abort an exposure"""

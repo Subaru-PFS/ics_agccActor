@@ -56,6 +56,15 @@ class Camera(object):
                 cam.regions = ((0, 0, 0), (0, 0, 0))
                 cam.queue = photometry.createProc()
 
+    def runningCameras(self):
+        """Return the list of valid camera Ids """
+
+        cams = []
+        for n in range(nCams):
+            if self.cams[n] is not None:
+                cams.append(n)
+        return cams
+
     def sendStatusKeys(self, cmd):
         """ Send our status keys to the given command. """ 
 
