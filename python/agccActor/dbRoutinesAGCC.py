@@ -18,12 +18,18 @@ def connectToDB(hostname='117.56.225.230',port='5432',dbname='opdb',username='pf
 
 def writeVisitToDB(pfsVisitId):
 
+    """
+    Temporary routine for testing: write visit number to pfs_visit. In operation this will be 
+    done from a higher level
+    
+    """
+
     db=connectToDB()
     
     df = pd.DataFrame({'pfs_visit_id': [pfsVisitId], 'pfs_visit_description': ['']})
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', None)
-    print('pfs_visit', df)
+    #pd.set_option('display.max_columns', None)
+    #pd.set_option('display.width', None)
+    #print('pfs_visit', df)
 
     try:
         db.insert('pfs_visit', df)
@@ -33,15 +39,22 @@ def writeVisitToDB(pfsVisitId):
 
 def writeExposureToDB(visitId,exposureId):
 
+    """
+    Temporary routine for testing: write to agcc_exposure so we can write to agcc_data. 
+    In real operation will be done from a higher level
+    
+    """
+
+
     db=connectToDB()
     df = pd.DataFrame({'pfs_visit_id': [visitId], 'agc_exposure_id': [exposureId]})
     db.insert('agc_exposure', df)
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', None)
-    print('agc_exposure', df)
+    #pd.set_option('display.max_columns', None)
+    #pd.set_option('display.width', None)
+    #print('agc_exposure', df)
 
             
-def writeCentroidsToDB(centroids,visitId,exposureId,cameraId):
+def writeCentroidsToDB(result,visitId,exposureId,cameraId):
 
     """
     write the centroids to the database
@@ -53,26 +66,36 @@ def writeCentroidsToDB(centroids,visitId,exposureId,cameraId):
     db=connectToDB()
 
 
-    sz=centroids.shape
-    frame=np.zeros((sz[0],14))
+    sz=result.shape
 
-
-    #create array of frameIDs (same for all spots)
+    # create array of frameIDs, etc (same for all spots)
     visitIds=np.repeat(visitId,sz[0]).astype('int')
     exposureIds=np.repeat(exposureId,sz[0]).astype('int')
     cameraIds=np.repeat(cameraId,sz[0]).astype('int')
-    #make a data frame
-    frame[:,0]=visitIds
-    frame[:,1]=exposureIds
-    frame[:,2]=cameraIds
-    frame[:,3:]=centroids[:,0:11]
+
+    # turn the record array into a pandas df
+    df=pd.DataFrame(result)
+
+    # add the extra fields
+    df['pfs_visit_id']=visitIds
+    df['agc_exposure_id']=exposureIds
+    df['agc_camera_id']=cameraIds
+    df['spot_id']=np.arange(0,sz[0]).astype('int')
 
 
-    columns = ['pfs_visit_id','agc_exposure_id','agc_camera_id','spot_id','centroid_x_pix','centroid_y_pix','peak_pixel_x_pix','peak_pixel_y_pix','central_image_moment_20_pix','central_image_moment_02_pix','central_image_moment_11_pix','peak_intensity','image_moment_00_pix','background']
+    # this bit is in case the database column names change, so we can remap them without having to alter the rest of the code
+    
+    dbHeaders=['image_moment_00_pix','centroid_x_pix','centroid_y_pix','central_image_moment_20_pix','central_image_moment_11_pix','central_image_moment_02_pix','peak_pixel_x_pix','peak_pixel_y_pix','peak_intensity','background']
 
-    df=pd.DataFrame(frame,columns=columns)
+    recHeaders=['image_moment_00_pix','centroid_x_pix','centroid_y_pix','central_image_moment_20_pix','central_image_moment_11_pix','central_image_moment_02_pix','peak_pixel_x_pix','peak_pixel_y_pix','peak_intensity','background']
+
+    for n1,n2 in zip(dbHeaders,recHeaders):
+        if(n1 != n2):
+            df=df.rename(columns={n2:n1}
+
     
     db.insert("agc_data",df)
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', None)
-    print("agc_data", df)
+    
+    #pd.set_option('display.max_columns', None)
+    #pd.set_option('display.width', None)
+    #print("agc_data", df)

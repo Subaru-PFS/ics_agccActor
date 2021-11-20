@@ -3,6 +3,7 @@ import threading
 import writeFits
 import photometry
 import os
+import time
 
 import dbRoutinesAGCC as dbRoutinesAGCC
 
@@ -58,8 +59,6 @@ class Exposure(threading.Thread):
                 self.nframe = 1
             with open(filename, 'w') as f:
                 f.write(str(self.nframe))
-            import random
-            self.nframe = random.randint(1, 9999)
         dbRoutinesAGCC.writeExposureToDB(self.pfsVisitId,self.nframe)
 
     def run(self):
@@ -120,13 +119,12 @@ class Exposure(threading.Thread):
                     cam.queue[0].put(self.cParms)
                     cam.queue[0].put(self.cMethod)
                     spots = cam.queue[1].get()
-                    centroids = cam.queue[1].get()
                 else:
-                    spots,centroids = photometry.measure(cam.data,self.cParms,self.cMethod)
+                    spots = photometry.measure(cam.data,self.cParms,self.cMethod)
                 cam.spots = spots
 
 
-                dbRoutinesAGCC.writeCentroidsToDB(centroids,self.pfsVisitId, self.nframe,cam.agcid)
+                dbRoutinesAGCC.writeCentroidsToDB(spots,self.pfsVisitId, self.nframe,cam.agcid)
                 
                 if self.cmd:
                     self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))
