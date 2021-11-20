@@ -10,7 +10,7 @@ def connectToDB(hostname='db-ics',port='5432',dbname='opdb',username='pfs',passw
     connect to DB
     """
     
-    db = opdb.OpDB(hostname, port, dbname, username, passwd)
+    db = opdb.OpDB(hostname=hostname, port=port, dbname=dbname, username=username)
     db.connect()
     
     return db
