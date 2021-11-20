@@ -10,7 +10,10 @@ def wfits(cmd, cam, nframe):
     path = os.path.join('/data/raw', time.strftime('%Y-%m-%d', time.gmtime()), 'agcc')
     path = os.path.expandvars(os.path.expanduser(path))
     if not os.path.isdir(path):
-        os.makedirs(path, 0o755)
+        try:
+            os.makedirs(path, 0o755)
+        except Exception as e:
+            raise RuntimeError(f'failed to makedirs({path}): {e}')
 
     tstart = datetime.fromtimestamp(cam.tstart)
     mtimestamp = tstart.strftime("%Y%m%d_%H%M%S%f")[:-5]
