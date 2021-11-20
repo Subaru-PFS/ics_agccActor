@@ -3,13 +3,45 @@ import centroidTools as ct
 from importlib import reload
 import multiprocessing as mp
 import sep
+import logging
 
 spotDtype = np.dtype(dict(names=['image_moment_00_pix', 'centroid_x_pix', 'centroid_y_pix', 'central_image_moment_20_pix', 'central_image_moment_11_pix', 'central_image_moment_02_pix', 'peak_pixel_x_pix', 'peak_pixel_y_pix', 'peak_intensity', 'background'],
                           formats=['f4', 'f4', 'f4', 'f4', 'f4' ,'f4', 'i2', 'i2', 'f4', 'f4']))
 
+logger = logging.getLogger('photometry')
+logger.setLevel(logging.DEBUG)
+
+def removeOverscan(im):
+    h, w = im.shape
+    side0 = im[:, :w//2]
+    side1 = im[:, w//2:]
+    bg0 = np.median(side0[:, :4]).astype(im.dtype)
+    bg1 = np.median(side1[:, -4:]).astype(im.dtype)
+
+    im[:, :w//2] -= bg0
+    im[:, w//2:] -= bg1
+
+    return im, bg0, bg1
+
+def removeBackground(im):
+    h, w = im.shape
+    side0 = im[:, :w//2]
+    side1 = im[:, w//2:]
+    bg0 = np.median(side0).astype(im.dtype)
+    bg1 = np.median(side1).astype(im.dtype)
+
+    im[:, :w//2] -= bg0
+    im[:, w//2:] -= bg1
+
+    return im, (bg0 + bg1)/2
+
 def measure(data,cParms,cMethod,thresh=10):
     """ measure centroid positions """
     _data = data.astype('float', copy=True)
+    try:
+        data, bg0, bg1 = removeOverscan(_data)
+    except Exception as e:
+        logger.warn(f'boom: {e}')
 
 
     if(cMethod == 'win'): 
