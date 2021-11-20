@@ -29,7 +29,8 @@ class AgccCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
-            ('expose', '@(test|dark|object) <pfsVisitId> [<exptime>] [<cameras>] [<combined>] [<centroid>] [<cMethod>]', self.expose),
+            ('expose', '@(test|dark|object) [<pfsVisitId>] [<exptime>] '
+                       '[<cameras>] [<combined>] [<centroid>] [<cMethod>]', self.expose),
             ('abort', '[<cameras>]', self.abort),
             ('reconnect', '', self.reconnect),
             ('setframe', '[<cameras>] [<bx>] [<by>] <cx> <cy> <sx> <sy>', self.setframe),
@@ -105,6 +106,23 @@ class AgccCmd(object):
         cmd.inform('text="Present!"')
         cmd.finish()
 
+    def setOrGetVisit(self, cmd):
+        """Set and return the visit passed in the command keys, or fetch one from gen2. """
+
+        self.cmd = cmd
+        cmdKeys = cmd.cmd.keywords
+
+        if 'visit' in cmdKeys:
+            visit = cmdKeys['fpsVisitId'].values[0]
+        else:
+            ret = self.actor.cmdr.call(actor='gen2', cmdStr='getVisit caller=agcc',
+                                       forUserCmd=cmd, timeLim=15.0)
+            if ret.didFail:
+                raise RuntimeError("getVisit failed getting a visit number in 15s!")
+            visit = self.actor.models['gen2'].keyVarDict['visit'].valueList[0]
+
+        return visit
+
     def insertVisit(self, cmd):
 
         cmdKeys = cmd.cmd.keywords
@@ -117,7 +135,7 @@ class AgccCmd(object):
 
         cmdKeys = cmd.cmd.keywords
         expType = cmdKeys[0].name
-        pfsVisitId = cmdKeys['pfsVisitId'].values[0]
+        pfsVisitId = self.setOrGetVisit(cmd)
 
         if 'exptime' in cmdKeys:
             expTime = cmdKeys['exptime'].values[0]
