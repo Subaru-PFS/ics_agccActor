@@ -56,6 +56,12 @@ class Camera(object):
                 cam.regions = ((0, 0, 0), (0, 0, 0))
                 cam.queue = photometry.createProc()
 
+    def closeCamera(self):
+        for c_i, cam in enumerate(self.cams):
+            if cam is not None:
+                cam.close()
+                self.cams[c_i] = None
+
     def runningCameras(self):
         """Return the list of valid camera Ids """
 
