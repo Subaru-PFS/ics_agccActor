@@ -61,6 +61,7 @@ def measure(data,cParms,cMethod,thresh=10):
         
     if(cMethod == 'sep'):
 
+        _data = _data.astype('int32')
         bgClass = sep.Background(_data)
         background = bgClass.back()
         rms = bgClass.rms()
