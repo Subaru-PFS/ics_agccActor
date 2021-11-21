@@ -67,7 +67,7 @@ def measure(data,cParms,cMethod,thresh=15):
         rms = bgClass.rms()
         bgClass.subfrom(_data)
         # spots = sep.extract(_data, thresh, err=rms.globalBack)
-        spots = sep.extract(data[10:1025,30:1045].copy(order='C'), thresh, err=bgClass.globalrms)
+        spots = sep.extract(_data[10:1025,30:1045].copy(order='C'), thresh, err=bgClass.globalrms)
 
         # sep is ignoring the minarea parameter for unknown reasons
         ind=np.where(spots['npix'] >= 10)
