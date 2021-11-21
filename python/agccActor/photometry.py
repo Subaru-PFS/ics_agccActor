@@ -35,7 +35,7 @@ def removeBackground(im):
 
     return im, (bg0 + bg1)/2
 
-def measure(data,cParms,cMethod,thresh=10):
+def measure(data,cParms,cMethod,thresh=2):
     """ measure centroid positions """
     _data = data.astype('float', copy=True)
     try:
@@ -61,25 +61,27 @@ def measure(data,cParms,cMethod,thresh=10):
         
     if(cMethod == 'sep'):
 
-        _data = _data.astype('int32')
+        _data=_data.astype('int32')
         bgClass = sep.Background(_data)
         background = bgClass.back()
         rms = bgClass.rms()
         bgClass.subfrom(_data)
+        spots = sep.extract(_data, 2*rms.mean(), rms)
 
-        spots = sep.extract(_data, thresh, rms)
-        result = np.zeros(len(spots), dtype=spotDtype)
-
-        result['image_moment_00_pix'] = spots['flux']
-        result['centroid_x_pix'] = spots['x']
-        result['centroid_y_pix'] = spots['y']
-        result['central_image_moment_20_pix'] = spots['x2']
-        result['central_image_moment_11_pix'] = spots['xy']
-        result['central_image_moment_02_pix'] = spots['y2']
-        result['peak_pixel_x_pix'] = spots['xpeak']
-        result['peak_pixel_y_pix'] = spots['ypeak']
-        result['peak_intensity'] = spots['peak']
-        result['background'] = background[spots['xpeak'], spots['ypeak']]
+        # sep is ignoring the minarea parameter for unknown reasons
+        ind=np.where(spots['npix'] >= 10)
+        result = np.zeros(len(ind[0]), dtype=spotDtype)
+    
+        result['image_moment_00_pix'] = spots['flux'][ind]
+        result['centroid_x_pix'] = spots['x'][ind]
+        result['centroid_y_pix'] = spots['y'][ind]
+        result['central_image_moment_20_pix'] = spots['x2'][ind]
+        result['central_image_moment_11_pix'] = spots['xy'][ind]
+        result['central_image_moment_02_pix'] = spots['y2'][ind]
+        result['peak_pixel_x_pix'] = spots['xpeak'][ind]
+        result['peak_pixel_y_pix'] = spots['ypeak'][ind]
+        result['peak_intensity'] = spots['peak'][ind]
+        result['background'] = background[spots['ypeak'], spots['xpeak']][ind]
 
     return result
 
