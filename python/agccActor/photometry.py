@@ -66,15 +66,16 @@ def measure(data,cParms,cMethod,thresh=15):
         background = bgClass.back()
         rms = bgClass.rms()
         bgClass.subfrom(_data)
-        spots = sep.extract(_data, thresh, err=rms.globalBack)
+        # spots = sep.extract(_data, thresh, err=rms.globalBack)
+        spots = sep.extract(data[10:1025,30:1045].copy(order='C'), thresh, err=bgClass.globalrms)
 
         # sep is ignoring the minarea parameter for unknown reasons
         ind=np.where(spots['npix'] >= 10)
         result = np.zeros(len(ind[0]), dtype=spotDtype)
     
         result['image_moment_00_pix'] = spots['flux'][ind]
-        result['centroid_x_pix'] = spots['x'][ind]
-        result['centroid_y_pix'] = spots['y'][ind]
+        result['centroid_x_pix'] = spots['x'][ind]+30
+        result['centroid_y_pix'] = spots['y'][ind]+10
         result['central_image_moment_20_pix'] = spots['x2'][ind]
         result['central_image_moment_11_pix'] = spots['xy'][ind]
         result['central_image_moment_02_pix'] = spots['y2'][ind]
