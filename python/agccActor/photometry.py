@@ -66,7 +66,7 @@ def measure(data,cParms,cMethod,thresh=2):
         background = bgClass.back()
         rms = bgClass.rms()
         bgClass.subfrom(_data)
-        spots = sep.extract(_data, 2*rms.mean(), rms)
+        spots = sep.extract(_data, thresh*rms.mean(), rms)
 
         # sep is ignoring the minarea parameter for unknown reasons
         ind=np.where(spots['npix'] >= 10)
