@@ -35,7 +35,7 @@ def removeBackground(im):
 
     return im, (bg0 + bg1)/2
 
-def measure(data,cParms,cMethod,thresh=2):
+def measure(data,cParms,cMethod,thresh=15):
     """ measure centroid positions """
     _data = data.astype('float', copy=True)
     try:
@@ -66,7 +66,7 @@ def measure(data,cParms,cMethod,thresh=2):
         background = bgClass.back()
         rms = bgClass.rms()
         bgClass.subfrom(_data)
-        spots = sep.extract(_data, thresh*rms.mean(), rms)
+        spots = sep.extract(_data, thresh, err=rms.globalBack)
 
         # sep is ignoring the minarea parameter for unknown reasons
         ind=np.where(spots['npix'] >= 10)
