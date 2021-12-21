@@ -28,7 +28,9 @@ def wfits(cmd, cam, nframe):
     hdr.set('EXPTIME', cam.exptime, 'exposure time (ms)')
     hdr.set('VBIN', cam.vbin, 'vertical binning')
     hdr.set('HBIN', cam.hbin, 'horizontal binning')
-    hdr.set('CCD-TEMP', cam.getTemperature(), 'CCD temperature')
+    temp = cam.getTemperature()
+    hdr.set('CCD-TEMP', temp, 'CCD temperature')
+    cmd.inform('agc%d_temp=%.2f' % (cam.agcid + 1, temp))
     if(cam.dark != 0):
         hdr.set('SHUTTER', 'CLOSE', 'shutter status')
     else:
@@ -95,7 +97,9 @@ def wfits_combined(cmd, cams, nframe, seq_id=-1):
         hdr.set('EXPTIME', cam.exptime, 'exposure time (ms)')
         hdr.set('VBIN', cam.vbin, 'vertical binning')
         hdr.set('HBIN', cam.hbin, 'horizontal binning')
-        hdr.set('CCD-TEMP', cam.getTemperature(), 'CCD temperature')
+        temp = cam.getTemperature()
+        hdr.set('CCD-TEMP', temp, 'CCD temperature')
+        cmd.inform('agc%d_temp=%.2f' % (n + 1, temp))
         if(cam.dark != 0):
             hdr.set('SHUTTER', 'CLOSE', 'shutter status')
         else:

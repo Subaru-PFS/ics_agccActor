@@ -63,8 +63,10 @@ class Camera(object):
         for n in range(nCams):
             if self.cams[n] != None:
                 if self.cams[n].isReady():
-                    tempstr = '%5.1f' % self.cams[n].getTemperature()
+                    temp = self.cams[n].getTemperature()
+                    tempstr = '%5.1f' % temp
                     cmd.inform('agc%d_stat=READY' % (n + 1))
+                    cmd.inform('agc%d_temp=%.2f' % (n+1, temp))
                 else:
                     tempstr = '<%5.1f>' % self.cams[n].temp
                     cmd.inform('agc%d_stat=BUSY' % (n + 1))
@@ -145,7 +147,7 @@ class Camera(object):
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
-           cams    - list of active cameras [1-8]
+           cams    - list of active cameras [1-6]
         """
 
         for n in cams:
@@ -158,7 +160,7 @@ class Camera(object):
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
-           cams    - list of active cameras [1-8]
+           cams    - list of active cameras [1-6]
            bx,by   - binning size
            cx,cy   - corner coordinate
            sx,sy   - exposure area size
@@ -188,7 +190,7 @@ class Camera(object):
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
-           cams    - list of active cameras [1-8]
+           cams    - list of active cameras [1-6]
         """
 
         for n in cams:
@@ -212,7 +214,7 @@ class Camera(object):
         Args:
            cmd     - a Command object to report to. Ignored if None.
            mode    - readout mode
-           cams    - list of active cameras [1-8]
+           cams    - list of active cameras [1-6]
         """
 
         cams_available = []
@@ -234,7 +236,7 @@ class Camera(object):
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
-           cams    - list of active cameras [1-8]
+           cams    - list of active cameras [1-6]
         """
 
         for n in cams:
@@ -270,16 +272,17 @@ class Camera(object):
         if cmd:
             cmd.fail('text="camera busy or none attached, command ignored"')
 
-    def settemperature(self, cmd, temp):
+    def settemperature(self, cmd, temp, cams):
         """ Set CCD temperature
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
            temp    - CCD temperature
+           cams    - list of active cameras [1-6]
         """
 
         busy = False
-        for n in range(nCams):
+        for n in cams:
             if self.cams[n] != None:
                 if self.cams[n].isReady():
                     self.cams[n].setTemperature(temp)
@@ -292,6 +295,31 @@ class Camera(object):
                 cmd.fail('text="Camera settemperature command abort"')
             else:
                 cmd.inform('text="Camera settemperature command done"')
+                cmd.finish()
+
+    def gettemperature(self, cmd, cams):
+        """ Get CCD temperature
+
+        Args:
+           cmd     - a Command object to report to. Ignored if None.
+           cams    - list of active cameras [1-6]
+        """
+
+        busy = False
+        for n in cams:
+            if self.cams[n] != None:
+                if self.cams[n].isReady():
+                    temp = self.cams[n].getTemperature()
+                    cmd.inform('agc%d_temp=%.2f' % (n+1, temp))
+                else:
+                    busy = True
+                    if cmd:
+                        cmd.warn('text="Camera [%d] is busy"' % n)
+        if cmd:
+            if busy:
+                cmd.fail('text="Camera gettemperature command abort"')
+            else:
+                cmd.inform('text="Camera gettemperature command done"')
                 cmd.finish()
 
     def setregions(self, cmd, camid, regions_str):

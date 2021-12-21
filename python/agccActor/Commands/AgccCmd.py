@@ -37,7 +37,8 @@ class AgccCmd(object):
             ('getmode', '[<cameras>]', self.getmode),
             ('setmode', '<mode> [<cameras>]', self.setmode),
             ('getmodestring', '', self.getmodestring),
-            ('settemperature', '<temperature>', self.settemperature),
+            ('settemperature', '<temperature> [<cameras>]', self.settemperature),
+            ('gettemperature', '[<cameras>]', self.gettemperature),
             ('setregions', '<camera> <regions>', self.setregions),
             ('startsequence', '<sequence> <exptime> <count> <cameras> [<combined>]', self.startsequence),
             ('stopsequence', '<sequence>', self.stopsequence),
@@ -46,7 +47,7 @@ class AgccCmd(object):
             ('insertVisit', '<pfsVisitId>', self.insertVisit),
             ('setCentroidParams','[<fwhmx>] [<fwhmy>] [<boxFind>] [<boxCent>] [<nmin>] [<nmax>] [<maxIt>]',
              self.setCentroidParams),
-
+            ('monitor', '<period>', self.monitor),
         ]
 
         # Define typed command arguments for the above commands.
@@ -79,8 +80,8 @@ class AgccCmd(object):
                                         keys.Key("centSigma", types.Float(), help="threshhold for calculating moments of spots"),
                                         keys.Key("threshSigma", types.Float(), help="threshhold calculating background level"),
                                         keys.Key("threshFact", types.Float(), help="factor for engineering threshold measurements"),
-                                        keys.Key("threshFact", types.Float(), help="factor for engineering threshold measurements"),
                                         keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
+                                        keys.Key("period", types.Int(), help='the period to sample at.'),
                                         )
 
 
@@ -287,7 +288,41 @@ class AgccCmd(object):
 
         cmdKeys = cmd.cmd.keywords
         temperature = cmdKeys['temperature'].values[0]
-        self.actor.camera.settemperature(cmd, temperature)
+        cams = []
+        if 'cameras' in cmdKeys:
+            camList = cmdKeys['cameras'].values[0]
+            for cam in camList:
+                k = int(cam) - 1
+                if k < 0 or k >= nCams:
+                    cmd.error('text="camera list error: %s"' % camList)
+                    cmd.fail()
+                    return
+                cams.append(k)
+        else:
+            for k in range(nCams):
+                cams.append(k)
+
+        self.actor.camera.settemperature(cmd, temperature, cams)
+
+    def gettemperature(self, cmd):
+        """Set CCD temperature"""
+
+        cmdKeys = cmd.cmd.keywords
+        cams = []
+        if 'cameras' in cmdKeys:
+            camList = cmdKeys['cameras'].values[0]
+            for cam in camList:
+                k = int(cam) - 1
+                if k < 0 or k >= nCams:
+                    cmd.error('text="camera list error: %s"' % camList)
+                    cmd.fail()
+                    return
+                cams.append(k)
+        else:
+            for k in range(nCams):
+                cams.append(k)
+
+        self.actor.camera.gettemperature(cmd, cams)
 
     def setregions(self, cmd):
         """Set regoins of interest"""
@@ -372,3 +407,10 @@ class AgccCmd(object):
         """
 
         self.cParms = ct.getCentroidParams(cmd)
+
+    def monitor(self, cmd):
+        """Enable/disable/adjust period temperature monitors. """
+
+        period = cmd.cmd.keywords['period'].values[0]
+        self.actor.monitor(period, cmd=cmd)
+        cmd.finish()
