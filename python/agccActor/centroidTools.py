@@ -66,13 +66,32 @@ def getCentroidParams(cmd):
 
 def interpBadCol(data,badCols):
 
+    """
+    interpolate over bad columns
+    """
+
     w,h = data.shape()
     for i in badCols:
         for j in range(h):
             data[i,j]=(data[i-1,j]+data[i+1],j)/2
     return data
 
+
+def removeOverscan(data):
+
+    """
+    remove overscan
+    """
     
+    h, w = data.shape
+    side0 = data[:, :w//2]
+    side1 = data[:, w//2:]
+    bg0 = np.median(side0[:, :4]).astype(data.dtype)
+    bg1 = np.median(side1[:, -4:]).astype(data.dtype)
+
+    data[:, :w//2] -= bg0
+    data[:, w//2:] -= bg1
+
 def getCentroidsSep(data,iParms,spotDtype,agcid,thresh):
 
     """
@@ -85,6 +104,7 @@ def getCentroidsSep(data,iParms,spotDtype,agcid,thresh):
     
     region = iParms[str(int(agcid))]['reg']
 
+    data=subOverscan(data,iParms[str(int(agcid))]['reg'])
     data=interpBadCol(data,iParms[str(int(agcid))]['badcols'])
     
     _data1 = data[region[2]:region[3],region[0]:region[1]].astype('float', copy=True)
