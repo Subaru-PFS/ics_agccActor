@@ -1,9 +1,25 @@
 
-import agccActor.windowedCentroid.centroid as centroid
 from scipy.stats import sigmaclip
 import yaml
 import os
 import numpy as np
+import sep
+from scipy.ndimage import gaussian_filter
+
+
+def getImageParams(cmd):
+
+    try:
+        cmdKeys=cmd.cmd.keywords
+    except:
+        cmdKeys=[]
+        
+    fileName=os.path.join(os.environ['ICS_AGCCACTOR_DIR'],'etc','agCamParameters.yaml')
+
+    with open(fileName, 'r') as inFile:
+        imageParms=yaml.safe_load(inFile)
+
+    return imageParms
 
 def getCentroidParams(cmd):
 
@@ -16,7 +32,6 @@ def getCentroidParams(cmd):
 
     with open(fileName, 'r') as inFile:
         defaultParms=yaml.safe_load(inFile)
-
     
     #returns just the values dictionary
     centParms = defaultParms['values']
@@ -49,57 +64,78 @@ def getCentroidParams(cmd):
     return centParms
 
 
-def getCentroids(image,cParms):
+def interpBadCol(data,badCols):
 
-    # split into two halves
-    
-    lim1a=28
-    lim1b=548
-    lim2a=507
-    lim2b=1042
-    
-    #get thresholds 
-    a1,b2,c2=sigmaclip(image[:,lim1a:lim2a],cParms['threshSigma'],cParms['threshSigma'])
-    a2,b2,c2=sigmaclip(image[:,lim1b:lim2b],cParms['threshSigma'],cParms['threshSigma'])
-    
-    #return the mean + sigma value
-    threshFind1=a1.std()*cParms['findSigma']
-    threshCent1=a1.std()*cParms['centSigma']
-    globalBack1=np.median(a1)
-
-    threshFind2=a2.std()*cParms['findSigma']
-    threshCent2=a2.std()*cParms['centSigma']
-    globalBack2=np.median(a2)
-
-    # centroid
-
-    res1=centroid.centroid_only(image[:,lim1a:lim2a].astype('<i4')-int(globalBack1),cParms['fwhmx'],cParms['fwhmy'],threshFind1,threshCent1,cParms['boxFind'],cParms['boxCent'],cParms['nmin'],cParms['nmax'],cParms['maxIt'],0,0)
-
-    res2=centroid.centroid_only(image[:,lim1b:lim2b].astype('<i4')-int(globalBack2),cParms['fwhmx'],cParms['fwhmy'],threshFind2,threshCent2,cParms['boxFind'],cParms['boxCent'],cParms['nmin'],cParms['nmax'],cParms['maxIt'],0,0)
+    w,h = data.shape()
+    for i in badCols:
+        for j in range(h):
+            data[i,j]=(data[i-1,j]+data[i+1],j)/2
+    return data
 
     
-    #reformat
-    centroids1=np.frombuffer(res1,dtype='<f8')
-    centroids1=np.reshape(centroids1,(len(centroids1)//11,11))
-    centroids1[:,0]+=lim1a
-    nSpots1=centroids1.shape[0]
+def getCentroidsSep(data,iParms,spotDtype,agcid,thresh):
 
-    centroids2=np.frombuffer(res2,dtype='<f8')
-    centroids2=np.reshape(centroids2,(len(centroids2)//11,11))
-    centroids2[:,0]+=lim1b
-    nSpots2=centroids2.shape[0]
+    """
+    runs centroiding for the sep routine and assigns the resules
 
-    # reassemble into two regions
-    points=np.empty((nSpots1+nSpots2,12))
+    """
 
-    points[0:nSpots1,0]=np.arange(nSpots1)
-    points[nSpots1:nSpots1+nSpots2,0]=np.arange(nSpots2)+nSpots1
-
-    points[0:nSpots1,1:]=centroids1[:,0:]
-    points[nSpots1:nSpots1+nSpots2,1:]=centroids2[:,0:]
-
-    ind=np.where(points[:,1]==points[:,1])
+    # this is needed for sep
+    from scipy.ndimage import gaussian_filter
     
-    return points[ind,:]
+    region = iParms[str(int(agcid))]['reg']
+
+    data=interpBadCol(data,iParms[str(int(agcid))]['badcols'])
+    
+    _data1 = data[region[2]:region[3],region[0]:region[1]].astype('float', copy=True)
+    _data2 = data[region[6]:region[7],region[4]:region[5]].astype('float', copy=True)
+
+    # determine the background
+    bgClass1 = sep.Background(_data1)
+    background1 = bgClass1.back()
+    rms1 = bgClass1.rms()
+    bgClass1.subfrom(_data1)
+
+    spots1 = sep.extract(_data1, thresh, rms1, minarea = 10)
+
+    # determine the background
+    bgClass2 = sep.Background(_data2)
+    background2 = bgClass2.back()
+    rms2 = bgClass2.rms()
+    bgClass2.subfrom(_data2)
+
+    spots2 = sep.extract(_data2, thresh, rms2, minarea = 10)
+
+    nElem = len(spots1)+len(spots2)
+
+    result = np.zeros(nElem, dtype=spotDtype)
+    print(spots1['npix'])
+
+    result['image_moment_00_pix'][0:len(spots1)] = spots1['flux']
+    result['centroid_x_pix'][0:len(spots1)] = spots1['x']+region[0]
+    result['centroid_y_pix'][0:len(spots1)] = spots1['y']+region[2]
+    result['central_image_moment_20_pix'][0:len(spots1)] = spots1['x2']
+    result['central_image_moment_11_pix'][0:len(spots1)] = spots1['xy']
+    result['central_image_moment_02_pix'][0:len(spots1)] = spots1['y2']
+    result['peak_pixel_x_pix'][0:len(spots1)] = spots1['xpeak']+region[0]
+    result['peak_pixel_y_pix'][0:len(spots1)] = spots1['ypeak']+region[2]
+    result['peak_intensity'][0:len(spots1)] = spots1['peak']
+    result['background'][0:len(spots1)] = background1[spots1['ypeak'], spots1['xpeak']]
+    
+    result['image_moment_00_pix'][len(spots1):nElem] = spots2['flux']
+    result['centroid_x_pix'][len(spots1):nElem] = spots2['x']+region[4]
+    result['centroid_y_pix'][len(spots1):nElem] = spots2['y']+region[6]
+    result['central_image_moment_20_pix'][len(spots1):nElem] = spots2['x2']
+    result['central_image_moment_11_pix'][len(spots1):nElem] = spots2['xy']
+    result['central_image_moment_02_pix'][len(spots1):nElem] = spots2['y2']
+    result['peak_pixel_x_pix'][len(spots1):nElem] = spots2['xpeak']+region[4]
+    result['peak_pixel_y_pix'][len(spots1):nElem] = spots2['ypeak']+region[6]
+    result['peak_intensity'][len(spots1):nElem] = spots2['peak']
+    result['background'][len(spots1):nElem] = background2[spots2['ypeak'], spots2['xpeak']]
+    # set flag for right half of image
+    result['flag'][0:len(spots1)] += 1
+
+    
+
 
     
