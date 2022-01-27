@@ -89,6 +89,10 @@ class Exposure(threading.Thread):
                 self.cmd.inform('agc_exposing=%d' % Exposure.n_busy)
                 self.cmd.inform('agc_frameid=%d' % self.nframe)
 
+        # do the db write outside of the thread
+        for cam in self.cams:
+            dbRoutinesAGCC.writeCentroidsToDB(cam.spots,self.pfsVisitId, self.nframe,cam.agcid)
+
         if self.combined and self.cams[0].getTotalTime() > 0:
             writeFits.wfits_combined(self.cmd, self.cams, self.nframe, self.seq_id)
         if self.cmd and self.seq_id < 0:
@@ -124,7 +128,6 @@ class Exposure(threading.Thread):
                 cam.spots = spots
 
 
-                dbRoutinesAGCC.writeCentroidsToDB(spots,self.pfsVisitId, self.nframe,cam.agcid)
                 
                 if self.cmd:
                     self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))
