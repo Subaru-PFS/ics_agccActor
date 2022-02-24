@@ -369,7 +369,10 @@ class Camera:
         path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
         path = os.path.expandvars(os.path.expanduser(path))
         if not os.path.isdir(path):
-            os.makedirs(path, 0o755)
+            try:
+                os.makedirs(path, 0o755)
+            except Exception as e:
+                raise RuntimeError(f'failed to makedirs({path}): {e}')
         with self.lock:
             timestamp = self.timestamp
         return os.path.join(path, 'AGC%d_%s_%06d_%s.fits' % \

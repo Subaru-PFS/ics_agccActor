@@ -15,13 +15,13 @@ definitions:
 values:
   boxCent: 6
   boxFind: 15
-  centSigma: 15
-  findSigma: 20
+  centSigma: 5
+  findSigma: 5
   fwhmx: 0
   fwhmy: 0
   matchRad: 20
   maxIt: 20
-  nmax: 150
+  nmax: 200
   nmin: 10
   threshFact: 4
   threshMode: full

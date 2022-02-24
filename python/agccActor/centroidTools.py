@@ -51,25 +51,55 @@ def getCentroidParams(cmd):
 
 def getCentroids(image,cParms):
 
-    #get thresholds
-    a,b,c=sigmaclip(image,cParms['threshSigma'],cParms['threshSigma'])
+    # split into two halves
+    
+    lim1a=28
+    lim1b=548
+    lim2a=507
+    lim2b=1042
+    
+    #get thresholds 
+    a1,b2,c2=sigmaclip(image[:,lim1a:lim2a],cParms['threshSigma'],cParms['threshSigma'])
+    a2,b2,c2=sigmaclip(image[:,lim1b:lim2b],cParms['threshSigma'],cParms['threshSigma'])
     
     #return the mean + sigma value
-    threshFind=a.std()*cParms['findSigma']
-    threshCent=a.std()*cParms['centSigma']
-    globalBack=a.mean()
-    
-    #centroid
+    threshFind1=a1.std()*cParms['findSigma']
+    threshCent1=a1.std()*cParms['centSigma']
+    globalBack1=np.median(a1)
 
-    a=centroid.centroid_only(image.astype('<i4')-int(globalBack),cParms['fwhmx'],cParms['fwhmy'],threshFind,threshCent,cParms['boxFind'],cParms['boxCent'],cParms['nmin'],cParms['nmax'],cParms['maxIt'],0,0)
+    threshFind2=a2.std()*cParms['findSigma']
+    threshCent2=a2.std()*cParms['centSigma']
+    globalBack2=np.median(a2)
+
+    # centroid
+
+    res1=centroid.centroid_only(image[:,lim1a:lim2a].astype('<i4')-int(globalBack1),cParms['fwhmx'],cParms['fwhmy'],threshFind1,threshCent1,cParms['boxFind'],cParms['boxCent'],cParms['nmin'],cParms['nmax'],cParms['maxIt'],0,0)
+
+    res2=centroid.centroid_only(image[:,lim1b:lim2b].astype('<i4')-int(globalBack2),cParms['fwhmx'],cParms['fwhmy'],threshFind2,threshCent2,cParms['boxFind'],cParms['boxCent'],cParms['nmin'],cParms['nmax'],cParms['maxIt'],0,0)
+
     
     #reformat
-    centroids=np.frombuffer(a,dtype='<f8')
-    centroids=np.reshape(centroids,(len(centroids)//11,11))
-    nSpots=centroids.shape[0]
-    points=np.empty((nSpots,12))
-    points[:,0]=np.arange(nSpots)
-    points[:,1:]=centroids[:,0:]
-    return points
+    centroids1=np.frombuffer(res1,dtype='<f8')
+    centroids1=np.reshape(centroids1,(len(centroids1)//11,11))
+    centroids1[:,0]+=lim1a
+    nSpots1=centroids1.shape[0]
+
+    centroids2=np.frombuffer(res2,dtype='<f8')
+    centroids2=np.reshape(centroids2,(len(centroids2)//11,11))
+    centroids2[:,0]+=lim1b
+    nSpots2=centroids2.shape[0]
+
+    # reassemble into two regions
+    points=np.empty((nSpots1+nSpots2,12))
+
+    points[0:nSpots1,0]=np.arange(nSpots1)
+    points[nSpots1:nSpots1+nSpots2,0]=np.arange(nSpots2)+nSpots1
+
+    points[0:nSpots1,1:]=centroids1[:,0:]
+    points[nSpots1:nSpots1+nSpots2,1:]=centroids2[:,0:]
+
+    ind=np.where(points[:,1]==points[:,1])
+    
+    return points[ind,:]
 
     

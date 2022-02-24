@@ -10,7 +10,8 @@ class AgccActor(Actor):
         #
         Actor.__init__(self, name, 
                        productName=productName, 
-                       configFile=configFile)
+                       configFile=configFile,
+                       modelNames=("gen2"))
 
         # We will actually use a allocator with "global" sequencing
         self.exposureID = 0

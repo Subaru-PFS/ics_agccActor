@@ -56,6 +56,21 @@ class Camera(object):
                 cam.regions = ((0, 0, 0), (0, 0, 0))
                 cam.queue = photometry.createProc()
 
+    def closeCamera(self):
+        for c_i, cam in enumerate(self.cams):
+            if cam is not None:
+                cam.close()
+                self.cams[c_i] = None
+
+    def runningCameras(self):
+        """Return the list of valid camera Ids """
+
+        cams = []
+        for n in range(nCams):
+            if self.cams[n] is not None:
+                cams.append(n)
+        return cams
+
     def sendStatusKeys(self, cmd):
         """ Send our status keys to the given command. """ 
 
@@ -269,6 +284,20 @@ class Camera(object):
                 return
         if cmd:
             cmd.fail('text="camera busy or none attached, command ignored"')
+
+    def setcamtemperature(self, cmd, cam, temp):
+        """ Set CCD temperature for indivisual camera 
+        Args:
+           cmd     - a Command object to report to. Ignored if None.
+           temp    - CCD temperature
+        """
+        busy = False
+        if self.cams[cam].isReady():
+            self.cams[cam].setTemperature(temp)
+        else:
+            busy = True
+            if cmd:
+                cmd.warn('text="Camera [%d] is busy"' % cam)
 
     def settemperature(self, cmd, temp):
         """ Set CCD temperature

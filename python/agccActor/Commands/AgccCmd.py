@@ -29,7 +29,8 @@ class AgccCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
-            ('expose', '@(test|dark|object) <pfsVisitId> [<exptime>] [<cameras>] [<combined>] [<centroid>] [<cMethod>]', self.expose),
+            ('expose', '@(test|dark|object) [<pfsVisitId>] [<exptime>] '
+                       '[<cameras>] [<combined>] [<centroid>] [<cMethod>]', self.expose),
             ('abort', '[<cameras>]', self.abort),
             ('reconnect', '', self.reconnect),
             ('setframe', '[<cameras>] [<bx>] [<by>] <cx> <cy> <sx> <sy>', self.setframe),
@@ -37,14 +38,14 @@ class AgccCmd(object):
             ('getmode', '[<cameras>]', self.getmode),
             ('setmode', '<mode> [<cameras>]', self.setmode),
             ('getmodestring', '', self.getmodestring),
-            ('settemperature', '<temperature>', self.settemperature),
+            ('settemperature', '[<cameras>] <temperature>', self.settemperature),
             ('setregions', '<camera> <regions>', self.setregions),
             ('startsequence', '<sequence> <exptime> <count> <cameras> [<combined>]', self.startsequence),
             ('stopsequence', '<sequence>', self.stopsequence),
             ('inusesequence', '<sequence>', self.inusesequence),
             ('inusecamera', '<camera>', self.inusecamera),
             ('insertVisit', '<pfsVisitId>', self.insertVisit),
-            ('setCentroidParams','[<fwhmx>] [<fwhmy>] [<boxFind>] [<boxCent>] [<nmin>] [<nmax>] [<maxIt>]',
+            ('setCentroidParams','[<fwhmx>] [<fwhmy>] [<boxFind>] [<boxCent>] [<nmin>] [<nmax>] [<maxIt>] [<findSigma>] [<centSigma>]',
              self.setCentroidParams),
 
         ]
@@ -79,7 +80,6 @@ class AgccCmd(object):
                                         keys.Key("centSigma", types.Float(), help="threshhold for calculating moments of spots"),
                                         keys.Key("threshSigma", types.Float(), help="threshhold calculating background level"),
                                         keys.Key("threshFact", types.Float(), help="factor for engineering threshold measurements"),
-                                        keys.Key("threshFact", types.Float(), help="factor for engineering threshold measurements"),
                                         keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
                                         )
 
@@ -106,6 +106,23 @@ class AgccCmd(object):
         cmd.inform('text="Present!"')
         cmd.finish()
 
+    def setOrGetVisit(self, cmd):
+        """Set and return the visit passed in the command keys, or fetch one from gen2. """
+
+        self.cmd = cmd
+        cmdKeys = cmd.cmd.keywords
+
+        if 'visit' in cmdKeys:
+            visit = cmdKeys['fpsVisitId'].values[0]
+        else:
+            ret = self.actor.cmdr.call(actor='gen2', cmdStr='getVisit caller=agcc',
+                                       forUserCmd=cmd, timeLim=15.0)
+            if ret.didFail:
+                raise RuntimeError("getVisit failed getting a visit number in 15s!")
+            visit = self.actor.models['gen2'].keyVarDict['visit'].valueList[0]
+
+        return visit
+
     def insertVisit(self, cmd):
 
         cmdKeys = cmd.cmd.keywords
@@ -118,7 +135,7 @@ class AgccCmd(object):
 
         cmdKeys = cmd.cmd.keywords
         expType = cmdKeys[0].name
-        pfsVisitId = cmdKeys['pfsVisitId'].values[0]
+        pfsVisitId = self.setOrGetVisit(cmd)
 
         if 'exptime' in cmdKeys:
             expTime = cmdKeys['exptime'].values[0]
@@ -151,10 +168,11 @@ class AgccCmd(object):
                     return
                 cams.append(k)
         else:
-            for k in range(nCams):
-                cams.append(k)
+            cams = self.actor.camera.runningCameras()
+            cmd.inform(f'text="found cameras: {cams}"')
 
-        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, pfsVisitId, self.cParms, cMethod)
+        self.actor.camera.expose(cmd, expTime, expType, cams,
+                                 combined, centroid, pfsVisitId, self.cParms, cMethod)
 
     def abort(self, cmd):
         """Abort an exposure"""
@@ -287,7 +305,13 @@ class AgccCmd(object):
 
         cmdKeys = cmd.cmd.keywords
         temperature = cmdKeys['temperature'].values[0]
-        self.actor.camera.settemperature(cmd, temperature)
+        if 'cameras' in cmdKeys:
+            camList = cmdKeys['cameras'].values[0]
+            for n in camList:
+                self.actor.camera.setcamtemperature(cmd, n, temperature)
+        else:
+            self.actor.camera.settemperature(cmd, temperature)
+        cmd.finish('text="Setting camera TEC finished!"')
 
     def setregions(self, cmd):
         """Set regoins of interest"""
