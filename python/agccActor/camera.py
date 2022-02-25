@@ -383,7 +383,7 @@ class Camera(object):
             cmd.inform('inused_seq%d="YES"' % (seq_id + 1))
 
         active_cams = [self.cams[n] for n in cams_available]
-        sequence_thr = Sequence(active_cams, expTime_ms, seq_id, count, self.seq_stat, self.seq_count, combined, centroid, cmd)
+        sequence_thr = Sequence(active_cams, expTime_ms, seq_id, count, self.seq_stat, self.seq_count, combined, centroid, cParms, iParms, cmd)
         sequence_thr.start()
 
     def stopsequence(self, cmd, seq_id):
