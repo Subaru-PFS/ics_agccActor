@@ -1,7 +1,7 @@
 definitions:
-  threshold: threshold for centroiding
+  thresh: threshold for centroiding
   nmin: minimum number of points for a spot to be valid
 values:
-  threshold: 10
+  thresh: 10
   nmin: 12
 

@@ -123,7 +123,7 @@ class Exposure(threading.Thread):
                     cam.queue[0].put(self.cMethod)
                     spots = cam.queue[1].get()
                 else:
-                    spots = photometry.measure(cam.data,cam.agcid,self.cParms,self,iParms,self.cMethod)
+                    spots = photometry.measure(cam.data,cam.agcid,self.cParms,self.iParms,self.cMethod)
                 cam.spots = spots
 
 

@@ -25,7 +25,7 @@ def getCentroidParams(cmd):
     if('nmin' in cmdKeys):
         centParms['nmin']=cmd.cmd.keywords["nmin"].values[0]
     if('thresh' in cmdKeys):
-        centParms['fwhmy']=cmd.cmd.keywords["thresh"].values[0]
+        centParms['thresh']=cmd.cmd.keywords["thresh"].values[0]
 
     return centParms
 
@@ -36,7 +36,7 @@ def getImageParams(cmd):
     except:
         cmdKeys=[]
         
-    fileName=os.path.join(os.environ['ICS_AGCCACTOR_DIR'],'etc','agCamParameters.yaml')
+    fileName=os.path.join(os.environ['ICS_AGCCACTOR_DIR'],'etc','agcCamParm.yaml')
 
     with open(fileName, 'r') as inFile:
         imageParms=yaml.safe_load(inFile)
@@ -95,10 +95,10 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     minarea=cParms['nmin']
 
     # get region information for camera
-    region = iParms[str(int(agcid))]['reg']
+    region = iParms[str(agcid + 1)]['reg']
 
     data=subOverscan(data.astype('float'))
-    data=interpBadCol(data,iParms[str(int(agcid))]['badCols'])
+    data=interpBadCol(data,iParms[str(agcid + 1)]['badCols'])
     
     _data1 = data[region[2]:region[3],region[0]:region[1]].astype('float', copy=True)
     _data2 = data[region[6]:region[7],region[4]:region[5]].astype('float', copy=True)

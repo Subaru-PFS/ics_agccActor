@@ -5,7 +5,9 @@ import multiprocessing as mp
 import sep
 import logging
 
-spotDtype = np.dtype(dict(names=['image_moment_00_pix', 'centroid_x_pix', 'centroid_y_pix', 'central_image_moment_20_pix', 'central_image_moment_11_pix', 'central_image_moment_02_pix', 'peak_pixel_x_pix', 'peak_pixel_y_pix', 'peak_intensity', 'background', 'flags'],formats=['f4', 'f4', 'f4', 'f4', 'f4' ,'f4', 'i2', 'i2', 'f4', 'f4', 'i2']))
+spotDtype = np.dtype(dict(names=['image_moment_00_pix', 'centroid_x_pix', 'centroid_y_pix', 'central_image_moment_20_pix', 'central_image_moment_11_pix', 'central_image_moment_02_pix', 'peak_pixel_x_pix', 'peak_pixel_y_pix', 'peak_intensity', 'background', 'flag'],
+                          formats=['f4', 'f4', 'f4', 'f4', 'f4' ,'f4', 'i2', 'i2', 'f4', 'f4', 'i2']))
+
 
 def measure(data,agcid,cParms,iParms,cMethod,thresh=10):
 
@@ -13,7 +15,7 @@ def measure(data,agcid,cParms,iParms,cMethod,thresh=10):
         
     if(cMethod == 'sep'):
 
-        result = ct.getCentroidSep(image,iParms,cParms,spotDtype,agcid)
+        result = ct.getCentroidsSep(data,iParms,cParms,spotDtype,agcid)
         
     return result
 
@@ -27,7 +29,8 @@ def createProc():
             iParms = in_q.get()
             cMethod = in_q.get()
             
-            result = measure(data,cParms,cMethod)
+            result = measure(data,agcid,cParms,iParms,cMethod)
+
             out_q.put(result)
 
     in_q = mp.Queue()

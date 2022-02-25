@@ -90,7 +90,7 @@ class Camera(object):
             else:
                 cmd.inform('agc%d_stat=ABSENT' % (n + 1))
 
-    def expose(self, cmd, expTime, expType, cams, combined, centroid, pfsVisitId, cParms, cMethod):
+    def expose(self, cmd, expTime, expType, cams, combined, centroid, pfsVisitId, cParms, cMethod, iParms):
         """ Generate an 'exposure' image.
 
         Args:

@@ -47,7 +47,7 @@ class AgccCmd(object):
             ('insertVisit', '<pfsVisitId>', self.insertVisit),
             ('setCentroidParams','[<nmin>] [<thresh>]',
              self.setCentroidParams),
-
+            ('setImageParams', '', self.setImageParams),
         ]
 
         # Define typed command arguments for the above commands.
@@ -145,9 +145,11 @@ class AgccCmd(object):
                 centroid = True
         self.setCentroidParams(cmd)
 
-        cMethod = "win"
+        cMethod = "sep"
         if 'cMethod' in cmdKeys:
             cMethod = cmdKeys['cMethod'].values[0]
+
+        self.setImageParams(cmd)
             
         cams = []
         if 'cameras' in cmdKeys:
@@ -162,9 +164,8 @@ class AgccCmd(object):
         else:
             cams = self.actor.camera.runningCameras()
             cmd.inform(f'text="found cameras: {cams}"')
+        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, pfsVisitId, self.cParms, cMethod, self.iParms)
 
-        self.actor.camera.expose(cmd, expTime, expType, cams,
-                                 combined, centroid, pfsVisitId, self.cParms, cMethod)
 
     def abort(self, cmd):
         """Abort an exposure"""
@@ -388,3 +389,12 @@ class AgccCmd(object):
         """
 
         self.cParms = ct.getCentroidParams(cmd)
+
+    def setImageParams(self, cmd):
+
+        """
+        top level routine for setting image parameters. Reads the defaults from the config file,
+        then changes any specified in the keyword arguments.
+        """
+
+        self.iParms = ct.getImageParams(cmd)
