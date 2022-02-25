@@ -45,7 +45,7 @@ class AgccCmd(object):
             ('inusesequence', '<sequence>', self.inusesequence),
             ('inusecamera', '<camera>', self.inusecamera),
             ('insertVisit', '<pfsVisitId>', self.insertVisit),
-            ('setCentroidParams','[<fwhmx>] [<fwhmy>] [<boxFind>] [<boxCent>] [<nmin>] [<nmax>] [<maxIt>] [<findSigma>] [<centSigma>]',
+            ('setCentroidParams','[<nmin>] [<thresh>]',
              self.setCentroidParams),
 
         ]

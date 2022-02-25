@@ -152,7 +152,7 @@ class Camera(object):
             else:
                 dflag = False
 
-            exp_thr = Exposure(active_cams, expTime_ms, dflag, cParms, pfsVisitId, cMethod, cmd, combined, centroid)
+            exp_thr = Exposure(active_cams, expTime_ms, dflag, cParms, iParms, pfsVisitId, cMethod, cmd, combined, centroid)
             exp_thr.start()
 
     def abort(self, cmd, cams):
