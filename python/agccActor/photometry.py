@@ -13,8 +13,7 @@ def measure(data,agcid,cParms,iParms,cMethod,thresh=10):
         
     if(cMethod == 'sep'):
 
-        result = ct.getCentroidSep(image,iParms,cParms,spotDtype,agcid):
-
+        result = ct.getCentroidSep(image,iParms,cParms,spotDtype,agcid)
         
     return result
 
