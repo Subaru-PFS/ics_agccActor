@@ -49,10 +49,8 @@ def interpBadCol(data,badCols):
     interpolate over bad columns
     """
 
-    w,h = data.shape
     for i in badCols:
-        for j in range(h):
-            data[i,j]=(data[i-1,j]+data[i+1],j)/2
+        data[:,i]=(data[:,i-1]+data[:,i+1])/2
     return data
 
 
