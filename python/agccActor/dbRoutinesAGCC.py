@@ -50,7 +50,7 @@ def writeExposureToDB(visitId,exposureId):
     db=connectToDB()
 
     # Getting telescope information
-    teleInfo = db.bulkSelect('tel_status','select pfs_visit_id,altitude,azimuth, insrot, adc_pa m2_pos3 FROM tel_status '
+    teleInfo = db.bulkSelect('tel_status','select pfs_visit_id, altitude, azimuth, insrot, adc_pa, m2_pos3 FROM tel_status '
                         f'ORDER BY pfs_visit_id DESC limit 1')
 
     df = pd.DataFrame({'pfs_visit_id': [visitId], 
@@ -59,7 +59,8 @@ def writeExposureToDB(visitId,exposureId):
                     'azimuth': [teleInfo['azimuth']],
                     'insrot': [teleInfo['insrot']],
                     'adc_pa': [teleInfo['adc_pa']],
-                    'm2_pos3': [teleInfo[m2_pos]]
+                    'm2_pos3': [teleInfo['m2_pos']],
+                    
                     })
     db.insert('agc_exposure', df)
     #pd.set_option('display.max_columns', None)
