@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 from opdb import opdb
-
+import datetime
 
 def connectToDB(hostname='db-ics',port='5432',dbname='opdb',username='pfs',passwd=None):
 
@@ -53,6 +53,9 @@ def writeExposureToDB(visitId,exposureId):
     teleInfo = db.bulkSelect('tel_status','select pfs_visit_id, altitude, azimuth, insrot, adc_pa, m2_pos3 FROM tel_status '
                         f'ORDER BY pfs_visit_id DESC limit 1')
 
+    obsCond = db.bulkSelect('obs_condition','select pfs_visit_id, outside_temperature, outside_pressure, outside_humidity '
+                        f' FROM obs_condition ORDER BY pfs_visit_id DESC limit 1')
+
     df = pd.DataFrame({'pfs_visit_id': [visitId], 
                     'agc_exposure_id': [exposureId],
                     'altitude': [teleInfo['altitude'].values],
@@ -60,7 +63,13 @@ def writeExposureToDB(visitId,exposureId):
                     'insrot': [teleInfo['insrot']],
                     'adc_pa': [teleInfo['adc_pa']],
                     'm2_pos3': [teleInfo['m2_pos']],
-                    
+                    'outside_temperature': [obsCond['outside_temperature']],
+                    'outside_pressure' : [obsCond['outside_pressure']],
+                    'outside_humidity': [obsCond['outside_humidity']],
+                    'taken_at': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
+                    'measurement_algorithm': ['SEP'],
+                    'version_actor': ['git'],
+                    'version_instdata': ['git']
                     })
     db.insert('agc_exposure', df)
     #pd.set_option('display.max_columns', None)
