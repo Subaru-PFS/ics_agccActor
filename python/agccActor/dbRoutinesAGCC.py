@@ -53,7 +53,7 @@ def writeExposureToDB(visitId,exposureId):
     teleInfo = db.bulkSelect('tel_status','select pfs_visit_id, altitude, azimuth, insrot, adc_pa, m2_pos3 FROM tel_status '
                         f'ORDER BY pfs_visit_id DESC limit 1')
 
-    obsCond = db.bulkSelect('obs_condition','select pfs_visit_id, outside_temperature, outside_pressure, outside_humidity '
+    obsCond = db.bulkSelect('env_condition','select pfs_visit_id, outside_temperature, outside_pressure, outside_humidity '
                         f' FROM obs_condition ORDER BY pfs_visit_id DESC limit 1')
 
     df = pd.DataFrame({'pfs_visit_id': [visitId], 
