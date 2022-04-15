@@ -90,7 +90,7 @@ class Camera(object):
             else:
                 cmd.inform('agc%d_stat=ABSENT' % (n + 1))
 
-    def expose(self, cmd, expTime, expType, cams, combined, centroid, pfsVisitId, cParms, cMethod):
+    def expose(self, cmd, expTime, expType, cams, combined, centroid, pfsVisitId, cParms, cMethod, iParms):
         """ Generate an 'exposure' image.
 
         Args:
@@ -152,7 +152,7 @@ class Camera(object):
             else:
                 dflag = False
 
-            exp_thr = Exposure(active_cams, expTime_ms, dflag, cParms, pfsVisitId, cMethod, cmd, combined, centroid)
+            exp_thr = Exposure(active_cams, expTime_ms, dflag, cParms, iParms, pfsVisitId, cMethod, cmd, combined, centroid)
             exp_thr.start()
 
     def abort(self, cmd, cams):
@@ -383,7 +383,7 @@ class Camera(object):
             cmd.inform('inused_seq%d="YES"' % (seq_id + 1))
 
         active_cams = [self.cams[n] for n in cams_available]
-        sequence_thr = Sequence(active_cams, expTime_ms, seq_id, count, self.seq_stat, self.seq_count, combined, centroid, cmd)
+        sequence_thr = Sequence(active_cams, expTime_ms, seq_id, count, self.seq_stat, self.seq_count, combined, centroid, cParms, iParms, cmd)
         sequence_thr.start()
 
     def stopsequence(self, cmd, seq_id):
