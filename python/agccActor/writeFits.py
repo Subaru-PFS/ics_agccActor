@@ -53,9 +53,9 @@ def wfits(cmd, cam, nframe):
 
         tbhdu = pyfits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
         hdulist = pyfits.HDUList([hdu, tbhdu])
-        hdulist.writeto(filename, checksum=True, clobber=True)
+        hdulist.writeto(filename, checksum=True, overwrite=True)
     else:
-        hdu.writeto(filename, clobber=True, checksum=True)
+        hdu.writeto(filename, overwrite=True, checksum=True)
 
     cam.filename = filename
     if cmd:
@@ -126,7 +126,7 @@ def wfits_combined(cmd, cams, nframe, seq_id=-1):
             tbhdu.name = "table%d" % (n + 1)
             hdulist.append(tbhdu)
 
-    hdulist.writeto(filename, checksum=True, clobber=True)
+    hdulist.writeto(filename, checksum=True, overwrite=True)
     if cmd:
         if seq_id >= 0:
             cmd.inform('agc_seq%d="%s"' % (seq_id + 1, filename))

@@ -54,23 +54,24 @@ def writeExposureToDB(visitId,exposureId):
                         f'ORDER BY pfs_visit_id DESC limit 1')
 
     obsCond = db.bulkSelect('env_condition','select pfs_visit_id, outside_temperature, outside_pressure, outside_humidity '
-                        f' FROM obs_condition ORDER BY pfs_visit_id DESC limit 1')
+                        f' FROM env_condition ORDER BY pfs_visit_id DESC limit 1')
 
-    df = pd.DataFrame({'pfs_visit_id': [visitId], 
-                    'agc_exposure_id': [exposureId],
-                    'altitude': [teleInfo['altitude'].values],
-                    'azimuth': [teleInfo['azimuth']],
-                    'insrot': [teleInfo['insrot']],
-                    'adc_pa': [teleInfo['adc_pa']],
-                    'm2_pos3': [teleInfo['m2_pos']],
-                    'outside_temperature': [obsCond['outside_temperature']],
-                    'outside_pressure' : [obsCond['outside_pressure']],
-                    'outside_humidity': [obsCond['outside_humidity']],
-                    'taken_at': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
-                    'measurement_algorithm': ['SEP'],
-                    'version_actor': ['git'],
-                    'version_instdata': ['git']
+    df = pd.DataFrame({'pfs_visit_id': visitId, 
+                    'agc_exposure_id': exposureId,
+                    'altitude': teleInfo['altitude'].values,
+                    'azimuth': teleInfo['azimuth'],
+                    'insrot': teleInfo['insrot'],
+                    'adc_pa': teleInfo['adc_pa'],
+                    'm2_pos3': teleInfo['m2_pos3'],
+                    'outside_temperature': obsCond['outside_temperature'],
+                    'outside_pressure' : obsCond['outside_pressure'],
+                    'outside_humidity': obsCond['outside_humidity'],
+                    'taken_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'measurement_algorithm': 'SEP',
+                    'version_actor': 'git',
+                    'version_instdata': 'git',
                     })
+
     db.insert('agc_exposure', df)
     #pd.set_option('display.max_columns', None)
     #pd.set_option('display.width', None)
