@@ -45,9 +45,9 @@ class AgccCmd(object):
             ('inusesequence', '<sequence>', self.inusesequence),
             ('inusecamera', '<camera>', self.inusecamera),
             ('insertVisit', '<pfsVisitId>', self.insertVisit),
-            ('setCentroidParams','[<fwhmx>] [<fwhmy>] [<boxFind>] [<boxCent>] [<nmin>] [<nmax>] [<maxIt>] [<findSigma>] [<centSigma>]',
+            ('setCentroidParams','[<nmin>] [<thresh>]',
              self.setCentroidParams),
-
+            ('setImageParams', '', self.setImageParams),
         ]
 
         # Define typed command arguments for the above commands.
@@ -69,17 +69,9 @@ class AgccCmd(object):
                                         keys.Key("pfsVisitId", types.Int(), help="pfs_visit_id assigned by IIC"),
                                         keys.Key("combined", types.Int(), help="0/1: multiple FITS files/single FITS file"),
                                         keys.Key("centroid", types.Int(), help="0/1: if 1 do centroid else don't"),
-                                                                                keys.Key("fwhmx", types.Float(), help="X fwhm for centroid routine"),
-                                        keys.Key("fwhmy", types.Float(), help="Y fwhm for centroid routine"),
-                                        keys.Key("boxFind", types.Int(), help="box size for finding spots"),
-                                        keys.Key("boxCent", types.Int(), help="box size for centroiding spots"),
+                                        keys.Key("fwhmx", types.Float(), help="X fwhm for centroid routine"),
                                         keys.Key("nmin", types.Int(), help="minimum number of points for spot"),
-                                        keys.Key("nmax", types.Int(), help="max number of points for spot"),
-                                        keys.Key("maxIt", types.Int(), help="maximum number of iterations for centroiding"),
-                                        keys.Key("findSigma", types.Float(), help="threshhold for finding spots"),
-                                        keys.Key("centSigma", types.Float(), help="threshhold for calculating moments of spots"),
-                                        keys.Key("threshSigma", types.Float(), help="threshhold calculating background level"),
-                                        keys.Key("threshFact", types.Float(), help="factor for engineering threshold measurements"),
+                                        keys.Key("thresh", types.Float(), help="threshhold for finding spots"),
                                         keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
                                         )
 
@@ -153,9 +145,11 @@ class AgccCmd(object):
                 centroid = True
         self.setCentroidParams(cmd)
 
-        cMethod = "win"
+        cMethod = "sep"
         if 'cMethod' in cmdKeys:
             cMethod = cmdKeys['cMethod'].values[0]
+
+        self.setImageParams(cmd)
             
         cams = []
         if 'cameras' in cmdKeys:
@@ -170,9 +164,8 @@ class AgccCmd(object):
         else:
             cams = self.actor.camera.runningCameras()
             cmd.inform(f'text="found cameras: {cams}"')
+        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, pfsVisitId, self.cParms, cMethod, self.iParms)
 
-        self.actor.camera.expose(cmd, expTime, expType, cams,
-                                 combined, centroid, pfsVisitId, self.cParms, cMethod)
 
     def abort(self, cmd):
         """Abort an exposure"""
@@ -396,3 +389,12 @@ class AgccCmd(object):
         """
 
         self.cParms = ct.getCentroidParams(cmd)
+
+    def setImageParams(self, cmd):
+
+        """
+        top level routine for setting image parameters. Reads the defaults from the config file,
+        then changes any specified in the keyword arguments.
+        """
+
+        self.iParms = ct.getImageParams(cmd)

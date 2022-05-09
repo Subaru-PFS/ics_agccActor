@@ -1,9 +1,11 @@
 
-import agccActor.windowedCentroid.centroid as centroid
 from scipy.stats import sigmaclip
 import yaml
 import os
 import numpy as np
+import sep
+from scipy.ndimage import gaussian_filter
+
 
 def getCentroidParams(cmd):
 
@@ -16,90 +18,122 @@ def getCentroidParams(cmd):
 
     with open(fileName, 'r') as inFile:
         defaultParms=yaml.safe_load(inFile)
-
     
     #returns just the values dictionary
     centParms = defaultParms['values']
 
-    if('fwhmx' in cmdKeys):
-        centParms['fwhmx']=cmd.cmd.keywords["fwhmx"].values[0]
-    if('fwhmy' in cmdKeys):
-        centParms['fwhmy']=cmd.cmd.keywords["fwhmy"].values[0]
-
-    if('boxFind' in cmdKeys):
-        centParms['boxFind']=cmd.cmd.keywords["boxFind"].values[0]
-    if('boxCent' in cmdKeys):
-        centParms['boxCent']=cmd.cmd.keywords["boxCent"].values[0]
-
-    if('findSigma' in cmdKeys):
-        centParms['findSigma']=cmd.cmd.keywords["findSigma"].values[0]
-    if('centSigma' in cmdKeys):
-        centParms['centSigma']=cmd.cmd.keywords["centSigma"].values[0]
-    if('threshSigma' in cmdKeys):
-        centParms['threshSigma']=cmd.cmd.keywords["threshSigma"].values[0]
-
     if('nmin' in cmdKeys):
         centParms['nmin']=cmd.cmd.keywords["nmin"].values[0]
-    if('nmax' in cmdKeys):
-        centParms['nmax']=cmd.cmd.keywords["nmax"].values[0]
-    if('nmax' in cmdKeys):
-        centParms['maxIt']=cmd.cmd.keywords["maxIt"].values[0]
-
+    if('thresh' in cmdKeys):
+        centParms['thresh']=cmd.cmd.keywords["thresh"].values[0]
 
     return centParms
 
+def getImageParams(cmd):
 
-def getCentroids(image,cParms):
+    try:
+        cmdKeys=cmd.cmd.keywords
+    except:
+        cmdKeys=[]
+        
+    fileName=os.path.join(os.environ['ICS_AGCCACTOR_DIR'],'etc','agcCamParm.yaml')
 
-    # split into two halves
+    with open(fileName, 'r') as inFile:
+        imageParms=yaml.safe_load(inFile)
+
+    return imageParms
+
+def interpBadCol(data,badCols):
+
+    """
+    interpolate over bad columns
+    """
+
+    for i in badCols:
+        data[:,i]=(data[:,i-1]+data[:,i+1])/2
+    return data
+
+
+def subOverscan(data):
+
+    """
+    remove overscan
+    """
     
-    lim1a=28
-    lim1b=548
-    lim2a=507
-    lim2b=1042
+    h, w = data.shape
+    side0 = data[:, :w//2]
+    side1 = data[:, w//2:]
+    bg0 = np.median(side0[:, :4]).astype(data.dtype)
+    bg1 = np.median(side1[:, -4:]).astype(data.dtype)
+
+    data[:, :w//2] -= bg0
+    data[:, w//2:] -= bg1
+
+    return data
+
+def centroidRegion(data, thresh, minarea=12):
+    # determine the background
+    bgClass = sep.Background(data)
+    background = bgClass.back()
+    rms = bgClass.rms()
+    bgClass.subfrom(data)
     
-    #get thresholds 
-    a1,b2,c2=sigmaclip(image[:,lim1a:lim2a],cParms['threshSigma'],cParms['threshSigma'])
-    a2,b2,c2=sigmaclip(image[:,lim1b:lim2b],cParms['threshSigma'],cParms['threshSigma'])
+    spots = sep.extract(data, thresh, rms, minarea = 12)
+
+    return spots,len(spots),background
+
+def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
+
+    """
+    runs centroiding for the sep routine and assigns the resules
+
+    """
+
+    thresh=cParms['thresh']
+    minarea=cParms['nmin']
+
+    # get region information for camera
+    region = iParms[str(agcid + 1)]['reg']
+
+    data=subOverscan(data.astype('float'))
+    data=interpBadCol(data,iParms[str(agcid + 1)]['badCols'])
     
-    #return the mean + sigma value
-    threshFind1=a1.std()*cParms['findSigma']
-    threshCent1=a1.std()*cParms['centSigma']
-    globalBack1=np.median(a1)
+    _data1 = data[region[2]:region[3],region[0]:region[1]].astype('float', copy=True)
+    _data2 = data[region[6]:region[7],region[4]:region[5]].astype('float', copy=True)
 
-    threshFind2=a2.std()*cParms['findSigma']
-    threshCent2=a2.std()*cParms['centSigma']
-    globalBack2=np.median(a2)
+    spots1, nSpots1, background1 = centroidRegion(_data1, thresh, minarea)
+    spots2, nSpots2, background2 = centroidRegion(_data2, thresh, minarea)
 
-    # centroid
+    nElem = nSpots1 + nSpots2
 
-    res1=centroid.centroid_only(image[:,lim1a:lim2a].astype('<i4')-int(globalBack1),cParms['fwhmx'],cParms['fwhmy'],threshFind1,threshCent1,cParms['boxFind'],cParms['boxCent'],cParms['nmin'],cParms['nmax'],cParms['maxIt'],0,0)
-
-    res2=centroid.centroid_only(image[:,lim1b:lim2b].astype('<i4')-int(globalBack2),cParms['fwhmx'],cParms['fwhmy'],threshFind2,threshCent2,cParms['boxFind'],cParms['boxCent'],cParms['nmin'],cParms['nmax'],cParms['maxIt'],0,0)
-
+    result = np.zeros(nElem, dtype=spotDtype)
     
-    #reformat
-    centroids1=np.frombuffer(res1,dtype='<f8')
-    centroids1=np.reshape(centroids1,(len(centroids1)//11,11))
-    centroids1[:,0]+=lim1a
-    nSpots1=centroids1.shape[0]
 
-    centroids2=np.frombuffer(res2,dtype='<f8')
-    centroids2=np.reshape(centroids2,(len(centroids2)//11,11))
-    centroids2[:,0]+=lim1b
-    nSpots2=centroids2.shape[0]
-
-    # reassemble into two regions
-    points=np.empty((nSpots1+nSpots2,12))
-
-    points[0:nSpots1,0]=np.arange(nSpots1)
-    points[nSpots1:nSpots1+nSpots2,0]=np.arange(nSpots2)+nSpots1
-
-    points[0:nSpots1,1:]=centroids1[:,0:]
-    points[nSpots1:nSpots1+nSpots2,1:]=centroids2[:,0:]
-
-    ind=np.where(points[:,1]==points[:,1])
+    result['image_moment_00_pix'][0:nSpots1] = spots1['flux']
+    result['centroid_x_pix'][0:nSpots1] = spots1['x']+region[0]
+    result['centroid_y_pix'][0:nSpots1] = spots1['y']+region[2]
+    result['central_image_moment_20_pix'][0:nSpots1] = spots1['x2']
+    result['central_image_moment_11_pix'][0:nSpots1] = spots1['xy']
+    result['central_image_moment_02_pix'][0:nSpots1] = spots1['y2']
+    result['peak_pixel_x_pix'][0:nSpots1] = spots1['xpeak']+region[0]
+    result['peak_pixel_y_pix'][0:nSpots1] = spots1['ypeak']+region[2]
+    result['peak_intensity'][0:nSpots1] = spots1['peak']
+    result['background'][0:nSpots1] = background1[spots1['ypeak'], spots1['xpeak']]
     
-    return points[ind,:]
+    result['image_moment_00_pix'][nSpots1:nElem] = spots2['flux']
+    result['centroid_x_pix'][nSpots1:nElem] = spots2['x']+region[4]
+    result['centroid_y_pix'][nSpots1:nElem] = spots2['y']+region[6]
+    result['central_image_moment_20_pix'][nSpots1:nElem] = spots2['x2']
+    result['central_image_moment_11_pix'][nSpots1:nElem] = spots2['xy']
+    result['central_image_moment_02_pix'][nSpots1:nElem] = spots2['y2']
+    result['peak_pixel_x_pix'][nSpots1:nElem] = spots2['xpeak']+region[4]
+    result['peak_pixel_y_pix'][nSpots1:nElem] = spots2['ypeak']+region[6]
+    result['peak_intensity'][nSpots1:nElem] = spots2['peak']
+    result['background'][nSpots1:nElem] = background2[spots2['ypeak'], spots2['xpeak']]
+    # set flag for right half of image
+    result['flag'][0:nSpots1] += 1
+
+    return result
+
 
     
