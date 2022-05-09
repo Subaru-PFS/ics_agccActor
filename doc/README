@@ -6,3 +6,9 @@ It's under 'c/fli-usb-1.3'. Run 'make' to build the kernel module, then copy it 
 - Library file
 It's under 'c/libfli-1.104'. Type 'make' to build it.
 
+# Note when setting a new computer
+in /etc/group:
+plugdev:x:46:pfs, pfs-data
+
+in /etc/udev/rules.d/99-agc.rules:
+SUBSYSTEM=="usb", ACTION=="add", ATTRS{idVendor}=="0f18", ATTRS{idProduct}=="000a", GROUP="plugdev"
