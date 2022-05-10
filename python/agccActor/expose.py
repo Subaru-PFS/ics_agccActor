@@ -11,7 +11,7 @@ class Exposure(threading.Thread):
     exp_lock = threading.Lock()
     n_busy = 0
 
-    def __init__(self, cams, expTime_ms, dflag, cParms, iParms, pfsVisitId, cMethod, cmd = None, combined = False, centroid = False, seq_id = -1):
+    def __init__(self, cams, expTime_ms, dflag, cParms, iParms, visitId, cMethod, cmd = None, combined = False, centroid = False, seq_id = -1):
         """ Run exposure command
 
         Args:
@@ -36,7 +36,7 @@ class Exposure(threading.Thread):
         self.cmd = cmd
         self.combined = combined
         self.centroid = centroid
-        self.pfsVisitId = pfsVisitId
+        self.visitId = visitId
         self.cParms = cParms
         self.iParms = iParms
         self.seq_id = seq_id
@@ -60,7 +60,7 @@ class Exposure(threading.Thread):
                 self.nframe = 1
             with open(filename, 'w') as f:
                 f.write(str(self.nframe))
-        dbRoutinesAGCC.writeExposureToDB(self.pfsVisitId,self.nframe)
+        dbRoutinesAGCC.writeExposureToDB(self.visitId,self.nframe)
 
     def run(self):
         # check if any camera is available
@@ -91,7 +91,7 @@ class Exposure(threading.Thread):
                 self.cmd.inform('agc_frameid=%d' % self.nframe)
 
         if self.combined and self.cams[0].getTotalTime() > 0:
-            writeFits.wfits_combined(self.cmd, self.cams, self.nframe, self.seq_id)
+            writeFits.wfits_combined(self.cmd, self.visitId, self.cams, self.nframe, self.seq_id)
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
 
@@ -127,11 +127,11 @@ class Exposure(threading.Thread):
                 cam.spots = spots
 
 
-                dbRoutinesAGCC.writeCentroidsToDB(spots,self.pfsVisitId, self.nframe,cam.agcid)
+                dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
                 
                 if self.cmd:
                     self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))
             else:
                 cam.spots = None
             if not self.combined:
-                writeFits.wfits(self.cmd, cam, self.nframe)
+                writeFits.wfits(self.cmd, self.visitId, cam, self.nframe)

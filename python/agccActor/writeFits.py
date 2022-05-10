@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 import time
 
-def wfits(cmd, cam, nframe):
+def wfits(cmd, visitId, cam, nframe):
     """Write the image to a FITS file"""
 
     #path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
@@ -17,6 +17,9 @@ def wfits(cmd, cam, nframe):
 
     tstart = datetime.fromtimestamp(cam.tstart)
     mtimestamp = tstart.strftime("%Y%m%d_%H%M%S%f")[:-5]
+    
+    pfsFilename = os.path.join(path, f'PFSD{visitId:06d}.fits')
+    
     filename = os.path.join(path, 'agcc_c%d_%s.fits' % \
            (cam.agcid + 1, mtimestamp))
 
@@ -53,15 +56,19 @@ def wfits(cmd, cam, nframe):
 
         tbhdu = pyfits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
         hdulist = pyfits.HDUList([hdu, tbhdu])
-        hdulist.writeto(filename, checksum=True, overwrite=True)
+        hdulist.writeto(pfsFilename, checksum=True, overwrite=True)
     else:
-        hdu.writeto(filename, overwrite=True, checksum=True)
+        hdu.writeto(pfsFilename, overwrite=True, checksum=True)
 
-    cam.filename = filename
+    # Now make a symbolic link 
+    os.symlink(pfsFilename, filename)
+
+    cam.filename = pfsFilename
     if cmd:
         cmd.inform('agc%d_fitsfile="%s",%.1f' % (cam.agcid + 1, filename, cam.tstart))
+        cmd.inform(f'text="AG images are written into {pfsFilename}"')
 
-def wfits_combined(cmd, cams, nframe, seq_id=-1):
+def wfits_combined(cmd, visitId, cams, nframe, seq_id=-1):
     """Write the images to a FITS file"""
 
     #path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
@@ -74,10 +81,13 @@ def wfits_combined(cmd, cams, nframe, seq_id=-1):
     else:
         now = datetime.now()
     mtimestamp = now.strftime("%Y%m%d_%H%M%S%f")[:-5]
+    
     if seq_id >= 0:
         filename = os.path.join(path, 'agcc_s%d_%s.fits' % (seq_id + 1, mtimestamp))
     else:
         filename = os.path.join(path, 'agcc_%s.fits' % mtimestamp)
+
+    pfsFilename = os.path.join(path, f'PFSD{visitId:06d}.fits')
 
     hdulist = pyfits.HDUList([pyfits.PrimaryHDU()])
     for n in range(6):
@@ -126,9 +136,14 @@ def wfits_combined(cmd, cams, nframe, seq_id=-1):
             tbhdu.name = "table%d" % (n + 1)
             hdulist.append(tbhdu)
 
-    hdulist.writeto(filename, checksum=True, overwrite=True)
+    hdulist.writeto(pfsFilename, checksum=True, overwrite=True)
+
+    # Now make a symbolic link 
+    os.symlink(pfsFilename, filename)
+
     if cmd:
         if seq_id >= 0:
             cmd.inform('agc_seq%d="%s"' % (seq_id + 1, filename))
         else:
             cmd.inform('agc_fitsfile="%s",%.1f' % (filename, cams[0].tstart))
+        cmd.inform(f'text="AG images are written into {pfsFilename}"')
