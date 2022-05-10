@@ -29,7 +29,7 @@ class AgccCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
-            ('expose', '@(test|dark|object) [<pfsVisitId>] [<exptime>] '
+            ('expose', '@(test|dark|object) [<visit>] [<exptime>] '
                        '[<cameras>] [<combined>] [<centroid>] [<cMethod>]', self.expose),
             ('abort', '[<cameras>]', self.abort),
             ('reconnect', '', self.reconnect),
@@ -44,7 +44,7 @@ class AgccCmd(object):
             ('stopsequence', '<sequence>', self.stopsequence),
             ('inusesequence', '<sequence>', self.inusesequence),
             ('inusecamera', '<camera>', self.inusecamera),
-            ('insertVisit', '<pfsVisitId>', self.insertVisit),
+            ('insertVisit', '<visit>', self.insertVisit),
             ('setCentroidParams','[<nmin>] [<thresh>]',
              self.setCentroidParams),
             ('setImageParams', '', self.setImageParams),
@@ -66,7 +66,7 @@ class AgccCmd(object):
                                         keys.Key("regions", types.String(), help="Regions of interest, x1,y1,d1,x2,y2,d2"),
                                         keys.Key("sequence", types.Int(), help="Sequence ID"),
                                         keys.Key("count", types.Int(), help="Number of exposures in sequence"),
-                                        keys.Key("pfsVisitId", types.Int(), help="pfs_visit_id assigned by IIC"),
+                                        keys.Key("visit", types.Int(), help="pfs_visit_id assigned by IIC"),
                                         keys.Key("combined", types.Int(), help="0/1: multiple FITS files/single FITS file"),
                                         keys.Key("centroid", types.Int(), help="0/1: if 1 do centroid else don't"),
                                         keys.Key("fwhmx", types.Float(), help="X fwhm for centroid routine"),
@@ -120,8 +120,8 @@ class AgccCmd(object):
     def insertVisit(self, cmd):
 
         cmdKeys = cmd.cmd.keywords
-        pfsVisitId = cmdKeys['pfsVisitId'].values[0]
-        dbRoutinesAGCC.writeVisitToDB(pfsVisitId)
+        visit = cmdKeys['visit'].values[0]
+        dbRoutinesAGCC.writeVisitToDB(visit)
         cmd.finish()
 
     def expose(self, cmd):
