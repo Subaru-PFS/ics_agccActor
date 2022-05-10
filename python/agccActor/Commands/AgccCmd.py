@@ -104,16 +104,18 @@ class AgccCmd(object):
         self.cmd = cmd
         cmdKeys = cmd.cmd.keywords
 
+        # When we start a new visit, always reset frame counter.
+        self.frameSeq = 0
         if 'visit' in cmdKeys:
-            visit = cmdKeys['fpsVisitId'].values[0]
+            self.visit = cmdKeys['visit'].values[0]
         else:
             ret = self.actor.cmdr.call(actor='gen2', cmdStr='getVisit caller=agcc',
                                        forUserCmd=cmd, timeLim=15.0)
             if ret.didFail:
-                raise RuntimeError("getVisit failed getting a visit number in 15s!")
-            visit = self.actor.models['gen2'].keyVarDict['visit'].valueList[0]
+                raise RuntimeError("getNextFilename failed getting a visit number in 15s!")
+            self.visit = self.actor.models['gen2'].keyVarDict['visit'].valueList[0]
 
-        return visit
+        return self.visit
 
     def insertVisit(self, cmd):
 
@@ -127,7 +129,7 @@ class AgccCmd(object):
 
         cmdKeys = cmd.cmd.keywords
         expType = cmdKeys[0].name
-        pfsVisitId = self.setOrGetVisit(cmd)
+        visit = self.setOrGetVisit(cmd)
 
         if 'exptime' in cmdKeys:
             expTime = cmdKeys['exptime'].values[0]
@@ -164,7 +166,7 @@ class AgccCmd(object):
         else:
             cams = self.actor.camera.runningCameras()
             cmd.inform(f'text="found cameras: {cams}"')
-        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, pfsVisitId, self.cParms, cMethod, self.iParms)
+        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, visit, self.cParms, cMethod, self.iParms)
 
 
     def abort(self, cmd):
@@ -299,8 +301,13 @@ class AgccCmd(object):
         cmdKeys = cmd.cmd.keywords
         temperature = cmdKeys['temperature'].values[0]
         if 'cameras' in cmdKeys:
+            
             camList = cmdKeys['cameras'].values[0]
-            for n in camList:
+            cmd.inform(f'text="Setting temerature for AG cameras = {camList}"')
+
+            for cam in camList:
+                n = int(cam) - 1
+                cmd.inform(f'text="Setting camera AG{n+1} to {temperature}"')
                 self.actor.camera.setcamtemperature(cmd, n, temperature)
         else:
             self.actor.camera.settemperature(cmd, temperature)
