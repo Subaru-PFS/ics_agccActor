@@ -3,6 +3,7 @@
 from libc.stdlib cimport malloc, free
 from libc.string cimport strcpy, strlen
 from cython.view cimport array
+from libc.stdio cimport printf
 import numpy as np
 import astropy.io.fits as pyfits
 import time
