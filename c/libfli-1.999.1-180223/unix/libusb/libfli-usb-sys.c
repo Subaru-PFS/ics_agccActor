@@ -44,7 +44,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <libusb-1.0/libusb.h>
-
 #include <errno.h>
 
 #include "libfli-libfli.h"
@@ -382,17 +381,18 @@ int libusb_fli_get_serial(libusb_device *usb_dev, char *serial, size_t max_seria
 int libusb_fli_create_name(libusb_device *usb_dev, char *name, size_t max_name)
 {
   uint8_t addr, port_nums[7];
-  int numports;
+  int numports, numbus;
   size_t len = 0;
   char name_prefix[] = "FLI-";
   char *p, *s;
-  int port;
+  //int port;
 
   if (name == NULL)
   {
     return 0;
   }
-
+  
+  numbus = libusb_get_bus_number(usb_dev);
   numports = libusb_get_port_numbers(usb_dev, port_nums, sizeof(port_nums));
   addr = libusb_get_device_address(usb_dev);
 
@@ -408,57 +408,11 @@ int libusb_fli_create_name(libusb_device *usb_dev, char *name, size_t max_name)
   {
     *p = *s;
   }
-
-  /* Now append the port numbers as hexadecimal strings */
-  for (port = 0; (len < max_name) && (port < numports); port ++)
-  {
-    /* Most significant nybble */
-    if (len < max_name)
-    {
-      uint8_t c = port_nums[port] >> 4;
-      *p = (c > 9)?c - 10 + 'A':c + '0';
-      p++; len ++;
-    }
-
-    /* Least significant nybble */
-    if (len < max_name)
-    {
-      uint8_t c = port_nums[port];
-      *p = (c > 9)?c - 10 + 'A':c + '0';
-      p++; len ++;
-    }
-  }
-
-  #ifdef ADD_ADDRESS
-  /* Add a delimiter to the end of the name to prevent false detection */
-  if (len < max_name)
-  {
-    *p = 'A';
-    p++; len ++;
-  }
-
-  /* Now append the address */
-  /* Most significant nybble */
-  if (len < max_name)
-  {
-    uint8_t c = addr >> 4;
-    *p = (c > 9)?c - 10 + 'A':c + '0';
-    p++; len ++;
-  }
-
-  /* Least significant nybble */
-  if (len < max_name)
-  {
-    uint8_t c = addr;
-    *p = (c > 9)?c - 10 + 'A':c + '0';
-    p++; len ++;
-  }
-#endif
-
-  if (len < max_name)
-  {
-    *p = '\0';
-  }
+  
+  //printf("with bus name = %s \n", name);
+  //printf("Bus number = %d\n", numbus);
+  snprintf(name,max_name,"%sB%02dP%02dA%02d",name_prefix,numbus,numports,addr);
+  //printf("with bus name = %s \n", name);
 
   return len;  
 }
@@ -482,6 +436,7 @@ long libusb_list(char *pattern, flidomain_t domain, char ***names)
   }
 	
   num_usb_devices = libusb_get_device_list(NULL, &usb_devs);
+  //printf('Number of usb device %i \n', &num_usb_devices);
   if(num_usb_devices < 0)
   {
     debug(FLIDEBUG_WARN, "LibUSB Get Device List Failed");
