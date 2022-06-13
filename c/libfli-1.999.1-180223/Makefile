@@ -35,7 +35,7 @@ endif
 DIR	= $(shell pwd)
 CC	= gcc
 INC	= $(DIR) $(DIR)/unix
-CFLAGS	= -D__LIBUSB__ -Wall -O3 -fPIC -g $(patsubst %, -I%, $(INC))
+CFLAGS	= -D__LIBUSB__ -Wall -O3 -fPIC -g $(patsubst %, -I%, $(INC)) 
 ####
 ##	To build with LibUSB keep "-D__LIBUSB__" flag above
 ##	To build without LibUSB remove this flag
@@ -54,6 +54,10 @@ ifeq ($(UNAME), Darwin)
 	LOADLIBES = $(patsubst %, -L%, $(LIBPATH))
 endif
 
+LDLIBS += -L. -I. -lfli -lm  -lpthread -lusb-1.0 -lncurses
+TARGET =  fliexposure
+
+
 AR	= ar
 ARFLAGS	= -rus
 
@@ -69,7 +73,19 @@ FILT	= libfli-filter-focuser.o
 ALLOBJ	= $(SYS) $(DEBUG) $(MEM) $(IO) $(CAM) $(FILT)
 
 libfli.a: libfli.o $(ALLOBJ)
-	$(AR) $(ARFLAGS) $@ $^
+	$(AR) $(ARFLAGS) $@ $^ 
+
+fliexposure.o : fliexposure.c
+	@echo $(CC) $(CFLAGS) -std=c99 -c $< $(LOGOUT)
+	@$(CC) $(CFLAGS) -c -std=c99 $< $(LOGOUT)
+	@$(SHOWOUT)
+
+fliexposure: fliexposure.o libfli-usb.o libfli-usb-sys.o
+	@echo @$(CC) -o $@ $^ $(LDLIBS)
+	@$(CC) -o $@ $^ $(LDLIBS)
+	@$(SHOWOUT)
+
+usbio: $(IO)
 
 doc: doc-html doc-pdf
 
@@ -87,4 +103,4 @@ doc-pdf: libfli.dxx libfli.h libfli.c
 
 .PHONY: clean
 clean:
-	rm -f $(ALLOBJ) libfli.o libfli.a
+	rm -f $(ALLOBJ) libfli.o libfli.a fliexposure fliexposure.o
