@@ -20,7 +20,7 @@ class Camera(object):
         temp = float(config.get('agcc', 'temperature'))
 
         if simulator == 0:
-            from fli import fli_camera
+            import fli_camera
 
             self.numberOfCamera = fli_camera.numberOfCamera()
             for n in range(self.numberOfCamera):
