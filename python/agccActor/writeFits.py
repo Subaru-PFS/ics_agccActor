@@ -56,17 +56,17 @@ def wfits(cmd, visitId, cam, nframe):
 
         tbhdu = pyfits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
         hdulist = pyfits.HDUList([hdu, tbhdu])
-        hdulist.writeto(pfsFilename, checksum=True, overwrite=True)
+        hdulist.writeto(filename, checksum=True, overwrite=True)
     else:
-        hdu.writeto(pfsFilename, overwrite=True, checksum=True)
+        hdu.writeto(filename, overwrite=True, checksum=True)
 
     # Now make a symbolic link 
-    os.symlink(pfsFilename, filename)
+    #os.symlink(pfsFilename, filename)
 
-    cam.filename = pfsFilename
+    cam.filename = filename
     if cmd:
         cmd.inform('agc%d_fitsfile="%s",%.1f' % (cam.agcid + 1, filename, cam.tstart))
-        cmd.inform(f'text="AG images are written into {pfsFilename}"')
+        cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
 
 def wfits_combined(cmd, visitId, cams, nframe, seq_id=-1):
     """Write the images to a FITS file"""
@@ -136,14 +136,14 @@ def wfits_combined(cmd, visitId, cams, nframe, seq_id=-1):
             tbhdu.name = "table%d" % (n + 1)
             hdulist.append(tbhdu)
 
-    hdulist.writeto(pfsFilename, checksum=True, overwrite=True)
+    hdulist.writeto(filename, checksum=True, overwrite=True)
 
     # Now make a symbolic link 
-    os.symlink(pfsFilename, filename)
+    #os.symlink(filename, filename)
 
     if cmd:
         if seq_id >= 0:
             cmd.inform('agc_seq%d="%s"' % (seq_id + 1, filename))
         else:
             cmd.inform('agc_fitsfile="%s",%.1f' % (filename, cams[0].tstart))
-        cmd.inform(f'text="AG images are written into {pfsFilename}"')
+        cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
