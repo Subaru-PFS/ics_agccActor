@@ -115,8 +115,8 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     
     ind1 = np.where(np.any([spots1['x']-2*fx < 0, spots1['x']+2*fx > (region[1]-region[0]),spots1['y']-2*fy < 0, spots1['y']+2*fy > (region[3]-region[2]),axis=0]))
     ind2 = spots1['peak'] == satValue
-    
 
+    
     result['image_moment_00_pix'][0:nSpots1] = spots1['flux']
     result['centroid_x_pix'][0:nSpots1] = spots1['x']+region[0]
     result['centroid_y_pix'][0:nSpots1] = spots1['y']+region[2]
@@ -125,7 +125,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['central_image_moment_02_pix'][0:nSpots1] = spots1['y2']
     result['peak_pixel_x_pix'][0:nSpots1] = spots1['xpeak']+region[0]
     result['peak_pixel_y_pix'][0:nSpots1] = spots1['ypeak']+region[2]
-    result['peak_intensity'][0:nSpots1] = spots1['peak']
+    result['flux'][0:nSpots1] = spots1['flux']
     result['background'][0:nSpots1] = background1[spots1['ypeak'], spots1['xpeak']]
     result['flag'][0:nSpots1] += 1
     result['flag'][0:nSpots1][ind1] += 2
@@ -147,7 +147,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['central_image_moment_02_pix'][nSpots1:nElem] = spots2['y2']
     result['peak_pixel_x_pix'][nSpots1:nElem] = spots2['xpeak']+region[4]
     result['peak_pixel_y_pix'][nSpots1:nElem] = spots2['ypeak']+region[6]
-    result['peak_intensity'][nSpots1:nElem] = spots2['peak']
+    result['flux'][nSpots1:nElem] = spots2['flux']
     result['background'][nSpots1:nElem] = background2[spots2['ypeak'], spots2['xpeak']]
     # set flag for right half of image
     result['flag'][nSpots1:nElem][ind1] += 2
