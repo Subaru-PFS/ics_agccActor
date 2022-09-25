@@ -60,7 +60,7 @@ class Exposure(threading.Thread):
                 self.nframe = 1
             with open(filename, 'w') as f:
                 f.write(str(self.nframe))
-        dbRoutinesAGCC.writeExposureToDB(self.visitId,self.nframe)
+        dbRoutinesAGCC.writeExposureToDB(self.visitId,self.nframe, exptime)
 
     def run(self):
         # check if any camera is available
