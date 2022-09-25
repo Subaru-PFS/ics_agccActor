@@ -38,7 +38,7 @@ def writeVisitToDB(pfsVisitId):
         pass
     
 
-def writeExposureToDB(visitId,exposureId):
+def writeExposureToDB(visitId,exposureId, exptime):
 
     """
     Temporary routine for testing: write to agcc_exposure so we can write to agcc_data. 
@@ -58,6 +58,7 @@ def writeExposureToDB(visitId,exposureId):
 
     df = pd.DataFrame({'pfs_visit_id': visitId, 
                     'agc_exposure_id': exposureId,
+                    'agc_exptime': exptime, 
                     'altitude': teleInfo['altitude'].values,
                     'azimuth': teleInfo['azimuth'],
                     'insrot': teleInfo['insrot'],
