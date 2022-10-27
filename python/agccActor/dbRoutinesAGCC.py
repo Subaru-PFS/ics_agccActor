@@ -58,8 +58,7 @@ def writeExposureToDB(visitId,exposureId, exptime):
 
     df = pd.DataFrame({'pfs_visit_id': visitId, 
                     'agc_exposure_id': exposureId,
-                    'agc_exptime': exptime, 
-                    'altitude': teleInfo['altitude'].values,
+                    'altitude': teleInfo['altitude'],
                     'azimuth': teleInfo['azimuth'],
                     'insrot': teleInfo['insrot'],
                     'adc_pa': teleInfo['adc_pa'],
