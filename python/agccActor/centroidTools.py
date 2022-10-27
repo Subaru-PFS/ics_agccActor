@@ -93,7 +93,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     # get region information for camera
     region = iParms[str(agcid + 1)]['reg']
-    satValue = iParms['satValue']
+    satValue = iParms['satVal']
     
     data=subOverscan(data.astype('float'))
     data=interpBadCol(data,iParms[str(agcid + 1)]['badCols'])
