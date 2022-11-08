@@ -5,6 +5,7 @@ import os
 import numpy as np
 import sep
 from scipy.ndimage import gaussian_filter
+from lmfit import Model
 
 
 def getCentroidParams(cmd):
@@ -97,12 +98,14 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     
     data=subOverscan(data.astype('float'))
     data=interpBadCol(data,iParms[str(agcid + 1)]['badCols'])
-    
-    _data1 = data[region[2]:region[3],region[0]:region[1]].astype('float', copy=True)
-    _data2 = data[region[6]:region[7],region[4]:region[5]].astype('float', copy=True)
 
-    spots1, nSpots1, background1 = centroidRegion(_data1, thresh, minarea)
-    spots2, nSpots2, background2 = centroidRegion(_data2, thresh, minarea)
+    newData = data.astype('float', copy=True)
+    
+    _data1 = data[region[2]:region[3],region[0]:region[1]]
+    _data2 = data[region[6]:region[7],region[4]:region[5]]
+
+    spots1, nSpots1, background1  = centroidRegion(_data1, thresh, minarea)
+    spots2, nSpots2, background2  = centroidRegion(_data2, thresh, minarea)
 
     nElem = nSpots1 + nSpots2
 
@@ -153,7 +156,83 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['flag'][nSpots1:nElem][ind1] += 2
     result['flag'][nSpots1:nElem][ind2] += 4
 
+    # calculate more reasonable FWHMs
+
+    # subract the background
+    
+    newData[region[2]:region[3],region[0]:region[1]]-=background1
+    newData[region[6]:region[7],region[4]:region[5]]-=background2
+    
+    # x and y position grid
+    sz = data.shape
+    x=np.arange(0,sz[0])
+    y=np.arange(0,sz[1])
+    xx, yy = numpy.meshgrid(x, y)
+
+    # define the model
+    gmod = Model(gaussian)
+    gmod.set_param_hint('fX', value=2,min=0,max=10)
+    gmod.set_param_hint('fY', value=2,min=0,max=10)
+    gmod.set_param_hint('a', value=1000,min=0,max=1e6)
+    gmod.set_param_hint('b', value=0,min=0,max=100)
+
+    # keep track of the updated values
+    m20 = []
+    m02 = []
+
+    #cycle over the results
+    for i in range(0,len(results)):
+
+        # define a subregion aroudn the centroid
+        xv = result['centroid_x_pix'][i]
+        yv = result['centroid_y_pix'][i]
+
+        minX = xv-ww
+        maxX = xv+ww+1
+        minU = yv-ww
+        maxY = yv+ww+1
+        
+        subX=xx[minX:mxaX,mivY:maxY]
+        subY=yy[minX:mxaX,mivY:maxY]
+        subD = sData[minX:maxX,minY:maxY]
+
+        # massage into a form that the fitting function likes
+        sz=subX.shape        
+        dd = numpy.empty((sz[0]*sz[1],3))
+        dd[:,0]=subX.flatten()
+        dd[:,1]=subY.flatten()
+        dd[:,2]=subD.flatten()
+
+        # set the x and y starting values, and define them as fixed
+        
+        gmod.set_param_hint('xC', value=xv)
+        gmod.set_param_hint('yC', value=yv)
+
+        # make the parameter object
+        params = gmod.make_params()
+
+        # fix the positions, because we know them already
+
+        params['xC'].set(vary=False)
+        params['yC'].set(vary=False)
+
+        # do the fit
+        result = gmod.fit(dd[:, 2], x=dd[:, 0:2], params=params)
+
+        m02.append(result.best_values['fX'])
+        m20.append(result.best_values['fY'])
+
+    # and update the values
+    result['central_image_moment_20_pix']=20
+    result['central_image_moment_02_pix']=02
+     
     return result
 
 
-    
+def gaussian(coord, xC, yC, fX, fY, a, b):
+
+    x = coord[:, 0]
+    y = coord[:, 1]
+    val=a*numpy.exp(-(x-xC)**2 / (2*fX**2)-(y-yC)**2 / (2*fY**2))+b
+    return val
+  
