@@ -20,7 +20,7 @@ def wfits(cmd, visitId, cam, nframe):
     
     #pfsFilename = os.path.join(path, f'PFSD{visitId:06d}.fits')
     agc_exposure_id = nframe
-    pfsFilename = os.path.join(path, f'agcc_{visitId:06d}_{agc_exposure_id:08d}.fits')
+    pfsFilename = os.path.join(path, f'agcc_{visitId:06d}_{agc_exposure_id:08d}_cam{cam.agcid+1}.fits')
 
     filename = os.path.join(path, 'agcc_c%d_%s.fits' % \
            (cam.agcid + 1, mtimestamp))
@@ -60,14 +60,15 @@ def wfits(cmd, visitId, cam, nframe):
         hdulist = pyfits.HDUList([hdu, tbhdu])
         hdulist.writeto(filename, checksum=True, overwrite=True)
     else:
-        hdu.writeto(filename, overwrite=True, checksum=True)
+        #hdu.writeto(filename, overwrite=True, checksum=True)
+        hdu.writeto(pfsFilename, overwrite=True, checksum=True)
 
     # Now make a symbolic link 
     #os.symlink(pfsFilename, filename)
 
-    cam.filename = filename
+    cam.filename = pfsFilename
     if cmd:
-        cmd.inform('agc%d_fitsfile="%s",%.1f' % (cam.agcid + 1, filename, cam.tstart))
+        cmd.inform('agc%d_fitsfile="%s",%.1f' % (cam.agcid + 1, pfsFilename, cam.tstart))
         cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
 
 def wfits_combined(cmd, visitId, cams, nframe, seq_id=-1):
