@@ -71,7 +71,7 @@ def subOverscan(data):
 
     return data
 
-def centroidRegion(data, thresh, kernel,minarea=12):
+def centroidRegion(data, thresh ,minarea=12):
     
     # determine the background
     bgClass = sep.Background(data)
@@ -79,11 +79,11 @@ def centroidRegion(data, thresh, kernel,minarea=12):
     rms = bgClass.rms()
     bgClass.subfrom(data)
     
-    spots = sep.extract(data, thresh, rms, minarea = minarea, filter_kernel=kernel)
+    spots = sep.extract(data, thresh, rms, minarea = minarea)
 
     return spots,len(spots),background
 
-def getCentroidsSep(data,iParms,cParms,spotDtype,agcid,kernel):
+def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     """
     runs centroiding for the sep routine and assigns the results
@@ -102,8 +102,8 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid,kernel):
     _data1 = data[region[2]:region[3],region[0]:region[1]].astype('float', copy=True)
     _data2 = data[region[6]:region[7],region[4]:region[5]].astype('float', copy=True)
 
-    spots1, nSpots1, background1 = centroidRegion(_data1, thresh, kernel, minarea)
-    spots2, nSpots2, background2 = centroidRegion(_data2, thresh, kernel, minarea)
+    spots1, nSpots1, background1 = centroidRegion(_data1, thresh, minarea)
+    spots2, nSpots2, background2 = centroidRegion(_data2, thresh, minarea)
 
     nElem = nSpots1 + nSpots2
 
@@ -156,25 +156,3 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid,kernel):
 
     return result
 
-
-def gaussian(dims,sigma):
-
-    kernel = np.empty(dims)
-
-    unit_square = (-0.5, 0.5, lambda y: -0.5, lambda y: 0.5)
-
-    x_shift = 0 if dims[0] % 2 else 0.5
-    y_shift = 0 if dims[1] % 2 else 0.5
-
-    for i in range(dims[0]):
-        for j in range(dims[1]):
-            res = dblquad(
-                lambda x, y: 1 / (2 * np.pi * sigma ** 2) * np.exp(
-                    - ((x + i - dims[0] // 2 + x_shift) / sigma) ** 2
-                    - ((y + j - dims[1] // 2 + y_shift) / sigma) ** 2),
-                *unit_square
-            )[0]
-
-            kernel[i][j] = res
-
-    return kernel
