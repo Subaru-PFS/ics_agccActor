@@ -5,7 +5,7 @@ import os
 import numpy as np
 import sep
 from scipy.ndimage import gaussian_filter
-
+from scipy.integrate import dblquad
 
 def getCentroidParams(cmd):
 
@@ -71,18 +71,19 @@ def subOverscan(data):
 
     return data
 
-def centroidRegion(data, thresh, minarea=12):
+def centroidRegion(data, thresh, kernel,minarea=12):
+    
     # determine the background
     bgClass = sep.Background(data)
     background = bgClass.back()
     rms = bgClass.rms()
     bgClass.subfrom(data)
     
-    spots = sep.extract(data, thresh, rms, minarea = 12)
+    spots = sep.extract(data, thresh, rms, minarea = minarea, filter_kernel=kernel)
 
     return spots,len(spots),background
 
-def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
+def getCentroidsSep(data,iParms,cParms,spotDtype,agcid,kernel):
 
     """
     runs centroiding for the sep routine and assigns the results
@@ -101,8 +102,8 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     _data1 = data[region[2]:region[3],region[0]:region[1]].astype('float', copy=True)
     _data2 = data[region[6]:region[7],region[4]:region[5]].astype('float', copy=True)
 
-    spots1, nSpots1, background1 = centroidRegion(_data1, thresh, minarea)
-    spots2, nSpots2, background2 = centroidRegion(_data2, thresh, minarea)
+    spots1, nSpots1, background1 = centroidRegion(_data1, thresh, kernel, minarea)
+    spots2, nSpots2, background2 = centroidRegion(_data2, thresh, kernel, minarea)
 
     nElem = nSpots1 + nSpots2
 
@@ -113,7 +114,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     fx = spots1['x2'].mean()
     fy = spots1['y2'].mean()
     
-    ind1 = np.where(np.any([spots1['x']-2*fx < 0, spots1['x']+2*fx > (region[1]-region[0]),spots1['y']-2*fy < 0, spots1['y']+2*fy > (region[3]-region[2]),axis=0]))
+    ind1 = np.where(np.any([spots1['x']-2*fx < 0, spots1['x']+2*fx > (region[1]-region[0]),spots1['y']-2*fy < 0, spots1['y']+2*fy > (region[3]-region[2])],axis=0))
     ind2 = spots1['peak'] == satValue
     
 
@@ -136,7 +137,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     fx = spots2['x2'].mean()
     fy = spots2['y2'].mean()
     
-    ind1 = np.where(np.any([spots2['x']-2*fx < 0, spots2['x']+2*fx > (region[5]-region[4]),spots2['y']-2*fy < 0, spots2['y']+2*fy > (region[7]-region[6]),axis=0]))
+    ind1 = np.where(np.any([spots2['x']-2*fx < 0, spots2['x']+2*fx > (region[5]-region[4]),spots2['y']-2*fy < 0, spots2['y']+2*fy > (region[7]-region[6])],axis=0))
     ind2 = spots2['peak'] == satValue
     
     result['image_moment_00_pix'][nSpots1:nElem] = spots2['flux']
@@ -156,4 +157,24 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     return result
 
 
-    
+def gaussian(dims,sigma):
+
+    kernel = np.empty(dims)
+
+    unit_square = (-0.5, 0.5, lambda y: -0.5, lambda y: 0.5)
+
+    x_shift = 0 if dims[0] % 2 else 0.5
+    y_shift = 0 if dims[1] % 2 else 0.5
+
+    for i in range(dims[0]):
+        for j in range(dims[1]):
+            res = dblquad(
+                lambda x, y: 1 / (2 * np.pi * sigma ** 2) * np.exp(
+                    - ((x + i - dims[0] // 2 + x_shift) / sigma) ** 2
+                    - ((y + j - dims[1] // 2 + y_shift) / sigma) ** 2),
+                *unit_square
+            )[0]
+
+            kernel[i][j] = res
+
+    return kernel
