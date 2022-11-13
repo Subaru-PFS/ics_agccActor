@@ -151,5 +151,5 @@ def wfits_combined(cmd, visitId, cams, nframe, seq_id=-1):
         if seq_id >= 0:
             cmd.inform('agc_seq%d="%s"' % (seq_id + 1, filename))
         else:
-            cmd.inform('agc_fitsfile="%s",%.1f' % (filename, cams[0].tstart))
+            cmd.inform('agc_fitsfile="%s",%.1f' % (pfsFilename, cams[0].tstart))
         cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
