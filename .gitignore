@@ -6,3 +6,4 @@
 *.o
 *.a
 *~
+python/agccActor/fli/fli_camera.c
