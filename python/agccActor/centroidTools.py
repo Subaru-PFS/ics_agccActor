@@ -200,6 +200,9 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     m20 = []
     m02 = []
 
+    xSize = newData.shape[0]
+    ySize = newData.shape[1]
+    
     #cycle over the results
     for i in range(0,len(results)):
 
@@ -211,6 +214,14 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
         maxX = xv+ww+1
         minU = yv-ww
         maxY = yv+ww+1
+
+        # check for edges of image
+        
+        if(minX < 0): minX = 0
+        if(maxX > xSize): maxX = xSize
+        if(minY < 0): minY = 0
+        if(maxY > ySize): maxY = ySize
+        
         
         subX=xx[minX:mxaX,mivY:maxY]
         subY=yy[minX:mxaX,mivY:maxY]
