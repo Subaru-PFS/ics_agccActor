@@ -71,7 +71,7 @@ def subOverscan(data):
 
     return data
 
-def centroidRegion(data, thresh ,minarea=12):
+def centroidRegion(data, thresh ,filterKernel = None, minArea=12):
     
     # determine the background
     bgClass = sep.Background(data)
@@ -79,16 +79,23 @@ def centroidRegion(data, thresh ,minarea=12):
     rms = bgClass.rms()
     bgClass.subfrom(data)
     
-    spots = sep.extract(data, thresh, rms, minarea = minarea)
+    spots = sep.extract(data, thresh, rms, filter_kernel=filterKernel, minarea = minArea)
 
     return spots,len(spots),background
 
-def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
+def getCentroidsSep(data,iParms,cParms,spotDtype,agcid,fwhm = None, minArea = 12):
 
     """
     runs centroiding for the sep routine and assigns the results
     """
 
+
+    if(fhwm != None):
+        kSize = fwhm * 3
+        filterKernel = makeGaussian(fwhm, (kSize, kSize))
+    else:
+        filterKernel = None
+        
     thresh=cParms['thresh']
     minarea=cParms['nmin']
 
@@ -102,8 +109,8 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     _data1 = data[region[2]:region[3],region[0]:region[1]].astype('float', copy=True)
     _data2 = data[region[6]:region[7],region[4]:region[5]].astype('float', copy=True)
 
-    spots1, nSpots1, background1 = centroidRegion(_data1, thresh, minarea)
-    spots2, nSpots2, background2 = centroidRegion(_data2, thresh, minarea)
+    spots1, nSpots1, background1 = centroidRegion(_data1, thresh, filterKernel = filterKernel, minArea=minArea)
+    spots2, nSpots2, background2 = centroidRegion(_data2, thresh, filterKernel = filterKernel, minArea=minArea)
 
     nElem = nSpots1 + nSpots2
 
@@ -156,3 +163,27 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     return result
 
+
+def makeGaussian(self, sigma, dims ):
+    
+        kernel = np.empty(dims)
+
+        unit_square = (-0.5, 0.5, lambda y: -0.5, lambda y: 0.5)
+
+        x_shift = 0 if self.dims[0] % 2 else 0.5
+        y_shift = 0 if self.dims[1] % 2 else 0.5
+
+        for i in range(self.dims[0]):
+            for j in range(self.dims[1]):
+                # integrate on a unit square centered at the origin as the
+                # function moves about it in discrete unit steps
+                res = dblquad(
+                    lambda x, y: 1 / (2 * pi * sigma ** 2) * np.exp(
+                        - ((x + i - self.dims[0] // 2 + x_shift) / sigma) ** 2
+                        - ((y + j - self.dims[1] // 2 + y_shift) / sigma) ** 2),
+                    *unit_square
+                )[0]
+
+                kernel[i][j] = res
+
+        return kernel
