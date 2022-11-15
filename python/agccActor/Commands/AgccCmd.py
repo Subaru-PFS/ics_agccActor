@@ -45,7 +45,7 @@ class AgccCmd(object):
             ('inusesequence', '<sequence>', self.inusesequence),
             ('inusecamera', '<camera>', self.inusecamera),
             ('insertVisit', '<visit>', self.insertVisit),
-            ('setCentroidParams','[<nmin>] [<thresh>] [<fwhm>]',
+            ('setCentroidParams','[<nmin>] [<thresh>] [<deblend>]',
              self.setCentroidParams),
             ('setImageParams', '', self.setImageParams),
         ]
@@ -70,9 +70,9 @@ class AgccCmd(object):
                                         keys.Key("combined", types.Int(), help="0/1: multiple FITS files/single FITS file"),
                                         keys.Key("centroid", types.Int(), help="0/1: if 1 do centroid else don't"),
                                         keys.Key("fwhmx", types.Float(), help="X fwhm for centroid routine"),
-                                        keys.Key("nmin", types.Int(), help="minimum number of points for spot"),
+                                        keys.Key("nmin", types.Int(), help="minimum number of points for sep"),
                                         keys.Key("thresh", types.Float(), help="threshhold for finding spots"),
-                                        keys.Key("fwhm", types.Float(), help="kernel size for centroid"),
+                                        keys.Key("deblend", types.Float(), help="deblend_cont for sep"),
                                         keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
                                         )
         # initialize centroid parameters
