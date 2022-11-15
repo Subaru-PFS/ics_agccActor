@@ -6,6 +6,7 @@ import numpy as np
 import sep
 from scipy.ndimage import gaussian_filter
 from lmfit import Model
+import lmfit
 
 
 def getCentroidParams(cmd):
@@ -101,8 +102,8 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     newData = data.astype('float', copy=True)
     
-    _data1 = data[region[2]:region[3],region[0]:region[1]]
-    _data2 = data[region[6]:region[7],region[4]:region[5]]
+    _data1 = data[region[2]:region[3],region[0]:region[1]].astype('float', copy=True, order="C")
+    _data2 = data[region[6]:region[7],region[4]:region[5]].astype('float', copy=True, order="C")
 
     spots1, nSpots1, background1  = centroidRegion(_data1, thresh, minarea)
     spots2, nSpots2, background2  = centroidRegion(_data2, thresh, minarea)
@@ -116,7 +117,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     fx = spots1['x2'].mean()
     fy = spots1['y2'].mean()
     
-    ind1 = np.where(np.any([spots1['x']-2*fx < 0, spots1['x']+2*fx > (region[1]-region[0]),spots1['y']-2*fy < 0, spots1['y']+2*fy > (region[3]-region[2]),axis=0]))
+    ind1 = np.where(np.any([spots1['x']-2*fx < 0, spots1['x']+2*fx > (region[1]-region[0]),spots1['y']-2*fy < 0, spots1['y']+2*fy > (region[3]-region[2])],axis=0))
     ind2 = spots1['peak'] == satValue
     
 
@@ -130,16 +131,16 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['peak_pixel_y_pix'][0:nSpots1] = spots1['ypeak']+region[2]
     result['peak_intensity'][0:nSpots1] = spots1['peak']
     result['background'][0:nSpots1] = background1[spots1['ypeak'], spots1['xpeak']]
-    result['flag'][0:nSpots1] += 1
-    result['flag'][0:nSpots1][ind1] += 2
-    result['flag'][0:nSpots1][ind2] += 4
+    result['flags'][0:nSpots1] += 1
+    result['flags'][0:nSpots1][ind1] += 2
+    result['flags'][0:nSpots1][ind2] += 4
 
     # flag spots near edge of region
 
     fx = spots2['x2'].mean()
     fy = spots2['y2'].mean()
     
-    ind1 = np.where(np.any([spots2['x']-2*fx < 0, spots2['x']+2*fx > (region[5]-region[4]),spots2['y']-2*fy < 0, spots2['y']+2*fy > (region[7]-region[6]),axis=0]))
+    ind1 = np.where(np.any([spots2['x']-2*fx < 0, spots2['x']+2*fx > (region[5]-region[4]),spots2['y']-2*fy < 0, spots2['y']+2*fy > (region[7]-region[6])],axis=0))
     ind2 = spots2['peak'] == satValue
     
     result['image_moment_00_pix'][nSpots1:nElem] = spots2['flux']
@@ -153,8 +154,8 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['peak_intensity'][nSpots1:nElem] = spots2['peak']
     result['background'][nSpots1:nElem] = background2[spots2['ypeak'], spots2['xpeak']]
     # set flag for right half of image
-    result['flag'][nSpots1:nElem][ind1] += 2
-    result['flag'][nSpots1:nElem][ind2] += 4
+    result['flags'][nSpots1:nElem][ind1] += 2
+    result['flags'][nSpots1:nElem][ind2] += 4
 
     # calculate more reasonable FWHMs
 
@@ -167,83 +168,61 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     sz = data.shape
     x=np.arange(0,sz[0])
     y=np.arange(0,sz[1])
-    xx, yy = numpy.meshgrid(x, y)
-
-    # define the model
-    gmod = Model(gaussian)
-    gmod.set_param_hint('fX', value=2,min=0,max=10)
-    gmod.set_param_hint('fY', value=2,min=0,max=10)
-    gmod.set_param_hint('a', value=1000,min=0,max=1e6)
-    gmod.set_param_hint('b', value=0,min=0,max=100)
-
-    # keep track of the updated values
+    xx, yy = np.meshgrid(y,x)
+    ww=10
     m20 = []
     m02 = []
 
-    xSize = newData.shape[0]
-    ySize = newData.shape[1]
-    
-    #cycle over the results
-    for i in range(0,len(results)):
-
-        # define a subregion aroudn the centroid
-        xv = result['centroid_x_pix'][i]
-        yv = result['centroid_y_pix'][i]
-
-        minX = xv-ww
-        maxX = xv+ww+1
-        minU = yv-ww
-        maxY = yv+ww+1
-
-        # check for edges of image
+    for ii in range(len(result)):
+        cv=result['centroid_x_pix'][ii]
+        cu=result['centroid_y_pix'][ii]
+        w = 10
         
-        if(minX < 0): minX = 0
-        if(maxX > xSize): maxX = xSize
-        if(minY < 0): minY = 0
-        if(maxY > ySize): maxY = ySize
-        
-        
-        subX=xx[minX:mxaX,mivY:maxY]
-        subY=yy[minX:mxaX,mivY:maxY]
-        subD = sData[minX:maxX,minY:maxY]
+        miX=int(cu-ww)
+        maX=int(cu+ww+1)
+        miY=int(cv-ww)
+        maY=int(cv+ww+1)
 
-        # massage into a form that the fitting function likes
-        sz=subX.shape        
-        dd = numpy.empty((sz[0]*sz[1],3))
+        subX=xx[miX:maX,miY:maY]
+        subY=yy[miX:maX,miY:maY]
+        subD = data[miX:maX,miY:maY]
+
+        sz=subX.shape
+
+        dd = np.empty((sz[0]*sz[1],3))
         dd[:,0]=subX.flatten()
         dd[:,1]=subY.flatten()
         dd[:,2]=subD.flatten()
 
-        # set the x and y starting values, and define them as fixed
-        
-        gmod.set_param_hint('xC', value=xv)
-        gmod.set_param_hint('yC', value=yv)
+        gmod = Model(gaussian)
+        gmod.set_param_hint('xC', value=cv)
+        gmod.set_param_hint('yC', value=cu)
+        gmod.set_param_hint('fX', value=2,min=0,max=10)
+        gmod.set_param_hint('fY', value=2,min=0,max=10)
+        gmod.set_param_hint('a', value=1000,min=0,max=subD.max()*1.5)
+        gmod.set_param_hint('b', value=subD.min())
 
-        # make the parameter object
         params = gmod.make_params()
-
-        # fix the positions, because we know them already
-
         params['xC'].set(vary=False)
         params['yC'].set(vary=False)
 
-        # do the fit
-        result = gmod.fit(dd[:, 2], x=dd[:, 0:2], params=params)
-
-        m02.append(result.best_values['fX'])
-        m20.append(result.best_values['fY'])
+        fitResult = gmod.fit(dd[:, 2], x=dd[:, 0:2], params=params)
+    
+        m02.append(fitResult.best_values['fX'])
+        m20.append(fitResult.best_values['fY'])
 
     # and update the values
-    result['central_image_moment_20_pix']=20
-    result['central_image_moment_02_pix']=02
+    result['central_image_moment_20_pix']=m20
+    result['central_image_moment_02_pix']=m02
+    #print(m20,m02)
      
     return result
 
 
-def gaussian(coord, xC, yC, fX, fY, a, b):
+def gaussian(x, xC, yC, fX, fY, a, b):
 
-    x = coord[:, 0]
-    y = coord[:, 1]
-    val=a*numpy.exp(-(x-xC)**2 / (2*fX**2)-(y-yC)**2 / (2*fY**2))+b
+    xx = x[:, 0]
+    yy = x[:, 1]
+    val=a*np.exp(-(xx-xC)**2 / (2*fX**2)-(yy-yC)**2 / (2*fY**2))+b
     return val
   
