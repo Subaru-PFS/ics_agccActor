@@ -15,7 +15,7 @@ def measure(data,agcid,cParms,iParms,cMethod,thresh=10):
         
     if(cMethod == 'sep'):
 
-        result = ct.getCentroidsSep(data,iParms,cParms,spotDtype,agcid,filterKernel=filterKernel, minArea=minArea)
+        result = ct.getCentroidsSep(data,iParms,cParms,spotDtype,agcid)
         
     return result
 
@@ -29,7 +29,7 @@ def createProc():
             iParms = in_q.get()
             cMethod = in_q.get()
             
-            result = measure(data,agcid,cParms,iParms,cMethod,filterKernel=filterKernel, minArea=minArea)
+            result = measure(data,agcid,cParms,iParms,cMethod)
 
             out_q.put(result)
 
