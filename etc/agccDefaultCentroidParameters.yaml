@@ -1,7 +1,10 @@
 definitions:
   thresh: threshold for centroiding
   nmin: minimum number of points for a spot to be valid
+  deblend: deblend_cont for sep
 values:
   thresh: 10
   nmin: 12
+  deblend: 0.5
+  
 
