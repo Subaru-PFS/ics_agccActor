@@ -26,6 +26,10 @@ def getCentroidParams(cmd):
         centParms['nmin']=cmd.cmd.keywords["nmin"].values[0]
     if('thresh' in cmdKeys):
         centParms['thresh']=cmd.cmd.keywords["thresh"].values[0]
+    if('fwhm' in cmdKeys):
+        centParms['fwhm']=cmd.cmd.keywords["fwhm"].values[0]
+    else:
+        centParms['fwhm']=None
 
     return centParms
 
@@ -90,7 +94,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid,fwhm = None, minArea = 12
     """
 
 
-    if(fhwm != None):
+    if(cParms['fhwm'] is not None):
         kSize = fwhm * 3
         filterKernel = makeGaussian(fwhm, (kSize, kSize))
     else:

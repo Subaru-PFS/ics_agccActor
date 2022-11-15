@@ -45,7 +45,7 @@ class AgccCmd(object):
             ('inusesequence', '<sequence>', self.inusesequence),
             ('inusecamera', '<camera>', self.inusecamera),
             ('insertVisit', '<visit>', self.insertVisit),
-            ('setCentroidParams','[<nmin>] [<thresh>]',
+            ('setCentroidParams','[<nmin>] [<thresh>] [<fwhm>]',
              self.setCentroidParams),
             ('setImageParams', '', self.setImageParams),
         ]
@@ -72,8 +72,11 @@ class AgccCmd(object):
                                         keys.Key("fwhmx", types.Float(), help="X fwhm for centroid routine"),
                                         keys.Key("nmin", types.Int(), help="minimum number of points for spot"),
                                         keys.Key("thresh", types.Float(), help="threshhold for finding spots"),
+                                        keys.Key("fwhm", types.Float(), help="kernel size for centroid"),
                                         keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
                                         )
+        # initialize centroid parameters
+        self.setCentroidParams([])
 
 
     def ping(self, cmd):
@@ -145,7 +148,9 @@ class AgccCmd(object):
         if 'centroid' in cmdKeys:
             if cmdKeys['centroid'].values[0] == 1:
                 centroid = True
-        self.setCentroidParams(cmd)
+
+        # moved this to configurable option
+        #self.setCentroidParams(cmd)
 
         cMethod = "sep"
         if 'cMethod' in cmdKeys:
