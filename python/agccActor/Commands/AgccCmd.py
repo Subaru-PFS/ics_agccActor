@@ -76,7 +76,7 @@ class AgccCmd(object):
                                         keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
                                         )
         # initialize centroid parameters
-        self.setCentroidParams([])
+        self.setCentroidParams(None)
 
 
     def ping(self, cmd):
@@ -401,7 +401,11 @@ class AgccCmd(object):
         """
 
         self.cParms = ct.getCentroidParams(cmd)
-        cmd.inform(f'text="centroid parameters set thresh/deblend/nmin =  {thresh} {deblend} {nmin}"')
+        thresh = self.cParms['thresh'] 
+        deblend = self.cParms['deblend'] 
+        nmin = self.cParms['nmin']
+        if cmd is not None:
+            cmd.finish(f'text="centroid parameters set thresh/deblend/nmin = {thresh} {deblend} {nmin}"')
 
     def setImageParams(self, cmd):
 
