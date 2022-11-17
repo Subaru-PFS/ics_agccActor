@@ -401,6 +401,7 @@ class AgccCmd(object):
         """
 
         self.cParms = ct.getCentroidParams(cmd)
+        cmd.inform(f'text="centroid parameters set thresh/deblend/nmin =  {thresh} {deblend} {nmin}"')
 
     def setImageParams(self, cmd):
 
