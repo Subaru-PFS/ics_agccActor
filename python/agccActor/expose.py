@@ -51,7 +51,7 @@ class Exposure(threading.Thread):
                       f'agc_exposure_id DESC LIMIT 1')
         last_nframe = query['agc_exposure_id'].values[0]
         self.nframe = last_nframe + 1
-        self.cmd.inform(f'text="Current is {self.nframe} from opDB"')
+        self.cmd.inform(f'text="Getting agc_exposure_id = {self.nframe} from opDB"')
         
         # get nframe keyword, unique for each exposure
         path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
@@ -71,7 +71,7 @@ class Exposure(threading.Thread):
             if os.path.isfile(filename):
                 with open(filename, 'w') as f:
                     f.write(str(self.nframe))
-            self.cmd.inform(f'text="Recording current agc_exposure_id to {filename}"')
+            self.cmd.inform(f'text="Recording agc_exposure_id = {self.nframe} to {filename}"')
         dbRoutinesAGCC.writeExposureToDB(self.visitId,self.nframe, expTime_ms/1000.0)
 
     def run(self):
