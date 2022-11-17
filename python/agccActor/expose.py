@@ -4,6 +4,7 @@ import writeFits
 import photometry
 import os
 import time
+import opdb
 
 import dbRoutinesAGCC as dbRoutinesAGCC
 
@@ -42,7 +43,16 @@ class Exposure(threading.Thread):
         self.seq_id = seq_id
         self.cMethod = cMethod
 
-
+        # Getting last entry of agc_exposure_id from DB
+        db=opdb.OpDB(hostname='db-ics', port=5432,dbname='opdb',
+                        username='pfs')
+        
+        query = db.bulkSelect('agc_exposure','select agc_exposure_id from agc_exposure ORDER BY '
+                      f'agc_exposure_id DESC LIMIT 1')
+        last_nframe = query['agc_exposure_id'].values[0]
+        self.nframe = last_nframe + 1
+        self.cmd.inform(f'text="Current is {self.nframe} from opDB"')
+        
         # get nframe keyword, unique for each exposure
         path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
         #path = os.path.join('/data/raw', time.strftime('%Y-%m-%d', time.gmtime()), 'agcc')
@@ -53,13 +63,14 @@ class Exposure(threading.Thread):
         filename = os.path.join(path, 'nframe.txt')
 
         with Exposure.exp_lock:
+            #if os.path.isfile(filename):
+            #    with open(filename, 'r') as f:
+            #        self.nframe = int(f.read()) + 1
+            #else:
+            #    self.nframe = 1
             if os.path.isfile(filename):
-                with open(filename, 'r') as f:
-                    self.nframe = int(f.read()) + 1
-            else:
-                self.nframe = 1
-            with open(filename, 'w') as f:
-                f.write(str(self.nframe))
+                with open(filename, 'w') as f:
+                    f.write(str(self.nframe))
         dbRoutinesAGCC.writeExposureToDB(self.visitId,self.nframe, expTime_ms/1000.0)
 
     def run(self):
