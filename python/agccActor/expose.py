@@ -71,6 +71,7 @@ class Exposure(threading.Thread):
             if os.path.isfile(filename):
                 with open(filename, 'w') as f:
                     f.write(str(self.nframe))
+            self.cmd.inform(f'text="Recording current agc_exposure_id to {filename}"')
         dbRoutinesAGCC.writeExposureToDB(self.visitId,self.nframe, expTime_ms/1000.0)
 
     def run(self):
