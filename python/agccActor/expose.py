@@ -4,7 +4,7 @@ import writeFits
 import photometry
 import os
 import time
-import opdb
+from opdb import opdb
 
 import dbRoutinesAGCC as dbRoutinesAGCC
 
