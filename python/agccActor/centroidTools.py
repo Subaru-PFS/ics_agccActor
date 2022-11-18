@@ -142,9 +142,11 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     # flag spots near edge of region
 
-    fx = spots2['x2'].mean()
-    fy = spots2['y2'].mean()
-    
+    #fx = spots2['x2'].mean()
+    #fy = spots2['y2'].mean()
+    fx = 5
+    fy = 5
+
     ind1 = np.where(np.any([spots2['x']-2*fx < 0, spots2['x']+2*fx > (region[5]-region[4]),spots2['y']-2*fy < 0, spots2['y']+2*fy > (region[7]-region[6])],axis=0))
     ind2 = spots2['peak'] == satValue
     
