@@ -23,11 +23,11 @@ def getCentroidParams(cmd):
     centParms = defaultParms['values']
 
     if('nmin' in cmdKeys):
-        centParms['nmin']=cmd.cmd.keywords["nmin"].values[0]
+        centParms['nmin']=int(cmd.cmd.keywords["nmin"].values[0])
     if('thresh' in cmdKeys):
-        centParms['thresh']=cmd.cmd.keywords["thresh"].values[0]
+        centParms['thresh']=float(cmd.cmd.keywords["thresh"].values[0])
     if('deblend' in cmdKeys):
-        centParms['deblend']=cmd.cmd.keywords["deblend"].values[0]
+        centParms['deblend']=float(cmd.cmd.keywords["deblend"].values[0])
 
     return centParms
 
