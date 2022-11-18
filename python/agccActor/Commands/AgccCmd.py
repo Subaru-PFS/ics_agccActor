@@ -147,12 +147,13 @@ class AgccCmd(object):
                 centroid = True
         #self.setCentroidParams(cmd)
         self.cParms = ct.getCentroidParams(cmd)
-        
+
         cMethod = "sep"
         if 'cMethod' in cmdKeys:
             cMethod = cmdKeys['cMethod'].values[0]
+        self.iParms = ct.getImageParams(cmd)
 
-        self.setImageParams(cmd)
+        #self.setImageParams(cmd)
             
         cams = []
         if 'cameras' in cmdKeys:
