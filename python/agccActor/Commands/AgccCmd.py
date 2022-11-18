@@ -45,7 +45,7 @@ class AgccCmd(object):
             ('inusesequence', '<sequence>', self.inusesequence),
             ('inusecamera', '<camera>', self.inusecamera),
             ('insertVisit', '<visit>', self.insertVisit),
-            ('setCentroidParams','[<nmin>] [<thresh>]',
+            ('setCentroidParams','[<nmin>] [<thresh>] [<deblend>]',
              self.setCentroidParams),
             ('setImageParams', '', self.setImageParams),
         ]
@@ -70,10 +70,13 @@ class AgccCmd(object):
                                         keys.Key("combined", types.Int(), help="0/1: multiple FITS files/single FITS file"),
                                         keys.Key("centroid", types.Int(), help="0/1: if 1 do centroid else don't"),
                                         keys.Key("fwhmx", types.Float(), help="X fwhm for centroid routine"),
-                                        keys.Key("nmin", types.Int(), help="minimum number of points for spot"),
+                                        keys.Key("nmin", types.Int(), help="minimum number of points for sep"),
                                         keys.Key("thresh", types.Float(), help="threshhold for finding spots"),
+                                        keys.Key("deblend", types.Float(), help="deblend_cont for sep"),
                                         keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
                                         )
+        # initialize centroid parameters
+        self.setCentroidParams(None)
 
 
     def ping(self, cmd):
@@ -145,7 +148,9 @@ class AgccCmd(object):
         if 'centroid' in cmdKeys:
             if cmdKeys['centroid'].values[0] == 1:
                 centroid = True
-        self.setCentroidParams(cmd)
+
+        # moved this to configurable option
+        #self.setCentroidParams(cmd)
 
         cMethod = "sep"
         if 'cMethod' in cmdKeys:
@@ -396,6 +401,11 @@ class AgccCmd(object):
         """
 
         self.cParms = ct.getCentroidParams(cmd)
+        thresh = self.cParms['thresh'] 
+        deblend = self.cParms['deblend'] 
+        nmin = self.cParms['nmin']
+        if cmd is not None:
+            cmd.finish(f'text="centroid parameters set thresh/deblend/nmin = {thresh} {deblend} {nmin}"')
 
     def setImageParams(self, cmd):
 
