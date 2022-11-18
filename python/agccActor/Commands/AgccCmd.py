@@ -396,6 +396,11 @@ class AgccCmd(object):
         """
 
         self.cParms = ct.getCentroidParams(cmd)
+        nmin = self.cParms['nmin']
+        cmd.inform(f'text="nmin = {nmin}"')
+        
+        cmd.finish()
+
 
     def setImageParams(self, cmd):
 
@@ -405,3 +410,4 @@ class AgccCmd(object):
         """
 
         self.iParms = ct.getImageParams(cmd)
+        cmd.finish()
