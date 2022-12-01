@@ -5,8 +5,7 @@ import os
 import numpy as np
 import sep
 from scipy.ndimage import gaussian_filter
-from lmfit import Model
-import lmfit
+from scipy.integrate import dblquad
 
 
 def getCentroidParams(cmd):
@@ -25,9 +24,11 @@ def getCentroidParams(cmd):
     centParms = defaultParms['values']
 
     if('nmin' in cmdKeys):
-        centParms['nmin']=cmd.cmd.keywords["nmin"].values[0]
+        centParms['nmin']=int(cmd.cmd.keywords["nmin"].values[0])
     if('thresh' in cmdKeys):
-        centParms['thresh']=cmd.cmd.keywords["thresh"].values[0]
+        centParms['thresh']=float(cmd.cmd.keywords["thresh"].values[0])
+    if('deblend' in cmdKeys):
+        centParms['deblend']=float(cmd.cmd.keywords["deblend"].values[0])
 
     return centParms
 
@@ -73,14 +74,15 @@ def subOverscan(data):
 
     return data
 
-def centroidRegion(data, thresh, minarea=12):
+def centroidRegion(data, thresh, minarea=12, deblend = 0.5):
+    
     # determine the background
     bgClass = sep.Background(data)
     background = bgClass.back()
     rms = bgClass.rms()
     bgClass.subfrom(data)
     
-    spots = sep.extract(data, thresh, rms, minarea = 12)
+    spots = sep.extract(data, thresh, rms, minarea = minarea, deblend_cont=deblend)
 
     return spots,len(spots),background
 
@@ -90,8 +92,10 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     runs centroiding for the sep routine and assigns the results
     """
 
+
     thresh=cParms['thresh']
     minarea=cParms['nmin']
+    deblend=cParms['deblend']
 
     # get region information for camera
     region = iParms[str(agcid + 1)]['reg']
@@ -100,7 +104,6 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     data=subOverscan(data.astype('float'))
     data=interpBadCol(data,iParms[str(agcid + 1)]['badCols'])
 
-    newData = data.astype('float', copy=True)
     
     _data1 = data[region[2]:region[3],region[0]:region[1]].astype('float', copy=True, order="C")
     _data2 = data[region[6]:region[7],region[4]:region[5]].astype('float', copy=True, order="C")
@@ -113,9 +116,13 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result = np.zeros(nElem, dtype=spotDtype)
 
     # flag spots near edge of region
-    
-    fx = spots1['x2'].mean()
-    fy = spots1['y2'].mean()
+
+    # dynamic fwhm calculation is overenthusiastic with out of focus images
+    #fx = spots1['x2'].mean()
+    #fy = spots1['y2'].mean()
+
+    fx = 5
+    fy = 5
     
     ind1 = np.where(np.any([spots1['x']-2*fx < 0, spots1['x']+2*fx > (region[1]-region[0]),spots1['y']-2*fy < 0, spots1['y']+2*fy > (region[3]-region[2])],axis=0))
     ind2 = spots1['peak'] == satValue
@@ -131,15 +138,17 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['peak_pixel_y_pix'][0:nSpots1] = spots1['ypeak']+region[2]
     result['peak_intensity'][0:nSpots1] = spots1['peak']
     result['background'][0:nSpots1] = background1[spots1['ypeak'], spots1['xpeak']]
-    result['flags'][0:nSpots1] += 1
     result['flags'][0:nSpots1][ind1] += 2
     result['flags'][0:nSpots1][ind2] += 4
 
     # flag spots near edge of region
 
-    fx = spots2['x2'].mean()
-    fy = spots2['y2'].mean()
-    
+    #fx = spots2['x2'].mean()
+    #fy = spots2['y2'].mean()
+    fx = 5
+    fy = 5
+
+
     ind1 = np.where(np.any([spots2['x']-2*fx < 0, spots2['x']+2*fx > (region[5]-region[4]),spots2['y']-2*fy < 0, spots2['y']+2*fy > (region[7]-region[6])],axis=0))
     ind2 = spots2['peak'] == satValue
     
@@ -154,6 +163,9 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['peak_intensity'][nSpots1:nElem] = spots2['peak']
     result['background'][nSpots1:nElem] = background2[spots2['ypeak'], spots2['xpeak']]
     # set flag for right half of image
+
+    result['flags'][nSpots1:nElem] += 1
+
     result['flags'][nSpots1:nElem][ind1] += 2
     result['flags'][nSpots1:nElem][ind2] += 4
 
@@ -217,8 +229,6 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     #print(m20,m02)
      
     return result
-
-
 def gaussian(x, xC, yC, fX, fY, a, b):
 
     xx = x[:, 0]

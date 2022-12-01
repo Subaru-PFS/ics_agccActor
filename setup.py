@@ -1,14 +1,15 @@
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 import sdss3tools
-import os.path
+import os
 import numpy
+
 
 FLI_module = Extension(
     "fli_camera",
     ["python/agccActor/fli/fli_camera.pyx"],
     library_dirs = ["c/libfli-1.999.1-180223"],
-    libraries = ["usb-1.0", "fli"],
+    libraries = ["fli","usb-1.0"],
     include_dirs = ["c/libfli-1.999.1-180223",
                     "python/agccActor/fli",
                     numpy.get_include()],
