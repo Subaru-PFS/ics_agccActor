@@ -238,6 +238,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['central_image_moment_02_pix']=m02
     #print(m20,m02)
      
+
     return result
 
 
@@ -249,4 +250,40 @@ def gaussian(x, xC, yC, fX, fY, a, b):
     val=a*np.exp(-(xx-xC)**2 / (2*fX**2)-(yy-yC)**2 / (2*fY**2))+b
     return val
   
+
+
+
+def windowedFWHM(data,xPos,yPos,gSize):
+
+
+    dMinX = int(xPos - boxsize)
+    dMaxX = int(xPos + boxsize + 1)
+    dMinY = int(yPos - boxsize)
+    dMaxY = int(yPos + boxsize + 1)
+    
+    winVal = data[dMinX:dMaxX,dMinY:dMaxY)
+
+    xVal = np.arange(-boxSize,boxSize+1)
+
+    xv,yv = np.meshgrid(xVal,xVal)
+
+    r2 = xv*xv+yv*yv
+
+    s2 = gSize**2 / (8*np.log(2))
+
+    w = np.exp(-r2/(2*s2))
+    
+    vx = (winVal * w + (xv-xPos)**2).sum()/(winVal * w).sum()
+    vy = (winVal * w + (yv-yPos)**2).sum()/(winVal * w).sum()
+    
+
+    return xv,yv
+
+
+
+    
+    
+
+    
+    
 
