@@ -7,6 +7,8 @@ import sep
 from scipy.ndimage import gaussian_filter
 
 from scipy.integrate import dblquad
+from lmfit import Model
+import lmfit
 
 from lmfit import Model
 import lmfit
@@ -182,64 +184,193 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     # calculate more reasonable FWHMs
 
     # subract the background
-    
+
+    newData = data.copy()
     newData[region[2]:region[3],region[0]:region[1]]-=background1
     newData[region[6]:region[7],region[4]:region[5]]-=background2
     
+    m20 = []
+    m02 = []
+    m11 = []
+
+    for ii in range(len(result)):
+    
+        yPos=result['centroid_x_pix'][ii]
+        xPos=result['centroid_y_pix'][ii]
+    
+        xv,yv, xyv = windowedFWHM(newData, yPos, xPos)
+        #xv, yv = fittedFWHM(newData, yPos, xPos)
+
+        m02.append(xv)
+        m20.append(yv)
+        m11.append(xyv)
+
+        #some testing code
+        #newRes={}
+        #newRes['fx'] = np.array(m02)
+        #newRes['fy'] = np.array(m20)
+        #newRes['fitx'] = np.array(m1)
+        #newRes['fity'] = np.array(m2)
+        #newRes['20'] = result['central_image_moment_20_pix']
+        #newRes['02'] = result['central_image_moment_02_pix']
+        #newRes['flux'] = result['image_moment_00_pix']
+        
+    # and update the values
+    result['central_image_moment_20_pix']=np.array(m20)
+    result['central_image_moment_02_pix']=np.array(m02)
+    result['central_image_moment_11_pix']=np.array(m11)
+
+    return result
+
+def windowedFWHM(data,xPos,yPos):
+
+    """
+    windowed second moments, based on pre-determined positions
+    """
+    
+    maxIt = 10
+    boxSize=20
+
+    # determine the sub-image region
+    dMinX = int(xPos - boxSize)
+    dMaxX = int(xPos + boxSize + 1)
+    dMinY = int(yPos - boxSize)
+    dMaxY = int(yPos + boxSize + 1)
+
+    winVal = data[dMinY:dMaxY,dMinX:dMaxX]
+
+    # scale the coordinates by the central position, to avoid numeric overflow
+    
+    xVal = np.arange(dMinX,dMaxX)-xPos
+    yVal = np.arange(dMinY,dMaxY)-yPos
+    xv,yv = np.meshgrid(xVal,xVal)
+    
+    # edge of image - currently sets values to 0
+    if(winVal.shape != xv.shape):
+        sx = 0
+        sy = 0
+        sxy = 0
+        return sx,sy,sxy
+
+    # initial values
+    sx = 1.5
+    sy = 1.5
+    sxy = 0
+
+    w11 = -1
+    w12 = -1
+    w22 = -1
+
+    # some variables for iteration
+    e1_old=1e6
+    e2_old=1e6
+    sx_o=1e6
+    tol1=0.001
+    tol2=0.01
+
+
+    # now the iteration
+    for i in range(0,maxIt):
+
+        # get the weighting function based on the current values
+        # of the moments
+
+        ow11 = w11
+        ow12 = w12
+        ow22 = w22
+
+        detw = sx*sy-sxy**2
+        w11 = sy/detw
+        w12 = -sxy/detw
+        w22 = sx/detw
+
+        r2 = xv*xv*w11 + yv*yv*w22 + 2*w12*xv*yv
+        w = np.exp(-r2/2)
+
+        # and calcualte the weighted moments
+        sxow = (winVal * w * (xv)**2).sum()/(winVal * w).sum()
+        syow = (winVal * w * (yv)**2).sum()/(winVal * w).sum()
+        sxyow = (winVal * w * xv*yv).sum()/(winVal * w).sum()
+
+        # variables to test for convergence
+        d = sxow + syow
+        e1 = (sxow - syow)/d
+        e2 = 2*sxyow/d
+
+        # check for convergence
+        if(np.all([np.abs(e1-e1_old) < tol1, np.abs(e2-e2_old) < tol1, np.abs(sx/sx_o - 1) < tol2])):
+            #print(sx,sy,sxy)
+            return sxow, syow, sxyow
+
+        # calculate new values 
+        e1_old=e1
+        e2_old=e2
+        sx_o = sx
+
+        detow = sxow*syow-sxy**2
+        ow11 = syow/detow
+        ow12 = -sxyow/detow
+        ow22 = sxow/detow
+
+        n11 = ow11 - w11
+        n12 = ow12 - w12
+        n22 = ow22 - w22
+        det_n = n11*n22 - n12*n12
+        
+        sx = n22/det_n
+        sxy = -n12/det_n
+        sy = n11/det_n
+
+    # if we haven't converged return new values
+    return sx,sy,sxy
+
+def fittedFWHM(data, xPos, yPos):
+
+    """
+    fit gaussian to pre-calculated centre
+    """
+
+    ww = 10
+
     # x and y position grid
     sz = data.shape
     x=np.arange(0,sz[0])
     y=np.arange(0,sz[1])
     xx, yy = np.meshgrid(y,x)
-    ww=10
-    m20 = []
-    m02 = []
 
-    for ii in range(len(result)):
-        cv=result['centroid_x_pix'][ii]
-        cu=result['centroid_y_pix'][ii]
-        w = 10
+    #determine subImage
+    miX=int(xPos-ww)
+    maX=int(xPos+ww+1)
+    miY=int(yPos-ww)
+    maY=int(yPos+ww+1)
         
-        miX=int(cu-ww)
-        maX=int(cu+ww+1)
-        miY=int(cv-ww)
-        maY=int(cv+ww+1)
+    subX=xx[miX:maX,miY:maY]
+    subY=yy[miX:maX,miY:maY]
+    subD = data[miX:maX,miY:maY]
+        
+    sz=subX.shape
+        
+    dd = np.empty((sz[0]*sz[1],3))
+    dd[:,0]=subX.flatten()
+    dd[:,1]=subY.flatten()
+    dd[:,2]=subD.flatten()
+        
+    gmod = Model(gaussian)
+    gmod.set_param_hint('xC', value=yPos)
+    gmod.set_param_hint('yC', value=xPos)
+    gmod.set_param_hint('fX', value=2,min=0,max=10)
+    gmod.set_param_hint('fY', value=2,min=0,max=10)
+    gmod.set_param_hint('a', value=1000,min=0,max=subD.max()*1.5)
+    gmod.set_param_hint('b', value=subD.min())
+        
+    params = gmod.make_params()
+    params['xC'].set(vary=False)
+    params['yC'].set(vary=False)
+        
+    fitResult = gmod.fit(dd[:, 2], x=dd[:, 0:2], params=params)
 
-        subX=xx[miX:maX,miY:maY]
-        subY=yy[miX:maX,miY:maY]
-        subD = data[miX:maX,miY:maY]
+    return fitResult.best_values['fX'], fitResult.best_values['fY']
 
-        sz=subX.shape
-
-        dd = np.empty((sz[0]*sz[1],3))
-        dd[:,0]=subX.flatten()
-        dd[:,1]=subY.flatten()
-        dd[:,2]=subD.flatten()
-
-        gmod = Model(gaussian)
-        gmod.set_param_hint('xC', value=cv)
-        gmod.set_param_hint('yC', value=cu)
-        gmod.set_param_hint('fX', value=2,min=0,max=10)
-        gmod.set_param_hint('fY', value=2,min=0,max=10)
-        gmod.set_param_hint('a', value=1000,min=0,max=subD.max()*1.5)
-        gmod.set_param_hint('b', value=subD.min())
-
-        params = gmod.make_params()
-        params['xC'].set(vary=False)
-        params['yC'].set(vary=False)
-
-        fitResult = gmod.fit(dd[:, 2], x=dd[:, 0:2], params=params)
-    
-        m02.append(fitResult.best_values['fX'])
-        m20.append(fitResult.best_values['fY'])
-
-    # and update the values
-    result['central_image_moment_20_pix']=m20
-    result['central_image_moment_02_pix']=m02
-    #print(m20,m02)
-     
-
-    return result
 
 
 def gaussian(x, xC, yC, fX, fY, a, b):
@@ -279,6 +410,13 @@ def windowedFWHM(data,xPos,yPos,gSize):
 
     return xv,yv
 
+def gaussian(x, xC, yC, fX, fY, a, b):
+
+
+    xx = x[:, 0]
+    yy = x[:, 1]
+    val=a*np.exp(-(xx-xC)**2 / (2*fX**2)-(yy-yC)**2 / (2*fY**2))+b
+    return val
 
 
     
