@@ -87,7 +87,7 @@ def centroidRegion(data, thresh, minarea=12, deblend = 0.5):
     spots = sep.extract(data, thresh, rms, minarea = minarea, deblend_cont=deblend)
 
     return spots,len(spots),background
-
+    
 def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     """
@@ -183,32 +183,28 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     m02 = []
     m11 = []
 
+    flags = []
     for ii in range(len(result)):
     
         yPos=result['centroid_x_pix'][ii]
         xPos=result['centroid_y_pix'][ii]
     
-        xv,yv, xyv = windowedFWHM(newData, yPos, xPos)
+        xv,yv, xyv, conv = windowedFWHM(newData, yPos, xPos)
         #xv, yv = fittedFWHM(newData, yPos, xPos)
 
         m02.append(xv)
         m20.append(yv)
         m11.append(xyv)
 
-        #some testing code
-        #newRes={}
-        #newRes['fx'] = np.array(m02)
-        #newRes['fy'] = np.array(m20)
-        #newRes['fitx'] = np.array(m1)
-        #newRes['fity'] = np.array(m2)
-        #newRes['20'] = result['central_image_moment_20_pix']
-        #newRes['02'] = result['central_image_moment_02_pix']
-        #newRes['flux'] = result['image_moment_00_pix']
+        # add flag for non converged sources
+        flags.append(conv)
+
         
     # and update the values
     result['central_image_moment_20_pix']=np.array(m20)
     result['central_image_moment_02_pix']=np.array(m02)
     result['central_image_moment_11_pix']=np.array(m11)
+    result['flags'] = result['flags']+np.array(flags)
 
     return result
 
@@ -218,7 +214,7 @@ def windowedFWHM(data,xPos,yPos):
     windowed second moments, based on pre-determined positions
     """
     
-    maxIt = 10
+    maxIt = 30
     boxSize=20
 
     # determine the sub-image region
@@ -227,21 +223,24 @@ def windowedFWHM(data,xPos,yPos):
     dMinY = int(yPos - boxSize)
     dMaxY = int(yPos + boxSize + 1)
 
+    # check for edges of image
+    dMinX = np.max([dMinX,0])
+    dMinY = np.max([dMinY,0])
+    dMaxX = np.min([dMaxX,data.shape[1]])
+    dMaxY = np.min([dMaxY,data.shape[0]])
+
+
+    # and the sub-image
     winVal = data[dMinY:dMaxY,dMinX:dMaxX]
 
     # scale the coordinates by the central position, to avoid numeric overflow
-    
-    xVal = np.arange(dMinX,dMaxX)-xPos
-    yVal = np.arange(dMinY,dMaxY)-yPos
-    xv,yv = np.meshgrid(xVal,xVal)
-    
-    # edge of image - currently sets values to 0
-    if(winVal.shape != xv.shape):
-        sx = 0
-        sy = 0
-        sxy = 0
-        return sx,sy,sxy
 
+    xVal = np.arange(dMinX,dMaxX)-(dMaxX+dMinX)/2
+    yVal = np.arange(dMinY,dMaxY)-(dMaxY+dMinY)/2
+    xv,yv = np.meshgrid(xVal,yVal)
+
+
+    
     # initial values
     sx = 1.5
     sy = 1.5
@@ -257,7 +256,6 @@ def windowedFWHM(data,xPos,yPos):
     sx_o=1e6
     tol1=0.001
     tol2=0.01
-
 
     # now the iteration
     for i in range(0,maxIt):
@@ -276,21 +274,21 @@ def windowedFWHM(data,xPos,yPos):
 
         r2 = xv*xv*w11 + yv*yv*w22 + 2*w12*xv*yv
         w = np.exp(-r2/2)
+        #print(f'{r2.min():.2f},{r2.max():.2f},{w.min():.2f},{w.max():.2f}')
 
         # and calcualte the weighted moments
         sxow = (winVal * w * (xv)**2).sum()/(winVal * w).sum()
         syow = (winVal * w * (yv)**2).sum()/(winVal * w).sum()
         sxyow = (winVal * w * xv*yv).sum()/(winVal * w).sum()
-
         # variables to test for convergence
         d = sxow + syow
         e1 = (sxow - syow)/d
         e2 = 2*sxyow/d
+        
 
         # check for convergence
         if(np.all([np.abs(e1-e1_old) < tol1, np.abs(e2-e2_old) < tol1, np.abs(sx/sx_o - 1) < tol2])):
-            #print(sx,sy,sxy)
-            return sxow, syow, sxyow
+            return sxow, syow, sxyow, 0
 
         # calculate new values 
         e1_old=e1
@@ -312,7 +310,7 @@ def windowedFWHM(data,xPos,yPos):
         sy = n11/det_n
 
     # if we haven't converged return new values
-    return sx,sy,sxy
+    return sx,sy,sxy, 8
 
 def fittedFWHM(data, xPos, yPos):
 
@@ -367,10 +365,57 @@ def gaussian(x, xC, yC, fX, fY, a, b):
     yy = x[:, 1]
     val=a*np.exp(-(xx-xC)**2 / (2*fX**2)-(yy-yC)**2 / (2*fY**2))+b
     return val
+    
+    
+def fitTemplate(template, data, starPos, gridSize=21):
+    
+    """
+    use cross correlation to fit a template to a spot of approximate known position
+    
+    input: 
+        template: numpy array with template that matches the seeing and focus offset of the exposure
+        data: input image
+        starPos:  position of star from focussed image
+        gridSize: size of grid to compute x-corr over
+    
+    output: 
+        newPos: updated position
+        sat: flag for saturated star
 
+    note that the template is assumed to be square
+    
+    """
 
+    # get the size of the template (assumes square)
+    tSize = template.shape[0]
     
-    
+    # half point of template and grid
+    g2 = gridSize // 2
+    t2 = tSize // 2
+   
+    #integer values of star position
+    xcI = int(np.round(starPos[0]))
+    ycI = int(np.round(starPos[1]))
 
+    # subimage centred on the star position
+    dSub = data[ycI-g2:ycI+g2+1,xcI-g2:xcI+g2+1]
     
+    # do the correlation
+    # the built in python cross correlation routine turns out to
+    # be pretty fast, as the underlying code is in C
+    # mode = same gives us an output image the same size as the input
     
+    sumVal=signal.correlate2d (dSub, template, mode='same')
+            
+    #find the offset of the max value from the centre of the grid
+    offset = np.array(np.unravel_index(sumVal.argmax(),(gridSize,gridSize)))-g2
+
+    #and the corresponding new position
+    newPos = starPos + np.array([offset[1],offset[0]])
+    
+    # check for saturation
+    if(dSub.max()==65535):
+        sat=1
+    else:
+        sat=0
+    return newPos, sat
