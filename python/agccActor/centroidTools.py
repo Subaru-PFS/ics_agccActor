@@ -192,10 +192,17 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
         xv,yv, xyv, conv = windowedFWHM(newData, yPos, xPos)
         #xv, yv = fittedFWHM(newData, yPos, xPos)
 
-        m02.append(xv)
-        m20.append(yv)
-        m11.append(xyv)
-
+        # if the moment didn't converge, revert to the unweighted second moment and set flags
+        if(conv == 0):
+            m02.append(xv)
+            m20.append(yv)
+            m11.append(xyv)
+        else:
+            m02.append(result['central_image_moment_20_pix'][ii])
+            m20.append(result['central_image_moment_02_pix'][ii])
+            m11.append(result['central_image_moment_11_pix'][ii])
+            
+            
         # add flag for non converged sources
         flags.append(conv)
 
