@@ -21,8 +21,7 @@ def getCentroidParams(cmd):
     fileName=os.path.join(os.environ['ICS_AGCCACTOR_DIR'],'etc','agccDefaultCentroidParameters.yaml')
 
     with open(fileName, 'r') as inFile:
-        defaultParms=yaml.safe_load(inFile)
-    
+        defaultParms=yaml.load(inFile,Loader=yaml.Loader)
     #returns just the values dictionary
     centParms = defaultParms['values']
 
@@ -32,9 +31,7 @@ def getCentroidParams(cmd):
         centParms['thresh']=float(cmd.cmd.keywords["thresh"].values[0])
     if('deblend' in cmdKeys):
         centParms['deblend']=float(cmd.cmd.keywords["deblend"].values[0])
-    if('refFrame' in cmdKeys):
-        centParms['refFrame']=int(float(cmd.cmd.keywords["refFrame"].values[0]))
-        
+
     return centParms
 
 
@@ -66,7 +63,8 @@ def updateTemplate(cmd,centParms):
         else:
             dZString=f'{round(dZ/0.2)*0.2:+.2f}'
 
-    fName=os.path.join(os.environ['PFS_INSTDATA_DIR'],'etc',f'dZ{dZString}0_SS0.70.fits')
+    
+    fName=os.path.join(os.environ['PFS_INSTDATA_DIR'],'data','agc','psfTemplates',f'dZ{dZString}_SS0.70.fits')
 
     templateR = fits.getdata(fName)[0:81,:]
     templateL = fits.getdata(fName)[81:162,:]
@@ -158,17 +156,12 @@ def getCentroidsTem(data,iParms,cParms,spotDtype,agcid):
     templateR = cParms['templateR']
     gridSize = cParms['gridSize']
 
-    xPos, yPos = readSpotPos(db, frameId)
-        
-    # get the reference positions
-    db=opdb.OpDB(hostname='db-ics', port=5432,dbname='opdb',
-                 username='pfs')
-
-    comm = f'select x_centroid_pix,y_centroid_pix from agc_data where agc_exposure_id={refFrame} and camera_id={agcid+1}'
-    query = db.bulkSelect('agc_data',comm)
-
-    xPos = query['x_centroid_pix'].values
-    yPos = query['y_centroid_pix'].values
+    # get the reference positions for this camera ?? check 0/1 counting
+    
+    agNo = cParms['refpos'].values
+    ind=np.where(agNo == agcid+1)
+    xPos = cParms['refpos']['centroid_x_pix'].values[ind]
+    yPos = cParms['refpos']['centroid_y_pix'].values[ind]
     
     # get region information for camera
     region = iParms[str(agcid + 1)]['reg']
