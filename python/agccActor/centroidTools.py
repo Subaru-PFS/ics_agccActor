@@ -8,6 +8,7 @@ from scipy.ndimage import gaussian_filter
 from scipy.integrate import dblquad
 from lmfit import Model
 import lmfit
+import dbRoutinesAGCC as dbTools
 
 
 def getCentroidParams(cmd):
@@ -31,8 +32,66 @@ def getCentroidParams(cmd):
         centParms['thresh']=float(cmd.cmd.keywords["thresh"].values[0])
     if('deblend' in cmdKeys):
         centParms['deblend']=float(cmd.cmd.keywords["deblend"].values[0])
-
+    if('refFrame' in cmdKeys):
+        centParms['refFrame']=int(float(cmd.cmd.keywords["refFrame"].values[0]))
+        
     return centParms
+
+
+def updateTemplate(cmd,centParms):
+
+    """
+    load a pair of model PSF templates
+    """
+
+    
+    #default value for unfocussed images
+    dZ="+0.58"
+
+
+    # we can choose a model from an explicitly given dZ
+    if('dz' in cmdKeys):
+        dZ=float(cmd.cmd.keywords["dz"].values[0])
+
+        #get the dZ value for the closest model.
+        #Negative and positive have different binning
+        #if the value is larger/smaller than range, set to the edge,
+
+        if(dZ > 0.98):
+            dZString = "+0.98"
+        elif(dZString < -0.9):
+            dZString = "-0.90"
+        elif(dZ > 0):
+            dZString=f'{round(dZ/0.02)*0.02:+.2f}'
+        else:
+            dZString=f'{round(dZ/0.2)*0.2:+.2f}'
+
+    fName=os.path.join(os.environ['PFS_INSTDATA_DIR'],'etc',f'dZ{dZString}0_SS0.70.fits')
+
+    templateR = fits.getdata(fName)[0:81,:]
+    templateL = fits.getdata(fName)[81:162,:]
+    self.cParms['templateR'] = templateR
+    self.cParms['templateL'] = templateL
+
+    #larger gridsize for very unfocused images
+    if(np.abs(dZ) > 0.4):
+        self.cParms['gridSize']=31
+    else:
+        self.cParms['gridSize']=21
+
+    return cParms,fName
+
+def loadTemplate(focus,seeing):
+    
+    templatePath = "/Users/karr/Science/Templates/"
+    fName = templatePath+"dZ"+focus+"_SS"+seeing+".fits"
+
+    templateR = fits.getdata(fName)[0:81,:]
+    templateL = fits.getdata(fName)[81:162,:]
+    #templateR = np.flipud(fits.getdata(fName)[0:81,:])
+    #templateL = np.flipud(fits.getdata(fName)[81:162,:])
+
+    return templateL, templateR   
 
 def getImageParams(cmd):
 
@@ -87,6 +146,93 @@ def centroidRegion(data, thresh, minarea=12, deblend = 0.5):
     spots = sep.extract(data, thresh, rms, minarea = minarea, deblend_cont=deblend)
 
     return spots,len(spots),background
+
+def getCentroidsTem(data,iParms,cParms,spotDtype,agcid):
+
+    """
+    runs centroiding for the sep routine and assigns the results
+    """
+
+    refFrame = cParms['refFrame']
+    templateL = cParms['templateL']
+    templateR = cParms['templateR']
+    gridSize = cParms['gridSize']
+
+    xPos, yPos = readSpotPos(db, frameId)
+        
+    # get the reference positions
+    db=opdb.OpDB(hostname='db-ics', port=5432,dbname='opdb',
+                 username='pfs')
+
+    comm = f'select x_centroid_pix,y_centroid_pix from agc_data where agc_exposure_id={refFrame} and camera_id={agcid+1}'
+    query = db.bulkSelect('agc_data',comm)
+
+    xPos = query['x_centroid_pix'].values
+    yPos = query['y_centroid_pix'].values
+    
+    # get region information for camera
+    region = iParms[str(agcid + 1)]['reg']
+    satValue = iParms['satVal']
+
+    # keep the original value of the data for determining saturation later
+    dataProc=subOverscan(data.astype('float'))
+    dataProc=interpBadCol(dataProc,iParms[str(agcid + 1)]['badCols'])
+
+    _data1 = dataProc[region[2]:region[3],region[0]:region[1]].astype('float', copy=True, order="C")
+    _data2 = dataProc[region[6]:region[7],region[4]:region[5]].astype('float', copy=True, order="C")
+    newData = dataProc.copy()
+    newData[region[2]:region[3],region[0]:region[1]]-=background1
+    newData[region[6]:region[7],region[4]:region[5]]-=background2
+
+
+    nElem = len(xPos)
+    result = np.zeros(nElem, dtype=spotDtype)
+
+    #first, get the new positions (also flags for saturation and position, and background position)
+    for k in range(len(xPos)):
+        xP = xPos[k]
+        yP = yPos[k]
+        if(xP <= 536):
+            newPos, pPos, pVal, sat = fitTemplate(templateL, newData, (xP,yP), gridSize)
+            result['background'][k] = background1[pPos[1]-region[2], pPos[0]-region[0]]
+
+            if(np.any([newPos[0]-2*fx < 0, newPos[1]+2*fx > (region[1]-region[0]),newPos[1]-2*fy < 0, newPos[1]+2*fy > (region[3]-region[2])],axis=0)):
+                result['flags'][k] += 2
+
+
+        else:
+            newPos, pPos, pVal, sat = fitTemplate(templateR, newData, (xP,yP), gridSize)
+            result['background'][k] = background2[pPos[1]-region[6], pPos[0]-region[4]]
+
+            results['flags'][k]+=1
+            if(np.any([newPos[0]-2*fx < 0, newPos[1]+2*fx > (region[5]-region[4]),newPos[1]-2*fy < 0, newPos[1]+2*fy > (region[7]-region[6])],axis=0)):
+                result['flags'][k] += 2
+
+        result['centroid_x_pix'][k]=newPos[0]
+        result['centroid_y_pix'][k]=newPos[1]
+        result['flags'][k] += sat
+        result['peak_pixel_x_pix'][k]=pPos[0]
+        result['peak_pixel_x_pix'][k]=pPos[1]
+        result['peak_intensity'] = pPos
+
+        # now the windowed second moments; need to think about what values when this doesn't converge??
+        xv,yv, xyv, conv = windowedFWHM(newData, newPos[0], newPos[1])
+        if(conv == 0):
+            result['image_central_moment_02_pix'][k]=xv
+            result['image_central_moment_20_pix'][k]=yv
+            result['image_central_moment_11_pix'][k]=xyv
+        else:
+            result['image_central_moment_02_pix'][k]=0
+            result['image_central_moment_20_pix'][k]=0
+            result['image_central_moment_11_pix'][k]=0
+        result['flags'][k] += conv
+            
+        # add flag for non converged sources
+        flags.append(conv)
+
+    #result['image_moment_00_pix'][nSpots1:nElem] = spots2['flux']
+    return result
+
     
 def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
@@ -99,6 +245,9 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     minarea=cParms['nmin']
     deblend=cParms['deblend']
 
+    xPos, yPos = readSpotPos(db, frameId)
+        
+
     # get region information for camera
     region = iParms[str(agcid + 1)]['reg']
     satValue = iParms['satVal']
@@ -107,14 +256,9 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     dataProc=subOverscan(data.astype('float'))
     dataProc=interpBadCol(dataProc,iParms[str(agcid + 1)]['badCols'])
 
-    
     _data1 = dataProc[region[2]:region[3],region[0]:region[1]].astype('float', copy=True, order="C")
     _data2 = dataProc[region[6]:region[7],region[4]:region[5]].astype('float', copy=True, order="C")
 
-    spots1, nSpots1, background1  = centroidRegion(_data1, thresh, minarea)
-    spots2, nSpots2, background2  = centroidRegion(_data2, thresh, minarea)
-
-    nElem = nSpots1 + nSpots2
 
     result = np.zeros(nElem, dtype=spotDtype)
 
@@ -423,11 +567,14 @@ def fitTemplate(template, data, starPos, gridSize=21):
     offset = np.array(np.unravel_index(sumVal.argmax(),(gridSize,gridSize)))-g2
 
     #and the corresponding new position
-    newPos = starPos + np.array([offset[1],offset[0]])
+    newPos = starPos - np.array([offset[1],offset[0]])
     
     # check for saturation
     if(dSub.max()==65535):
         sat=1
     else:
         sat=0
-    return newPos, sat
+
+    #position and value of the peak position
+    peakPix = np.unravel_index(dSub.argmax(),dSub.shape)+np.array([g2,g2])
+    return newPos, peakPix, dSub.max(),sat

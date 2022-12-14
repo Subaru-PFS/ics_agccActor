@@ -45,8 +45,10 @@ class AgccCmd(object):
             ('inusesequence', '<sequence>', self.inusesequence),
             ('inusecamera', '<camera>', self.inusecamera),
             ('insertVisit', '<visit>', self.insertVisit),
-            ('setCentroidParams','[<nmin>] [<thresh>] [<deblend>]',
+            ('setCentroidParams','[<nmin>] [<thresh>] [<deblend>] [<refFrame>]',
              self.setCentroidParams),
+            ('updateTemplate','[<dz>]', self.updateTemplate),
+            ('updateRefFrame','[<dz>]', self.updateRefFrame),
             ('setImageParams', '', self.setImageParams),
         ]
 
@@ -73,10 +75,13 @@ class AgccCmd(object):
                                         keys.Key("nmin", types.Int(), help="minimum number of points for sep"),
                                         keys.Key("thresh", types.Float(), help="threshhold for finding spots"),
                                         keys.Key("deblend", types.Float(), help="deblend_cont for sep"),
-                                        keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
+                                        keys.Key("dz", types.Float(), help="dZ for PSF template"),
+                                        keys.Key("refFrame", types.Int(), help="reference frame for fitting templates"),
+                                        keys.Key("cMethod", types.String(), help="method to use for centroiding (sep, template)"),
                                         )
         # initialize centroid parameters
         self.setCentroidParams(None)
+        self.updateTemplate(None)
 
 
     def ping(self, cmd):
@@ -392,6 +397,29 @@ class AgccCmd(object):
         cmd.respond('stat_cam%d="%s"' % (cam_id + 1, stat))
         cmd.finish()
 
+    def updateTemplate(self,cmd):
+
+        """
+        Load a specific PSF model template into the centroid parameters dictionary
+
+        At the moment, only the dZ is specified; an intermediate seeing value is used
+        """
+
+
+        self.cParms, fileName = ct.updateTemplate(cmd, self.cParms)
+        cmd.finish(f'text="retrieved new PSF models from file {fName}"')
+
+    def updateRefFrame(self,cmd):
+
+        if('refFrame' in cmdKeys):
+            refFrame=int(float(cmd.cmd.keywords["dz"].values[0]))
+            self.cParms['refFrame']=refFrame
+
+        if cmd is not None:
+            cmd.finish(f'text="updated reference agc_exposure_id to  = {refFrame}"')
+        
+        
+        
     def setCentroidParams(self, cmd):
 
         """
@@ -404,8 +432,9 @@ class AgccCmd(object):
         thresh = self.cParms['thresh'] 
         deblend = self.cParms['deblend'] 
         nmin = self.cParms['nmin']
+        refFrame = self.cParms['refFrame']
         if cmd is not None:
-            cmd.finish(f'text="centroid parameters set thresh/deblend/nmin = {thresh} {deblend} {nmin}"')
+            cmd.finish(f'text="centroid parameters set thresh/deblend/nmin/refFrame = {thresh} {deblend} {nmin} {refFrame}"')
 
     def setImageParams(self, cmd):
 
