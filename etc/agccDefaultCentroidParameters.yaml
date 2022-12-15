@@ -1,17 +1,116 @@
+dZ: 0
 definitions:
+  dZ: reference focus for template fitting
   deblend: deblend_cont for sep
+  gridSize: grid size for template fitting
   nmin: minimum number of points for a spot to be valid
-  refFrame: reference frame for template fitting
+  results: data structure for reference positions
   templateL: template for left side of image
   templateR: template for right side of image
   thresh: threshold for centroiding
+gridSize: 21
 values:
   deblend: 0.5
   nmin: 12
-  refFrame: 0
+  results: !!python/object/apply:numpy.core.multiarray._reconstruct
+    args:
+    - &id003 !!python/name:numpy.ndarray ''
+    - !!python/tuple
+      - 0
+    - !!binary |
+      Yg==
+    state: !!python/tuple
+    - 1
+    - !!python/tuple
+      - 0
+    - !!python/object/apply:numpy.dtype
+      args:
+      - V38
+      - false
+      - true
+      state: !!python/tuple
+      - 3
+      - '|'
+      - null
+      - !!python/tuple
+        - image_moment_00_pix
+        - centroid_x_pix
+        - centroid_y_pix
+        - central_image_moment_20_pix
+        - central_image_moment_11_pix
+        - central_image_moment_02_pix
+        - peak_pixel_x_pix
+        - peak_pixel_y_pix
+        - peak_intensity
+        - background
+        - flags
+      - background: !!python/tuple
+        - &id001 !!python/object/apply:numpy.dtype
+          args:
+          - f4
+          - false
+          - true
+          state: !!python/tuple
+          - 3
+          - <
+          - null
+          - null
+          - null
+          - -1
+          - -1
+          - 0
+        - 32
+        central_image_moment_02_pix: !!python/tuple
+        - *id001
+        - 20
+        central_image_moment_11_pix: !!python/tuple
+        - *id001
+        - 16
+        central_image_moment_20_pix: !!python/tuple
+        - *id001
+        - 12
+        centroid_x_pix: !!python/tuple
+        - *id001
+        - 4
+        centroid_y_pix: !!python/tuple
+        - *id001
+        - 8
+        flags: !!python/tuple
+        - &id002 !!python/object/apply:numpy.dtype
+          args:
+          - i2
+          - false
+          - true
+          state: !!python/tuple
+          - 3
+          - <
+          - null
+          - null
+          - null
+          - -1
+          - -1
+          - 0
+        - 36
+        image_moment_00_pix: !!python/tuple
+        - *id001
+        - 0
+        peak_intensity: !!python/tuple
+        - *id001
+        - 28
+        peak_pixel_x_pix: !!python/tuple
+        - *id002
+        - 24
+        peak_pixel_y_pix: !!python/tuple
+        - *id002
+        - 26
+      - 38
+      - 1
+      - 16
+    - false
+    - !!binary ""
   templateL: !!python/object/apply:numpy.core.multiarray._reconstruct
     args:
-    - &id001 !!python/name:numpy.ndarray ''
+    - *id003
     - !!python/tuple
       - 0
     - !!binary |
@@ -960,7 +1059,7 @@ values:
       PoXGFQCA9OM+hNQPLK3Z2T6EE+AXRRsePoOFHHYoEf0+gybWs7xldT6C9/KADwIL
   templateR: !!python/object/apply:numpy.core.multiarray._reconstruct
     args:
-    - *id001
+    - *id003
     - !!python/tuple
       - 0
     - !!binary |
