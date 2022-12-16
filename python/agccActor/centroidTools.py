@@ -107,14 +107,14 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     region = iParms[str(agcid + 1)]['reg']
     satValue = iParms['satVal']
 
-    newData = data.astype('float', copy=True)
+    dataProc=subOverscan(data.astype('float'))
+    dataProc=interpBadCol(dataProc,iParms[str(agcid + 1)]['badCols'])
     
     _data1 = dataProc[region[2]:region[3],region[0]:region[1]].astype('float', copy=True, order="C")
     _data2 = dataProc[region[6]:region[7],region[4]:region[5]].astype('float', copy=True, order="C")
 
     spots1, nSpots1, background1  = centroidRegion(_data1, thresh, minarea,deblend=deblend)
     spots2, nSpots2, background2  = centroidRegion(_data2, thresh, minarea,deblend=deblend)
-
 
     nElem = nSpots1 + nSpots2
 
