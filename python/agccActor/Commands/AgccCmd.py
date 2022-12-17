@@ -30,7 +30,7 @@ class AgccCmd(object):
             ('ping', '', self.ping),
             ('status', '', self.status),
             ('expose', '@(test|dark|object) [<visit>] [<exptime>] '
-                       '[<cameras>] [<combined>] [<centroid>] [<cMethod>]', self.expose),
+                       '[<cameras>] [<combined>] [<centroid>] [<cMethod>] [<ref>]', self.expose),
             ('abort', '[<cameras>]', self.abort),
             ('reconnect', '', self.reconnect),
             ('setframe', '[<cameras>] [<bx>] [<by>] <cx> <cy> <sx> <sy>', self.setframe),
@@ -47,6 +47,7 @@ class AgccCmd(object):
             ('insertVisit', '<visit>', self.insertVisit),
             ('setCentroidParams','[<nmin>] [<thresh>] [<deblend>]',
              self.setCentroidParams),
+            ('updateTemplate','[<dz>]', self.updateTemplate),
             ('setImageParams', '', self.setImageParams),
         ]
 
@@ -69,14 +70,17 @@ class AgccCmd(object):
                                         keys.Key("visit", types.Int(), help="pfs_visit_id assigned by IIC"),
                                         keys.Key("combined", types.Int(), help="0/1: multiple FITS files/single FITS file"),
                                         keys.Key("centroid", types.Int(), help="0/1: if 1 do centroid else don't"),
+                                        keys.Key("ref", types.Int(), help="0/1: if 1 update teh reference positions and focus for template fitting of PSFs"),
                                         keys.Key("fwhmx", types.Float(), help="X fwhm for centroid routine"),
                                         keys.Key("nmin", types.Int(), help="minimum number of points for sep"),
                                         keys.Key("thresh", types.Float(), help="threshhold for finding spots"),
                                         keys.Key("deblend", types.Float(), help="deblend_cont for sep"),
-                                        keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
+                                        keys.Key("dz", types.Float(), help="dZ for PSF template"),
+                                        keys.Key("cMethod", types.String(), help="method to use for centroiding (sep, template)"),
                                         )
         # initialize centroid parameters
         self.setCentroidParams(None)
+        self.updateTemplate(None)
 
 
     def ping(self, cmd):
@@ -149,6 +153,11 @@ class AgccCmd(object):
             if cmdKeys['centroid'].values[0] == 1:
                 centroid = True
 
+        ref = False
+        if 'ref' in cmdKeys:
+            if cmdKeys['ref'].values[0] == 1:
+                ref = True
+                
         # moved this to configurable option
         #self.setCentroidParams(cmd)
 
@@ -173,6 +182,16 @@ class AgccCmd(object):
             cmd.inform(f'text="found cameras: {cams}"')
         self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, visit, self.cParms, cMethod, self.iParms)
 
+        # if this is a reference image, update positions
+        if(ref == True):
+            db=opdb.OpDB(hostname='db-ics', port=5432,dbname='opdb',
+                        username='pfs')
+        
+            query = db.bulkSelect('agc_data','select * from agc_data where agc_exposure_id = {self.actor.camera.expose.nframe}')
+            self.cParms['refPos'] = query
+            query = db.bulkSelect('agc_exposure','select m2_pos3 from agc_exposure where agc_exposure_id = {self.actor.camera.expose.nframe}')
+            self.cParms['refFoc'] = query.values[0]
+            cmd.inform(f'text="updated reference positions and focus"')
 
     def abort(self, cmd):
         """Abort an exposure"""
@@ -392,6 +411,19 @@ class AgccCmd(object):
         cmd.respond('stat_cam%d="%s"' % (cam_id + 1, stat))
         cmd.finish()
 
+    def updateTemplate(self,cmd):
+
+        """
+        Load a specific PSF model template into the centroid parameters dictionary
+
+        At the moment, only the dZ is specified; an intermediate seeing value is used
+        """
+
+
+        self.cParms, fileName = ct.updateTemplate(cmd, self.cParms)
+        cmd.finish(f'text="retrieved new PSF models from file {fName}"')
+
+        
     def setCentroidParams(self, cmd):
 
         """
