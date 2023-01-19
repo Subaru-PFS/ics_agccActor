@@ -107,22 +107,14 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     region = iParms[str(agcid + 1)]['reg']
     satValue = iParms['satVal']
 
-    # keep the original value of the data for determining saturation later
     dataProc=subOverscan(data.astype('float'))
     dataProc=interpBadCol(dataProc,iParms[str(agcid + 1)]['badCols'])
-
-
-    spots1, nSpots1, background1 = centroidRegion(_data1, thresh, minarea=minarea, deblend=deblend)
-    spots2, nSpots2, background2 = centroidRegion(_data2, thresh, minarea=minarea, deblend=deblend)
-
-    newData = data.astype('float', copy=True)
     
     _data1 = dataProc[region[2]:region[3],region[0]:region[1]].astype('float', copy=True, order="C")
     _data2 = dataProc[region[6]:region[7],region[4]:region[5]].astype('float', copy=True, order="C")
 
-    spots1, nSpots1, background1  = centroidRegion(_data1, thresh, minareadeblend=deblend)
-    spots2, nSpots2, background2  = centroidRegion(_data2, thresh, minareadeblend=deblend)
-
+    spots1, nSpots1, background1  = centroidRegion(_data1, thresh, minarea,deblend=deblend)
+    spots2, nSpots2, background2  = centroidRegion(_data2, thresh, minarea,deblend=deblend)
 
     nElem = nSpots1 + nSpots2
 
@@ -392,39 +384,3 @@ def gaussian(x, xC, yC, fX, fY, a, b):
     return val
   
 
-
-
-def windowedFWHM(data,xPos,yPos,gSize):
-
-
-    dMinX = int(xPos - boxsize)
-    dMaxX = int(xPos + boxsize + 1)
-    dMinY = int(yPos - boxsize)
-    dMaxY = int(yPos + boxsize + 1)
-    
-    winVal = data[dMinX:dMaxX,dMinY:dMaxY)
-
-    xVal = np.arange(-boxSize,boxSize+1)
-
-    xv,yv = np.meshgrid(xVal,xVal)
-
-    r2 = xv*xv+yv*yv
-
-    s2 = gSize**2 / (8*np.log(2))
-
-    w = np.exp(-r2/(2*s2))
-    
-    vx = (winVal * w + (xv-xPos)**2).sum()/(winVal * w).sum()
-    vy = (winVal * w + (yv-yPos)**2).sum()/(winVal * w).sum()
-    
-
-    return xv,yv
-
-def gaussian(x, xC, yC, fX, fY, a, b):
-
-
-    xx = x[:, 0]
-    yy = x[:, 1]
-    val=a*np.exp(-(xx-xC)**2 / (2*fX**2)-(yy-yC)**2 / (2*fY**2))+b
-    return val
-    
