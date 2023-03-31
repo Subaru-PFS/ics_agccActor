@@ -21,13 +21,13 @@ def getCentroidParams(cmd):
     except:
         cmdKeys=[]
         
-    fileName=os.path.join(os.environ['ICS_AGCCACTOR_DIR'],'etc','agccDefaultCentroidParameters.yaml')
+    fileName=os.path.join(os.environ['PFS_INSTDATA_DIR'],'config/actors','agcc.yaml')
 
     with open(fileName, 'r') as inFile:
         defaultParms=yaml.safe_load(inFile)
     
     #returns just the values dictionary
-    centParms = defaultParms['values']
+    centParms = defaultParms['agcc']['centroidParams']
 
     if('nmin' in cmdKeys):
         centParms['nmin']=int(cmd.cmd.keywords["nmin"].values[0])
@@ -45,12 +45,12 @@ def getImageParams(cmd):
     except:
         cmdKeys=[]
         
-    fileName=os.path.join(os.environ['ICS_AGCCACTOR_DIR'],'etc','agcCamParm.yaml')
+    fileName=os.path.join(os.environ['$PFS_INSTDATA_DIR'],'config/actors','agcc.yaml')
 
     with open(fileName, 'r') as inFile:
         imageParms=yaml.safe_load(inFile)
 
-    return imageParms
+    return imageParms['agcc']['cameraParams']
 
 def interpBadCol(data,badCols):
 
