@@ -3,7 +3,8 @@ from setmode import SetMode
 from sequence import Sequence, SEQ_IDLE, SEQ_RUNNING, SEQ_ABORT
 import writeFits
 import photometry
-import os
+import os, logging
+
 
 nCams = 6
 
@@ -13,11 +14,15 @@ class Camera(object):
     def __init__(self, config):
         """ connect to AG cameras """
 
-        simulator = int(config.get('agcc', 'simulator'))
+        self.logger = logging.getLogger('agcc')
+
+        simulator = config['simulator']
         self.cams = [None, None, None, None, None, None]
         self.seq_stat = [SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE]
         self.seq_count = [0, 0, 0, 0, 0, 0]
-        temp = float(config.get('agcc', 'temperature'))
+        temp = config['temperature']
+
+        self.logger.info(f'Setting TEC to {temp}.')
 
         if simulator == 0:
             import fli_camera
@@ -27,7 +32,7 @@ class Camera(object):
                 cam = fli_camera.Camera(n)
                 cam.open()
                 for k in range(nCams):
-                    if cam.devsn == config.get('agcc', 'cam' + str(k + 1)):
+                    if cam.devsn == config['cam' + str(k + 1)]:
                         self.cams[k] = cam
                         cam.agcid = k
                         cam.setTemperature(temp)
@@ -40,14 +45,14 @@ class Camera(object):
             from fli import fake_camera
 
             self.numberOfCamera = fake_camera.numberOfCamera()
-            simImagePath = config.get('agcc', 'simulatedImagePath')
+            simImagePath = config['simulatedImagePath']
             if len(simImagePath) == 0:
                 simImagePath = None
             else:
                 simImagePath = os.path.expandvars(simImagePath)
 
             for n in range(self.numberOfCamera):
-                devsn = config.get('agcc', 'cam' + str(n + 1))
+                devsn = config['cam' + str(k + 1)]
                 cam = fake_camera.Camera(n, devsn, simImagePath)
                 cam.open()
                 self.cams[n] = cam
