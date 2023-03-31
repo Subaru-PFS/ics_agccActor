@@ -13,10 +13,12 @@ class AgccActor(Actor):
                        configFile=configFile,
                        modelNames=("gen2"))
 
+        print(f'   actorConfig: {self.actorConfig}')
+
         # We will actually use a allocator with "global" sequencing
         self.exposureID = 0
         
-        self.connectCamera(self.bcast, self.config)
+        self.connectCamera(self.bcast, self.actorConfig)
         
     def connectCamera(self, cmd, config, doFinish=True):
         reload(camera)
