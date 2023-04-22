@@ -52,7 +52,7 @@ class Camera(object):
                 simImagePath = os.path.expandvars(simImagePath)
 
             for n in range(self.numberOfCamera):
-                devsn = config['cam' + str(k + 1)]
+                devsn = config['cam' + str(n + 1)]
                 cam = fake_camera.Camera(n, devsn, simImagePath)
                 cam.open()
                 self.cams[n] = cam
