@@ -16,12 +16,16 @@ import lmfit
 
 def getCentroidParams(cmd):
 
+    """
+    read in the centroiding parameters from config file
+    """
+
     try:
         cmdKeys=cmd.cmd.keywords
     except:
         cmdKeys=[]
         
-    fileName=os.path.join(os.environ['PFS_INSTDATA_DIR'],'config/actors','agcc.yaml')
+    fileName=os.path.join(os.environ['$PFS_INSTDATA_DIR'],'config/actors','agcc.yaml')
 
     with open(fileName, 'r') as inFile:
         defaultParms=yaml.safe_load(inFile)
@@ -39,6 +43,10 @@ def getCentroidParams(cmd):
     return centParms
 
 def getImageParams(cmd):
+
+    """
+    read in instrumental parameters from config file
+    """
 
     try:
         cmdKeys=cmd.cmd.keywords
@@ -81,6 +89,10 @@ def subOverscan(data):
     return data
 
 def centroidRegion(data, thresh, minarea=12, deblend = 0.5):
+
+    """
+    wrapper that subtract the background and calls the centroiding
+    """
     
     # determine the background
     bgClass = sep.Background(data)
@@ -219,6 +231,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['central_image_moment_02_pix']=np.array(m02)
     result['central_image_moment_11_pix']=np.array(m11)
     result['flags'] = result['flags']+np.array(flags)
+    result['estimated_magnitude'] = calculateApproximateMagnitude(iParms,result['image_moment_00_pix'])
 
     return result
 
@@ -374,9 +387,11 @@ def fittedFWHM(data, xPos, yPos):
     return fitResult.best_values['fX'], fitResult.best_values['fY']
 
 
-
 def gaussian(x, xC, yC, fX, fY, a, b):
 
+    """
+    2D gaussian functino for fit s
+    """
 
     xx = x[:, 0]
     yy = x[:, 1]
@@ -384,3 +399,16 @@ def gaussian(x, xC, yC, fX, fY, a, b):
     return val
   
 
+def calculateApproximateMagnitude(iParms,instrumentFlux):
+
+    """
+    empirical function for gaia magnitudes
+    """
+
+    mag = np.log10(instrumentFlux)*iParms['magFit'][0]+iParms['magFit'][1]
+
+    return mag
+
+
+
+    

@@ -108,9 +108,9 @@ def writeCentroidsToDB(result,visitId,exposureId,cameraId):
 
     # this bit is in case the database column names change, so we can remap them without having to alter the rest of the code
     
-    dbHeaders=['image_moment_00_pix','centroid_x_pix','centroid_y_pix','central_image_moment_20_pix','central_image_moment_11_pix','central_image_moment_02_pix','peak_pixel_x_pix','peak_pixel_y_pix','peak_intensity','background','flags']
+    dbHeaders=['image_moment_00_pix','centroid_x_pix','centroid_y_pix','central_image_moment_20_pix','central_image_moment_11_pix','central_image_moment_02_pix','peak_pixel_x_pix','peak_pixel_y_pix','peak_intensity','background','estimated_magnitude', 'flags']
 
-    recHeaders=['image_moment_00_pix','centroid_x_pix','centroid_y_pix','central_image_moment_20_pix','central_image_moment_11_pix','central_image_moment_02_pix','peak_pixel_x_pix','peak_pixel_y_pix','peak_intensity','background','flags']
+    recHeaders=['image_moment_00_pix','centroid_x_pix','centroid_y_pix','central_image_moment_20_pix','central_image_moment_11_pix','central_image_moment_02_pix','peak_pixel_x_pix','peak_pixel_y_pix','peak_intensity','background','estimated_magnitude', 'flags']
 
 
     for n1,n2 in zip(dbHeaders,recHeaders):
