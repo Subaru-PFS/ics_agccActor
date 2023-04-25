@@ -142,7 +142,7 @@ class Exposure(threading.Thread):
                 dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
                 if self.cmd:
                     self.cmd.inform('text="wrote centroids to database"')
-                    aa=spots['esimated_magnitude']
+                    aa=spots['estimated_magnitude']
                     self.cmd.inform(f'text="estimated mags = {aa}"')
                     
                 if self.cmd:
