@@ -76,6 +76,15 @@ class Camera(object):
                 cams.append(n)
         return cams
 
+    def reportTEC(self, cmd):
+        """Return the AG temperature  """
+        cmd.inform('text="Number of AG cameras = %d"' % self.numberOfCamera)
+        for n in range(nCams):
+            tempstr = '%5.1f' % self.cams[n].getTemperature()
+            cmd.inform('text="[%d] %s SN=%s status=%s temp=%s"'
+                    % (n + 1, self.cams[n].devname, self.cams[n].devsn,
+                           self.cams[n].getStatusStr(), tempstr))
+
     def sendStatusKeys(self, cmd):
         """ Send our status keys to the given command. """ 
 
