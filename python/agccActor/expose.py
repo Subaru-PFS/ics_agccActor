@@ -140,7 +140,11 @@ class Exposure(threading.Thread):
 
 
                 dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
-                
+                if self.cmd:
+                    self.cmd.inform('text="wrote centroids to database"')
+                    aa=spots['esimated_magnitudes']
+                    self.cmd.inform('text="estimated mags = {aa}"')
+                    
                 if self.cmd:
                     self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))
             else:
