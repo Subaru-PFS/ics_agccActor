@@ -157,7 +157,11 @@ class AgccCmd(object):
             cMethod = cmdKeys['cMethod'].values[0]
 
         self.setImageParams(cmd)
-            
+
+        magFit = self.iParms['magfit']
+        cmd.inform('text="read magFit = {magFit}"')
+
+           
         cams = []
         if 'cameras' in cmdKeys:
             camList = cmdKeys['cameras'].values[0]
