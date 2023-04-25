@@ -158,7 +158,7 @@ class AgccCmd(object):
 
         self.setImageParams(cmd)
 
-        magFit = self.iParms['magfit']
+        magFit = self.iParms['magFit']
         cmd.inform('text="read magFit = {magFit}"')
 
            
@@ -173,7 +173,7 @@ class AgccCmd(object):
                     return
                 cams.append(k)
         else:
-            cams = self.actor.camera.runningCameras()
+            cams = self.actor.camera.runningCameras() 
             cmd.inform(f'text="found cameras: {cams}"')
         # Report TEC before taking exposure
         self.actor.camera.reportTEC(cmd)
