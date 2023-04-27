@@ -117,14 +117,14 @@ def writeCentroidsToDB(result,visitId,exposureId,cameraId):
 
     recHeaders=['image_moment_00_pix','centroid_x_pix','centroid_y_pix','central_image_moment_20_pix','central_image_moment_11_pix','central_image_moment_02_pix','peak_pixel_x_pix','peak_pixel_y_pix','peak_intensity','background','estimated_magnitude', 'flags']
 
-    logger.INFO(f"Table is prepared and estimated Gaia mag = {df['estimated_magnitude']}")
+    logger.info(f"Table is prepared and estimated Gaia mag = {df['estimated_magnitude']}")
 
     for n1,n2 in zip(dbHeaders,recHeaders):
         if(n1 != n2):
             df=df.rename(columns={n2:n1})
 
     try:
-        db.insert("agc_data",df)
+        db.bulkInsert("agc_data",df)
     except:
         raise RuntimeError("Could not write to databse")
     
