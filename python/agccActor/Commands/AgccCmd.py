@@ -159,7 +159,7 @@ class AgccCmd(object):
         self.setImageParams(cmd)
 
         magFit = self.iParms['magFit']
-        cmd.inform('text="read magFit = {magFit}"')
+        cmd.inform(f'text="read magFit = {magFit}"')
 
            
         cams = []
