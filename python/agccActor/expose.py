@@ -137,16 +137,23 @@ class Exposure(threading.Thread):
                 else:
                     spots = photometry.measure(cam.data,cam.agcid,self.cParms,self.iParms,self.cMethod)
                 cam.spots = spots
-
-
-                dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
-                if self.cmd:
-                    self.cmd.inform('text="wrote centroids to database"')
-                    aa=spots['estimated_magnitude']
-                    self.cmd.inform(f'text="estimated mags = {aa}"')
-                    
+                
                 if self.cmd:
                     self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))
+                
+                # Writing to database when spot number is larger than zero
+                if len(spots) > 0:
+                    if self.cmd:
+                        self.cmd.inform('text="wrote centroids to database"')
+                        aa=spots['estimated_magnitude']
+                        self.cmd.inform(f'text="estimated mags = {aa}"')
+                        
+                    dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
+                else:
+                    self.cmd.inform('text="find %d objects, skipping DB writing"' % (len(spots)))
+                
+
+                
             else:
                 cam.spots = None
             if not self.combined:

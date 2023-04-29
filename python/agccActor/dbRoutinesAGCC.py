@@ -89,7 +89,7 @@ def writeCentroidsToDB(result,visitId,exposureId,cameraId):
     """
     import logging
 
-    logger = logging.getLogger('cobraCoach')
+    logger = logging.getLogger('agcc')
     logger.setLevel(logging.INFO)
     
     sz=result.shape
@@ -108,49 +108,28 @@ def writeCentroidsToDB(result,visitId,exposureId,cameraId):
     df['agc_camera_id']=cameraIds
     df['spot_id']=np.arange(0,sz[0]).astype('int')
 
-
-    logger.info(f"Table is prepared and estimated Gaia mag = {df['estimated_magnitude'].values}")
+    logger.info(f"Table is prepared.")
 
     db = psycopg2.connect(host='db-ics', dbname='opdb', user='pfs')
     
-    dbString = f"""
-        INSERT INTO agc_data (agc_exposure_id, agc_camera_id, spot_id, image_moment_00_pix, 
+    dbString = f'''INSERT INTO agc_data (agc_exposure_id, agc_camera_id, spot_id, image_moment_00_pix, 
         centroid_x_pix, centroid_y_pix, central_image_moment_20_pix,central_image_moment_11_pix,
         central_image_moment_02_pix,peak_pixel_x_pix, peak_pixel_y_pix, peak_intensity, background,
-        estimated_magnitude, flags)  
-        VALUES 
-        """
-
-    valueString = []
-    for i in range(sz[0]):
-        valueString = f"""{valueString},
-            (
-            {df['agc_exposure_id'].values[i]}, {df['agc_camera_id'].values[i]}, {df['spot_id'].values[i]}, {df['image_moment_00_pix'].values[i]}, 
-            {df['centroid_x_pix'].values[i]}, {df['centroid_y_pix'].values[i]},
-            {df['central_image_moment_20_pix'].values[i]}, 
-            {df['central_image_moment_11_pix'].values[i]},
-            {df['central_image_moment_02_pix'].values[i]}, 
-            {df['peak_pixel_x_pix'].values[i]}, 
-            {df['peak_pixel_y_pix'].values[i]}, 
-            {df['peak_intensity'].values[i]}, {df['background'].values[i]},
-            {df['estimated_magnitude'].values[i]}, {df['flags'].values[i]})
-        """
-    cmdString = f'{dbString}{valueString}'
-
-    with db as conn:
-        with conn.cursor() as curs:
-            curs.execute(cmdString)
-
-
-    #for n1,n2 in zip(dbHeaders,recHeaders):
-    #    if(n1 != n2):
-    #        df=df.rename(columns={n2:n1})
-
-    #try:
-    #    db.insert("agc_data",df)
-    #except:
-    #    raise RuntimeError("Could not write to databse")
+        estimated_magnitude, flags)  VALUES'''
     
-    #pd.set_option('display.max_columns', None)
-    #pd.set_option('display.width', None)
-    #print("agc_data", df)
+
+    for i in range(sz[0]):
+        cmdString = f"""{dbString}({df['agc_exposure_id'].values[i]}, {df['agc_camera_id'].values[i]}, {df['spot_id'].values[i]}, 
+            {df['image_moment_00_pix'].values[i]}, {df['centroid_x_pix'].values[i]}, {df['centroid_y_pix'].values[i]},
+            {df['central_image_moment_20_pix'].values[i]}, {df['central_image_moment_11_pix'].values[i]},
+            {df['central_image_moment_02_pix'].values[i]}, 
+            {df['peak_pixel_x_pix'].values[i]}, {df['peak_pixel_y_pix'].values[i]}, 
+            {df['peak_intensity'].values[i]}, {df['background'].values[i]},
+            {df['estimated_magnitude'].values[i]}, {df['flags'].values[i]})"""
+    
+
+        logger.info(f'{cmdString}')
+    
+        with db as conn:
+            with conn.cursor() as curs:
+                curs.execute(cmdString)
