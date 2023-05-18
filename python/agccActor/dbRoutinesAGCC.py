@@ -51,13 +51,14 @@ def writeExposureToDB(visitId,exposureId, exptime):
 
     # Getting telescope information
     teleInfo = db.bulkSelect('tel_status','select pfs_visit_id, altitude, azimuth, insrot, adc_pa, m2_pos3 FROM tel_status '
-                        f'ORDER BY pfs_visit_id DESC limit 1')
+                        f'WHERE pfs_visit_id  = {visitId} ORDER BY pfs_visit_id DESC limit 1')
 
     obsCond = db.bulkSelect('env_condition','select pfs_visit_id, outside_temperature, outside_pressure, outside_humidity '
-                        f' FROM env_condition ORDER BY pfs_visit_id DESC limit 1')
+                        f' FROM env_condition WHERE pfs_visit_id  = {visitId} ORDER BY pfs_visit_id DESC limit 1')
 
     df = pd.DataFrame({'pfs_visit_id': visitId, 
                     'agc_exposure_id': exposureId,
+                    'agc_exptime': exptime,
                     'altitude': teleInfo['altitude'],
                     'azimuth': teleInfo['azimuth'],
                     'insrot': teleInfo['insrot'],

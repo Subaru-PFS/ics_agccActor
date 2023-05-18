@@ -177,6 +177,7 @@ class AgccCmd(object):
             cmd.inform(f'text="found cameras: {cams}"')
         # Report TEC before taking exposure
         self.actor.camera.reportTEC(cmd)
+        cmd.inform(f'text="pfs_visit_id: {visit}"')
         self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, visit, self.cParms, cMethod, self.iParms)
 
 
