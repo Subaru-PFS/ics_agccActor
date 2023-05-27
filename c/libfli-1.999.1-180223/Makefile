@@ -72,15 +72,17 @@ FILT	= libfli-filter-focuser.o
 
 ALLOBJ	= $(SYS) $(DEBUG) $(MEM) $(IO) $(CAM) $(FILT)
 
+all: libfli.a flilist
+
 libfli.a: libfli.o $(ALLOBJ)
 	$(AR) $(ARFLAGS) $@ $^ 
 
-fliexposure.o : fliexposure.c
+flilist.o : flilist.c
 	@echo $(CC) $(CFLAGS) -std=c99 -c $< $(LOGOUT)
 	@$(CC) $(CFLAGS) -c -std=c99 $< $(LOGOUT)
 	@$(SHOWOUT)
 
-fliexposure: fliexposure.o libfli-usb.o libfli-usb-sys.o
+flilist: flilist.o libfli-usb.o libfli-usb-sys.o
 	@echo @$(CC) -o $@ $^ $(LDLIBS)
 	@$(CC) -o $@ $^ $(LDLIBS)
 	@$(SHOWOUT)
