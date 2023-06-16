@@ -30,7 +30,7 @@ class AgccCmd(object):
             ('ping', '', self.ping),
             ('status', '', self.status),
             ('expose', '@(test|dark|object) [<visit>] [<exptime>] '
-                       '[<cameras>] [<combined>] [<centroid>] [<cMethod>]', self.expose),
+                       '[<cameras>] [<combined>] [<centroid>] [<cMethod>] [<threadDelay>]', self.expose),
             ('abort', '[<cameras>]', self.abort),
             ('reconnect', '', self.reconnect),
             ('setframe', '[<cameras>] [<bx>] [<by>] <cx> <cy> <sx> <sy>', self.setframe),
@@ -69,6 +69,7 @@ class AgccCmd(object):
                                         keys.Key("visit", types.Int(), help="pfs_visit_id assigned by IIC"),
                                         keys.Key("combined", types.Int(), help="0/1: multiple FITS files/single FITS file"),
                                         keys.Key("centroid", types.Int(), help="0/1: if 1 do centroid else don't"),
+                                        keys.Key("threadDelay", types.Float(), help="Time of delay when executing exposure threading"),
                                         keys.Key("fwhmx", types.Float(), help="X fwhm for centroid routine"),
                                         keys.Key("nmin", types.Int(), help="minimum number of points for sep"),
                                         keys.Key("thresh", types.Float(), help="threshhold for finding spots"),
@@ -156,6 +157,14 @@ class AgccCmd(object):
         if 'cMethod' in cmdKeys:
             cMethod = cmdKeys['cMethod'].values[0]
 
+        if 'threadDelay' in cmdKeys:
+            threadDelay = cmdKeys['threadDelay'].values[0]
+        else:
+            threadDelay = 0.0
+
+        cmd.inform(f'text="Setting threading delay of {threadDelay} ms"')            
+
+
         self.setImageParams(cmd)
 
         magFit = self.iParms['magFit']
@@ -178,7 +187,8 @@ class AgccCmd(object):
         # Report TEC before taking exposure
         self.actor.camera.reportTEC(cmd)
         cmd.inform(f'text="pfs_visit_id: {visit}"')
-        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, visit, self.cParms, cMethod, self.iParms)
+        self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, visit, 
+                                 self.cParms, cMethod, self.iParms, threadDelay=threadDelay)
 
 
     def abort(self, cmd):

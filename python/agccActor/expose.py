@@ -12,7 +12,9 @@ class Exposure(threading.Thread):
     exp_lock = threading.Lock()
     n_busy = 0
 
-    def __init__(self, cams, expTime_ms, dflag, cParms, iParms, visitId, cMethod, cmd = None, combined = False, centroid = False, seq_id = -1):
+    def __init__(self, cams, expTime_ms, dflag, cParms, iParms, visitId, cMethod, 
+                 cmd = None, combined = False, centroid = False, seq_id = -1, threadDelay=None):
+        
         """ Run exposure command
 
         Args:
@@ -42,6 +44,13 @@ class Exposure(threading.Thread):
         self.iParms = iParms
         self.seq_id = seq_id
         self.cMethod = cMethod
+
+
+        # setting defalut time delay before next exposure thread.
+        if threadDelay is None:
+            self.timeDelay = 0.0
+        else:
+            self.timeDelay = threadDelay/1000
 
         # Getting last entry of agc_exposure_id from DB
         db=opdb.OpDB(hostname='db-ics', port=5432,dbname='opdb',
@@ -89,6 +98,8 @@ class Exposure(threading.Thread):
 
         thrs = []
         for cam in self.cams:
+            self.cmd.inform(f'text="Applying time delay of {self.timeDelay} second on Cam {cam.devsn}"')
+            time.sleep(self.timeDelay)
             thr = threading.Thread(target=self.expose_thr, args=(cam,))
             thr.start()
             thrs.append(thr)
@@ -151,10 +162,10 @@ class Exposure(threading.Thread):
                     dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
                 else:
                     self.cmd.inform('text="find %d objects, skipping DB writing"' % (len(spots)))
-                
-
-                
+              
             else:
                 cam.spots = None
             if not self.combined:
                 writeFits.wfits(self.cmd, self.visitId, cam, self.nframe)
+        
+        
