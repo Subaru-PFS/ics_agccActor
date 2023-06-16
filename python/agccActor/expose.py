@@ -98,7 +98,7 @@ class Exposure(threading.Thread):
 
         thrs = []
         for cam in self.cams:
-            self.cmd.inform(f'text="Applying time delay of {self.timeDelay} on Cam {cam}"')
+            self.cmd.inform(f'text="Applying time delay of {self.timeDelay} second on Cam {cam.devsn}"')
             time.sleep(self.timeDelay)
             thr = threading.Thread(target=self.expose_thr, args=(cam,))
             thr.start()
