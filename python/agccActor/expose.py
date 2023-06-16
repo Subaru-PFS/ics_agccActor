@@ -93,6 +93,8 @@ class Exposure(threading.Thread):
 
         thrs = []
         for cam in self.cams:
+            self.cmd.inform(f'text="Applying time delay of {self.timeDelay} on Cam {cam}"')
+            time.sleep(self.timeDelay)
             thr = threading.Thread(target=self.expose_thr, args=(cam,))
             thr.start()
             thrs.append(thr)
@@ -161,5 +163,4 @@ class Exposure(threading.Thread):
             if not self.combined:
                 writeFits.wfits(self.cmd, self.visitId, cam, self.nframe)
         
-        self.cmd.inform(f'text="Applying time delay of {self.timeDelay}"')
-        time.sleep(self.timeDelay)
+        
