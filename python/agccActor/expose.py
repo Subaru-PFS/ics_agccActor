@@ -12,7 +12,9 @@ class Exposure(threading.Thread):
     exp_lock = threading.Lock()
     n_busy = 0
 
-    def __init__(self, cams, expTime_ms, dflag, cParms, iParms, visitId, cMethod, cmd = None, combined = False, centroid = False, seq_id = -1):
+    def __init__(self, cams, expTime_ms, dflag, cParms, iParms, visitId, cMethod, 
+                 cmd = None, combined = False, centroid = False, seq_id = -1, threadDelay=None):
+        
         """ Run exposure command
 
         Args:
@@ -45,7 +47,10 @@ class Exposure(threading.Thread):
 
 
         # setting defalut time delay before next exposure thread.
-        self.timeDelay = 0.1
+        if threadDelay is None:
+            self.timeDelay = 0.0
+        else:
+            self.timeDelay = threadDelay/1000
 
         # Getting last entry of agc_exposure_id from DB
         db=opdb.OpDB(hostname='db-ics', port=5432,dbname='opdb',
