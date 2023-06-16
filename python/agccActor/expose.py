@@ -43,6 +43,10 @@ class Exposure(threading.Thread):
         self.seq_id = seq_id
         self.cMethod = cMethod
 
+
+        # setting defalut time delay before next exposure thread.
+        self.timeDelay = 0.1
+
         # Getting last entry of agc_exposure_id from DB
         db=opdb.OpDB(hostname='db-ics', port=5432,dbname='opdb',
                         username='pfs')
@@ -151,10 +155,11 @@ class Exposure(threading.Thread):
                     dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
                 else:
                     self.cmd.inform('text="find %d objects, skipping DB writing"' % (len(spots)))
-                
-
-                
+              
             else:
                 cam.spots = None
             if not self.combined:
                 writeFits.wfits(self.cmd, self.visitId, cam, self.nframe)
+        
+        self.cmd.inform(f'text="Applying time delay of {self.timeDelay}"')
+        time.sleep(self.timeDelay)
