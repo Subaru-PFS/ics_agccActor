@@ -13,7 +13,8 @@ class Exposure(threading.Thread):
     n_busy = 0
 
     def __init__(self, cams, expTime_ms, dflag, cParms, iParms, visitId, cMethod, 
-                 cmd = None, combined = False, centroid = False, seq_id = -1, threadDelay=None):
+                 cmd = None, combined = False, centroid = False, seq_id = -1, 
+                 threadDelay=None, tecOFF=False):
         
         """ Run exposure command
 
@@ -45,6 +46,10 @@ class Exposure(threading.Thread):
         self.seq_id = seq_id
         self.cMethod = cMethod
 
+        if tecOFF = True:
+            self.tecOFF = True
+        else:
+            self.tecOFF = False
 
         # setting defalut time delay before next exposure thread.
         if threadDelay is None:
@@ -100,6 +105,11 @@ class Exposure(threading.Thread):
         for cam in self.cams:
             self.cmd.inform(f'text="Applying time delay of {self.timeDelay} second on Cam {cam.devsn}"')
             time.sleep(self.timeDelay)
+            
+            if self.tecOFF is True:
+                self.cmd.inform(f'text="Turing off TEC by setting to 30C on Cam {cam.devsn}"')
+                cam.settemperature(30)
+
             thr = threading.Thread(target=self.expose_thr, args=(cam,))
             thr.start()
             thrs.append(thr)
