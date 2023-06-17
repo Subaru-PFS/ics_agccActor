@@ -46,7 +46,9 @@ class Exposure(threading.Thread):
         self.seq_id = seq_id
         self.cMethod = cMethod
 
-        if tecOFF = True:
+        self.tecOFFtemp = 20
+
+        if tecOFF is True:
             self.tecOFF = True
         else:
             self.tecOFF = False
@@ -107,8 +109,11 @@ class Exposure(threading.Thread):
             time.sleep(self.timeDelay)
             
             if self.tecOFF is True:
-                self.cmd.inform(f'text="Turing off TEC by setting to 30C on Cam {cam.devsn}"')
-                cam.settemperature(30)
+                targetTemp = cam.temp
+                self.cmd.inform(f'text="AGCC sets CCD temp = {targetTemp}"')
+
+                self.cmd.inform(f'text="Turing off TEC by setting to {self.tecOFFtemp}C on Cam {cam.devsn}"')
+                cam.setTemperature(self.tecOFFtemp)
 
             thr = threading.Thread(target=self.expose_thr, args=(cam,))
             thr.start()
@@ -125,6 +130,16 @@ class Exposure(threading.Thread):
 
         if self.combined and self.cams[0].getTotalTime() > 0:
             writeFits.wfits_combined(self.cmd, self.visitId, self.cams, self.nframe, self.seq_id)
+        
+        
+        if self.tecOFF is True:
+            '''
+                Turning TEC on!
+            '''
+            for cam in self.cams:
+                self.cmd.inform(f'text="Turing on TEC to {targetTemp}C"')
+                cam.setTemperature(targetTemp)
+        
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
 
