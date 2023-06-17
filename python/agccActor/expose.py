@@ -13,7 +13,8 @@ class Exposure(threading.Thread):
     n_busy = 0
 
     def __init__(self, cams, expTime_ms, dflag, cParms, iParms, visitId, cMethod, 
-                 cmd = None, combined = False, centroid = False, seq_id = -1, threadDelay=None):
+                 cmd = None, combined = False, centroid = False, seq_id = -1, 
+                 threadDelay=None, tecOFF=False):
         
         """ Run exposure command
 
@@ -45,6 +46,12 @@ class Exposure(threading.Thread):
         self.seq_id = seq_id
         self.cMethod = cMethod
 
+        self.tecOFFtemp = 20
+
+        if tecOFF is True:
+            self.tecOFF = True
+        else:
+            self.tecOFF = False
 
         # setting defalut time delay before next exposure thread.
         if threadDelay is None:
@@ -100,6 +107,14 @@ class Exposure(threading.Thread):
         for cam in self.cams:
             self.cmd.inform(f'text="Applying time delay of {self.timeDelay} second on Cam {cam.devsn}"')
             time.sleep(self.timeDelay)
+            
+            if self.tecOFF is True:
+                targetTemp = cam.temp
+                self.cmd.inform(f'text="AGCC sets CCD temp = {targetTemp}"')
+
+                self.cmd.inform(f'text="Turing off TEC by setting to {self.tecOFFtemp}C on Cam {cam.devsn}"')
+                cam.setTemperature(self.tecOFFtemp)
+
             thr = threading.Thread(target=self.expose_thr, args=(cam,))
             thr.start()
             thrs.append(thr)
@@ -115,6 +130,16 @@ class Exposure(threading.Thread):
 
         if self.combined and self.cams[0].getTotalTime() > 0:
             writeFits.wfits_combined(self.cmd, self.visitId, self.cams, self.nframe, self.seq_id)
+        
+        
+        if self.tecOFF is True:
+            '''
+                Turning TEC on!
+            '''
+            for cam in self.cams:
+                self.cmd.inform(f'text="Turing on TEC to {targetTemp}C"')
+                cam.setTemperature(targetTemp)
+        
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
 

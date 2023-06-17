@@ -30,7 +30,8 @@ class AgccCmd(object):
             ('ping', '', self.ping),
             ('status', '', self.status),
             ('expose', '@(test|dark|object) [<visit>] [<exptime>] '
-                       '[<cameras>] [<combined>] [<centroid>] [<cMethod>] [<threadDelay>]', self.expose),
+                       '[<cameras>] [<combined>] [<centroid>] [<cMethod>] '
+                       '[<threadDelay>] [@tecOFF]', self.expose),
             ('abort', '[<cameras>]', self.abort),
             ('reconnect', '', self.reconnect),
             ('setframe', '[<cameras>] [<bx>] [<by>] <cx> <cy> <sx> <sy>', self.setframe),
@@ -162,6 +163,12 @@ class AgccCmd(object):
         else:
             threadDelay = 0.0
 
+        if 'tecOFF' in cmdKeys:
+            tecOFF = True
+        else:
+            tecOFF = False
+
+        cmd.inform(f'text="TEC OFF status = {tecOFF}"')      
         cmd.inform(f'text="Setting threading delay of {threadDelay} ms"')            
 
 
@@ -188,7 +195,8 @@ class AgccCmd(object):
         self.actor.camera.reportTEC(cmd)
         cmd.inform(f'text="pfs_visit_id: {visit}"')
         self.actor.camera.expose(cmd, expTime, expType, cams, combined, centroid, visit, 
-                                 self.cParms, cMethod, self.iParms, threadDelay=threadDelay)
+                                 self.cParms, cMethod, self.iParms, threadDelay=threadDelay,
+                                 tecOFF=tecOFF)
 
 
     def abort(self, cmd):
