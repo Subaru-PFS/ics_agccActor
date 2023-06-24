@@ -90,7 +90,7 @@ class AgccCmd(object):
     def reconnect(self, cmd):
         """Reconnect camera devices"""
 
-        self.actor.connectCamera(cmd, self.actor.config)
+        self.actor.connectCamera(cmd, self.actor.actorConfig)
         cmd.inform('text="AG cameras connected!"')
         cmd.finish()
 
