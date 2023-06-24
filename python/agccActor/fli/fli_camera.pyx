@@ -58,7 +58,7 @@ class CameraInit:
         if FLIGetLibVersion(libver, LIBVERSIZE) != 0:
             raise FliError("FLIGetLibVersion failed")
 
-c        EnumerateCameras()
+        EnumerateCameras()
 
 
 
