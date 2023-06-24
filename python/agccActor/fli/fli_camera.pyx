@@ -549,16 +549,21 @@ class Camera:
         return total
 
 
-# module initialization
-CLOSED, READY, EXPOSING, SETMODE = range(4)
-Status = {CLOSED:"CLOSED", READY:"READY", EXPOSING:"EXPOSING", SETMODE:"SETMODE"}
-POLL_TIME = 0.02
-CCD_TEMP = -30
 
-numCams = 0
-for i in range(MAX_DEVICES):
-    dev[i] = FLI_INVALID_DEVICE
-FLISetDebugLevel(NULL, FLIDEBUG_NONE)
-if FLIGetLibVersion(libver, LIBVERSIZE) != 0:
-    raise FliError("FLIGetLibVersion failed")
-EnumerateCameras()
+
+# module initialization
+#CLOSED, READY, EXPOSING, SETMODE = range(4)
+#Status = {CLOSED:"CLOSED", READY:"READY", EXPOSING:"EXPOSING", SETMODE:"SETMODE"}
+#POLL_TIME = 0.02
+#CCD_TEMP = -30
+
+#numCams = 0
+#for i in range(MAX_DEVICES):
+#    dev[i] = FLI_INVALID_DEVICE
+#FLISetDebugLevel(NULL, FLIDEBUG_NONE)
+#if FLIGetLibVersion(libver, LIBVERSIZE) != 0:
+#    raise FliError("FLIGetLibVersion failed")
+#EnumerateCameras()
+
+
+
