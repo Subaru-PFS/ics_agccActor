@@ -10,6 +10,14 @@ import time
 import os
 import threading
 
+CLOSED, READY, EXPOSING, SETMODE = range(4)
+Status = {CLOSED:"CLOSED", READY:"READY", EXPOSING:"EXPOSING", SETMODE:"SETMODE"}
+POLL_TIME = 0.02
+CCD_TEMP = -30
+numCams = 0
+
+
+
 cdef void EnumerateCameras() nogil:
     cdef char file[MAX_PATH]
     cdef char name[MAX_PATH]
@@ -41,6 +49,18 @@ def numberOfCamera():
 def getLibVersion():
     """Get the current library version"""
     return libver.decode('utf-8')
+
+class CameraInit:
+    def __init__(self):
+        for i in range(MAX_DEVICES):
+            dev[i] = FLI_INVALID_DEVICE
+        FLISetDebugLevel(NULL, FLIDEBUG_NONE)
+        if FLIGetLibVersion(libver, LIBVERSIZE) != 0:
+            raise FliError("FLIGetLibVersion failed")
+
+c        EnumerateCameras()
+
+
 
 class Camera:
     """FLI usb camera"""
