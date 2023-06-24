@@ -4,6 +4,7 @@ from sequence import Sequence, SEQ_IDLE, SEQ_RUNNING, SEQ_ABORT
 import writeFits
 import photometry
 import os, logging
+import fli_camera
 
 
 nCams = 6
@@ -25,9 +26,9 @@ class Camera(object):
         self.logger.info(f'Setting TEC to {temp}.')
 
         self.temp = temp
+        fli_camera.CameraInit()
         
         if simulator == 0:
-            import fli_camera
 
             self.numberOfCamera = fli_camera.numberOfCamera()
             for n in range(self.numberOfCamera):
