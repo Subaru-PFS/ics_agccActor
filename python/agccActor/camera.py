@@ -42,8 +42,8 @@ class Camera(object):
                         cam.regions = ((0, 0, 0), (0, 0, 0))
                         cam.queue = photometry.createProc()
                         break
-                else:
-                    cam.close()
+                    else:
+                        cam.close()
         else:
             from fli import fake_camera
 
