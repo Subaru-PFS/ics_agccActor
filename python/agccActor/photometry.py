@@ -23,6 +23,7 @@ def createProc():
     """ multiprocessing for photometry """
     def worker(in_q, out_q):
         while (True):
+
             data = in_q.get()
             agcid = in_q.get()
             cParms = in_q.get()
@@ -35,6 +36,7 @@ def createProc():
 
     in_q = mp.Queue()
     out_q = mp.Queue()
+
     p = mp.Process(target=worker, args=(in_q, out_q), daemon=True)
     p.start()
-    return in_q, out_q
+    return in_q, out_q, p

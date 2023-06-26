@@ -40,10 +40,11 @@ class Camera(object):
                         cam.agcid = k
                         cam.setTemperature(temp)
                         cam.regions = ((0, 0, 0), (0, 0, 0))
-                        cam.queue = photometry.createProc()
+                        cam.in_queue, cam.out_queue, cam.proc = photometry.createProc()
+                        self.logger.info(f'Creating process ID {cam.proc.pid}.')
                         break
-                    else:
-                        cam.close()
+                #else:
+                #    cam.close()
         else:
             from fli import fake_camera
 
@@ -62,13 +63,18 @@ class Camera(object):
                 cam.agcid = n
                 cam.setTemperature(temp)
                 cam.regions = ((0, 0, 0), (0, 0, 0))
-                cam.queue = photometry.createProc()
+                cam.in_queue, cam.out_queue,cam.proc = photometry.createProc()
 
     def closeCamera(self):
         for c_i, cam in enumerate(self.cams):
             if cam is not None:
+                # close the queue as well
+                cam.proc.terminate()  # Send stop signal to the input queue
+                cam.proc.join()
+
                 cam.close()
                 self.cams[c_i] = None
+                
 
     def runningCameras(self):
         """Return the list of valid camera Ids """

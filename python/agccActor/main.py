@@ -21,6 +21,7 @@ class AgccActor(Actor):
         self.connectCamera(self.bcast, self.actorConfig)
 
     def reloadCamera(self, cmd, config, doFinish=True):
+        # first, delete all camera object 
         if hasattr(self, 'camera'):
             self.camera.closeCamera()
             del self.camera
