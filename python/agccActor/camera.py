@@ -5,6 +5,7 @@ import writeFits
 import photometry
 import os, logging
 import fli_camera
+import signal
 
 
 nCams = 6
@@ -69,7 +70,11 @@ class Camera(object):
         for c_i, cam in enumerate(self.cams):
             if cam is not None:
                 # close the queue as well
-                cam.proc.terminate()  # Send stop signal to the input queue
+                self.logger.info(f'Closing process ID {cam.proc.pid}.')
+                #if cam.proc.is_alive():
+                #os.kill(cam.proc.pid, signal.SIGTERM)
+                cam.proc.kill()  # Send stop signal to the input queue
+                self.logger.info(f'Join the process {cam.proc.pid}.')
                 cam.proc.join()
 
                 cam.close()
