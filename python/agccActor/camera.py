@@ -97,7 +97,7 @@ class Camera(object):
 
     def sendStatusKeys(self, cmd):
         """ Send our status keys to the given command. """ 
-
+    
         cmd.inform('text="Number of AG cameras = %d"' % self.numberOfCamera)
         for n in range(nCams):
             if self.cams[n] != None:
