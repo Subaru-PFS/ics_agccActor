@@ -5,7 +5,6 @@ import writeFits
 import photometry
 import os, logging
 import fli_camera
-import signal
 
 
 nCams = 6
