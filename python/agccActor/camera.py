@@ -4,6 +4,7 @@ from sequence import Sequence, SEQ_IDLE, SEQ_RUNNING, SEQ_ABORT
 import writeFits
 import photometry
 import os, logging
+import fli_camera
 
 
 nCams = 6
@@ -25,9 +26,9 @@ class Camera(object):
         self.logger.info(f'Setting TEC to {temp}.')
 
         self.temp = temp
+        fli_camera.CameraInit()
         
         if simulator == 0:
-            import fli_camera
 
             self.numberOfCamera = fli_camera.numberOfCamera()
             for n in range(self.numberOfCamera):
@@ -39,10 +40,11 @@ class Camera(object):
                         cam.agcid = k
                         cam.setTemperature(temp)
                         cam.regions = ((0, 0, 0), (0, 0, 0))
-                        cam.queue = photometry.createProc()
+                        cam.in_queue, cam.out_queue, cam.proc = photometry.createProc()
+                        self.logger.info(f'Creating process ID {cam.proc.pid}.')
                         break
-                else:
-                    cam.close()
+                #else:
+                #    cam.close()
         else:
             from fli import fake_camera
 
@@ -61,13 +63,22 @@ class Camera(object):
                 cam.agcid = n
                 cam.setTemperature(temp)
                 cam.regions = ((0, 0, 0), (0, 0, 0))
-                cam.queue = photometry.createProc()
+                cam.in_queue, cam.out_queue,cam.proc = photometry.createProc()
 
     def closeCamera(self):
         for c_i, cam in enumerate(self.cams):
             if cam is not None:
+                # close the queue as well
+                self.logger.info(f'Closing process ID {cam.proc.pid}.')
+                #if cam.proc.is_alive():
+                #os.kill(cam.proc.pid, signal.SIGTERM)
+                cam.proc.kill()  # Send stop signal to the input queue
+                self.logger.info(f'Join the process {cam.proc.pid}.')
+                cam.proc.join()
+
                 cam.close()
                 self.cams[c_i] = None
+                
 
     def runningCameras(self):
         """Return the list of valid camera Ids """
@@ -90,7 +101,7 @@ class Camera(object):
 
     def sendStatusKeys(self, cmd):
         """ Send our status keys to the given command. """ 
-
+    
         cmd.inform('text="Number of AG cameras = %d"' % self.numberOfCamera)
         for n in range(nCams):
             if self.cams[n] != None:

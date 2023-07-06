@@ -164,12 +164,12 @@ class Exposure(threading.Thread):
         if tread > 0:
             if self.centroid:
                 if multiproc:
-                    cam.queue[0].put(cam.data)
-                    cam.queue[0].put(cam.agcid)
-                    cam.queue[0].put(self.cParms)
-                    cam.queue[0].put(self.iParms)
-                    cam.queue[0].put(self.cMethod)
-                    spots = cam.queue[1].get()
+                    cam.in_queue.put(cam.data)
+                    cam.in_queue.put(cam.agcid)
+                    cam.in_queue.put(self.cParms)
+                    cam.in_queue.put(self.iParms)
+                    cam.in_queue.put(self.cMethod)
+                    spots = cam.out_queue.get()
                 else:
                     spots = photometry.measure(cam.data,cam.agcid,self.cParms,self.iParms,self.cMethod)
                 cam.spots = spots

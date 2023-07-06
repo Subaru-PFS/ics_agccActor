@@ -19,6 +19,14 @@ class AgccActor(Actor):
         self.exposureID = 0
         
         self.connectCamera(self.bcast, self.actorConfig)
+
+    def reloadCamera(self, cmd, config, doFinish=True):
+        # first, delete all camera object 
+        if hasattr(self, 'camera'):
+            self.camera.closeCamera()
+            del self.camera
+        self.camera = camera.Camera(config)
+        self.camera.sendStatusKeys(cmd)
         
     def connectCamera(self, cmd, config, doFinish=True):
         reload(camera)
