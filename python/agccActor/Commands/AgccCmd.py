@@ -137,6 +137,9 @@ class AgccCmd(object):
         expType = cmdKeys[0].name
         visit = self.setOrGetVisit(cmd)
 
+        # Ask gen2 updating the telescope status
+        self.actor.cmdr.call(actor='gen2', cmdStr='updateTelStatus caller=agcc', timeLim=5.0)
+
         if 'exptime' in cmdKeys:
             expTime = cmdKeys['exptime'].values[0]
         else:
