@@ -46,6 +46,10 @@ class Exposure(threading.Thread):
         self.seq_id = seq_id
         self.cMethod = cMethod
 
+        # update the exposure time in cParms
+
+        self.cParms['expTime']=expTime_ms*1000
+
         self.tecOFFtemp = 20
 
         if tecOFF is True:

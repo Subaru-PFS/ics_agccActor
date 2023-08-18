@@ -231,7 +231,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['central_image_moment_02_pix']=np.array(m02)
     result['central_image_moment_11_pix']=np.array(m11)
     result['flags'] = result['flags']+np.array(flags)
-    result['estimated_magnitude'] = calculateApproximateMagnitude(iParms,result['image_moment_00_pix'])
+    result['estimated_magnitude'] = calculateApproximateMagnitude(iParms,result['image_moment_00_pix'],cParms['expTime'])
 
     return result
 
@@ -399,13 +399,13 @@ def gaussian(x, xC, yC, fX, fY, a, b):
     return val
   
 
-def calculateApproximateMagnitude(iParms,instrumentFlux):
+def calculateApproximateMagnitude(iParms,instrumentFlux,expTime):
 
     """
     empirical function for gaia magnitudes
     """
 
-    mag = np.log10(instrumentFlux)*iParms['magFit'][0]+iParms['magFit'][1]
+    mag = np.log10(instrumentFlux/expTime)*iParms['magFit'][0]+iParms['magFit'][1]
 
     return mag
 
