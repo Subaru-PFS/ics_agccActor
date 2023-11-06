@@ -547,8 +547,24 @@ class Camera:
             else:
                 total = self.tend - self.tstart
         return total
-
-
+    
+    def openShutter(self):
+        """ Force to close the shutter """
+        cdef int id = self.id
+        
+        with nogil:
+            res = FLIControlShutter(dev[id], FLI_SHUTTER_OPEN)
+        if res != 0:
+            raise FliError("FLIControlShutter failed")
+    
+    def closeShutter(self):
+        """ Force to close the shutter """
+        cdef int id = self.id
+        
+        with nogil:
+            res = FLIControlShutter(dev[id], FLI_SHUTTER_CLOSE)
+        if res != 0:
+            raise FliError("FLIControlShutter failed")
 
 
 # module initialization
