@@ -34,6 +34,7 @@ class AgccCmd(object):
                        '[<threadDelay>] [@tecOFF]', self.expose),
             ('abort', '[<cameras>]', self.abort),
             ('reconnect', '', self.reconnect),
+            ('shutter','@(close|open) [<cameras>]', self.shutterOps),
             ('setframe', '[<cameras>] [<bx>] [<by>] <cx> <cy> <sx> <sy>', self.setframe),
             ('resetframe', '[<cameras>]', self.resetframe),
             ('getmode', '[<cameras>]', self.getmode),
@@ -129,6 +130,33 @@ class AgccCmd(object):
         visit = cmdKeys['visit'].values[0]
         dbRoutinesAGCC.writeVisitToDB(visit)
         cmd.finish()
+
+    def shutterOps(self, cmd):
+
+        cmdKeys = cmd.cmd.keywords
+        shutterMode = cmdKeys[0].name
+        cams = []
+        if 'cameras' in cmdKeys:
+            camList = cmdKeys['cameras'].values[0]
+            for cam in camList:
+                k = int(cam) - 1
+                if k < 0 or k >= nCams:
+                    cmd.error('text="camera list error: %s"' % camList)
+                    cmd.fail()
+                    return
+                cams.append(k)
+        else:
+            for k in range(nCams):
+                cams.append(k)
+
+        
+        if shutterMode == 'open':
+            self.actor.camera.openShutter(cmd, cams)
+        if shutterMode == 'close':
+            self.actor.camera.closeShutter(cmd, cams)
+
+        cmd.finish()
+
 
     def expose(self, cmd):
         """Take an exposure. combined=0/1."""
