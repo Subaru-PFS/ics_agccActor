@@ -228,6 +228,50 @@ class Camera(object):
         if cmd:
             cmd.inform('text="Camera expose area set"')
             cmd.finish()
+    
+    def openShutter(self, cmd, cams):
+        """ Open shutter
+
+        Args:
+           cmd     - a Command object to report to. Ignored if None.
+           cams    - list of active cameras [1-8]
+        """
+        for n in cams:
+            if self.cams[n] != None and not self.cams[n].isReady():
+                if cmd:
+                    cmd.fail('text="camera busy, command ignored"')
+                return
+
+        for n in cams:
+            if self.cams[n] != None:
+                if cmd:
+                    cmd.inform('text="Send shutter opening command to AGC[%d]"' % (n + 1))
+                self.cams[n].openShutter()
+        if cmd:
+            cmd.inform('text="Camera shutter opened"')
+            cmd.finish()
+    
+    def closeShutter(self, cmd, cams):
+        """ close shutter
+
+        Args:
+           cmd     - a Command object to report to. Ignored if None.
+           cams    - list of active cameras [1-8]
+        """
+        for n in cams:
+            if self.cams[n] != None and not self.cams[n].isReady():
+                if cmd:
+                    cmd.fail('text="camera busy, command ignored"')
+                return
+
+        for n in cams:
+            if self.cams[n] != None:
+                if cmd:
+                    cmd.inform('text="Send shutter opening command to AGC[%d]"' % (n + 1))
+                self.cams[n].closeShutter()
+        if cmd:
+            cmd.inform('text="Camera shutter closed"')
+            cmd.finish()
 
     def resetframe(self, cmd, cams):
         """ reset exposure area
