@@ -11,6 +11,7 @@ cdef extern from "libfli.h" nogil:
     ctypedef long flibgflush_t
     ctypedef long flitdirate_t
     ctypedef long flitdiflags_t
+    ctypedef long flishutter_t
     ctypedef long LIBFLIAPI
 
     int FLI_INVALID_DEVICE
@@ -21,6 +22,9 @@ cdef extern from "libfli.h" nogil:
     int FLI_FRAME_TYPE_DARK
     int FLI_FRAME_TYPE_FLOOD
     int FLI_FRAME_TYPE_RBI_FLUSH
+
+    int FLI_SHUTTER_OPEN
+    int FLI_SHUTTER_CLOSE
 
     int FLIDEBUG_NONE
     int FLIDEBUG_INFO
@@ -76,6 +80,7 @@ cdef extern from "libfli.h" nogil:
     LIBFLIAPI FLIGetCameraMode(flidev_t dev, flimode_t *mode_index)
     LIBFLIAPI FLISetCameraMode(flidev_t dev, flimode_t mode_index)
     LIBFLIAPI FLIGetSerialString(flidev_t dev, char* serial, size_t len)
+    LIBFLIAPI FLIControlShutter(flidev_t dev, flishutter_t shutter)
     LIBFLIAPI FLIEndExposure(flidev_t dev)
     LIBFLIAPI FLISetTDI(flidev_t dev, flitdirate_t tdi_rate, flitdiflags_t flags)
 
