@@ -104,7 +104,7 @@ def centroidRegion(data, thresh, minarea=12, deblend = 0.5):
 
     return spots,len(spots),background
     
-def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
+def getCentroidsSep(data,iParms,cParms,spotDtype,agcid,biases,flats):
 
     """
     runs centroiding for the sep routine and assigns the results
