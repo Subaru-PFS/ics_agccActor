@@ -104,7 +104,7 @@ def centroidRegion(data, thresh, minarea=12, deblend = 0.5):
 
     return spots,len(spots),background
     
-def getCentroidsSep(data,iParms,cParms,spotDtype,agcid,biases,flats):
+def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     """
     runs centroiding for the sep routine and assigns the results
@@ -405,10 +405,6 @@ def calculateApproximateMagnitude(iParms,instrumentFlux,expTime):
     empirical function for gaia magnitudes
     """
 
-    mag = np.log10(instrumentFlux/expTime)*iParms['magFit'][0]+iParms['magFit'][1]
+    mag = -2.5*np.log10(instrumentFlux/expTime)*iParms['magFit'][0]+iParms['magFit'][1]
 
     return mag
-
-
-
-    
