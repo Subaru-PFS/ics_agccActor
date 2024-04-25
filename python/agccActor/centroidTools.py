@@ -88,7 +88,7 @@ def subOverscan(data):
 
     return data
 
-def centroidRegion(data, thresh, minarea=12, deblend = 0.5):
+def centroidRegion(data, thresh, minarea, deblend):
 
     """
     wrapper that subtract the background and calls the centroiding
@@ -110,10 +110,11 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     runs centroiding for the sep routine and assigns the results
     """
 
-
     thresh=cParms['thresh']
-    minarea=cParms['nmin']
+    minarea=cParms['minarea']
     deblend=cParms['deblend']
+    ellip=cParms['ellip']
+    nmin = cParms['nmin']
 
     # get region information for camera
     region = iParms[str(agcid + 1)]['reg']
@@ -142,8 +143,8 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     fy = 5
     
     ind1 = np.where(np.any([spots1['x']-2*fx < 0, spots1['x']+2*fx > (region[1]-region[0]),spots1['y']-2*fy < 0, spots1['y']+2*fy > (region[3]-region[2])],axis=0))
-    #ind2 = spots1['peak'] == satValue
-    
+    ind2 = np.where(np.all([spots1['b'] / spots1['a'] < ellip,spots1['b'] / spots1['a'] > 1/ellip, spots1['npix'] < nmin],axis=0))
+
 
     result['image_moment_00_pix'][0:nSpots1] = spots1['flux']
     result['centroid_x_pix'][0:nSpots1] = spots1['x']+region[0]
@@ -156,7 +157,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['peak_intensity'][0:nSpots1] = spots1['peak']
     result['background'][0:nSpots1] = background1[spots1['ypeak'], spots1['xpeak']]
     result['flags'][0:nSpots1][ind1] += 2
-    #result['flags'][0:nSpots1][ind2] += 4
+    result['flags'][0:nSpots1][ind2] += 16
 
     # flag spots near edge of region
 
@@ -167,8 +168,8 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     fy = 5
 
     ind1 = np.where(np.any([spots2['x']-2*fx < 0, spots2['x']+2*fx > (region[5]-region[4]),spots2['y']-2*fy < 0, spots2['y']+2*fy > (region[7]-region[6])],axis=0))
-    #ind2 = spots2['peak'] == satValue
-    
+    ind2 = np.where(np.all([spots2['b'] / spots2['a'] < ellip, spots2['b'] / spots2['a'] > 1/ellip, spots2['npix'] < nmin],axis=0))
+
     result['image_moment_00_pix'][nSpots1:nElem] = spots2['flux']
     result['centroid_x_pix'][nSpots1:nElem] = spots2['x']+region[4]
     result['centroid_y_pix'][nSpots1:nElem] = spots2['y']+region[6]
@@ -184,7 +185,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['flags'][nSpots1:nElem] += 1
 
     result['flags'][nSpots1:nElem][ind1] += 2
-    #result['flags'][nSpots1:nElem][ind2] += 4
+    result['flags'][nSpots1:nElem][ind2] += 16
 
     # determine saturation off the unprocessed data
     satFlag = data[result['peak_pixel_y_pix'],result['peak_pixel_x_pix']]==satValue
