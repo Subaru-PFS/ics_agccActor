@@ -48,7 +48,7 @@ class Exposure(threading.Thread):
 
         # update the exposure time in cParms
 
-        self.cParms['expTime']=expTime_ms*1000
+        self.cParms['expTime']=expTime_ms/1000
 
         self.tecOFFtemp = 20
 
