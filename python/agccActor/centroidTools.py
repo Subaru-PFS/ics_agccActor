@@ -232,6 +232,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['central_image_moment_02_pix']=np.array(m02)
     result['central_image_moment_11_pix']=np.array(m11)
     result['flags'] = result['flags']+np.array(flags)
+    print(f'Calculating Magnitude: exptime = {cParms["expTime"]}')
     result['estimated_magnitude'] = calculateApproximateMagnitude(iParms,result['image_moment_00_pix'],cParms['expTime'])
 
     return result
