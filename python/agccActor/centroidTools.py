@@ -194,12 +194,14 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     # check for flat sources
 
-    diag = np.array([data[results['centroid_y_pix'][:],results['centroid_x_pix'][:]]-data[results['centroid_y_pix'][:]-2,results['centroid_x_pix'][:]],data[results['centroid_y_pix'][:],results['centroid_x_pix'][:]]-data[results['centroid_y_pix'][:]+2,results['centroid_x_pix'][:]]]).max()
 
-    ind = np.where(diag < 0.01)
-
-    result['flags'][:][ind] += 32
+    yPos=result['centroid_x_pix'][:].astype('int')
+    xPos=result['centroid_y_pix'][:].astype('int')
     
+    diag = np.array([data[xPos,yPos] - data[xPos-5,yPos],data[xPos,yPos] - data[xPos+5,yPos]]).min(axis=0)
+    diag = diag/data[xPos,yPos]
+    ind = np.where(diag < flatVal)
+    result['flags'][:][ind] += 32
     # calculate more reasonable FWHMs
 
     # subract the background
