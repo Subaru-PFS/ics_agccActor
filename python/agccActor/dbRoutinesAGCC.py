@@ -120,14 +120,17 @@ def writeCentroidsToDB(result,visitId,exposureId,cameraId):
     
 
     for i in range(sz[0]):
+        # Handle NaN values by replacing them with 'NULL' in the SQL string
+        estimated_mag = 'NULL' if pd.isna(df['estimated_magnitude'].values[i]) else df['estimated_magnitude'].values[i]
+        
         cmdString = f"""{dbString}({df['agc_exposure_id'].values[i]}, {df['agc_camera_id'].values[i]}, {df['spot_id'].values[i]}, 
             {df['image_moment_00_pix'].values[i]}, {df['centroid_x_pix'].values[i]}, {df['centroid_y_pix'].values[i]},
             {df['central_image_moment_20_pix'].values[i]}, {df['central_image_moment_11_pix'].values[i]},
             {df['central_image_moment_02_pix'].values[i]}, 
             {df['peak_pixel_x_pix'].values[i]}, {df['peak_pixel_y_pix'].values[i]}, 
             {df['peak_intensity'].values[i]}, {df['background'].values[i]},
-            {df['estimated_magnitude'].values[i]}, {df['flags'].values[i]})"""
-    
+            {estimated_mag}, {df['flags'].values[i]})"""
+  
 
         logger.info(f'{cmdString}')
     
