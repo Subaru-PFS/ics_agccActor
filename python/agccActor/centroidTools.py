@@ -119,6 +119,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     # get region information for camera
     region = iParms[str(agcid + 1)]['reg']
     satValue = iParms['satVal']
+    flatVal = iParms['flatVal']
 
     dataProc=subOverscan(data.astype('float'))
     dataProc=interpBadCol(dataProc,iParms[str(agcid + 1)]['badCols'])
@@ -190,7 +191,17 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     # determine saturation off the unprocessed data
     satFlag = data[result['peak_pixel_y_pix'],result['peak_pixel_x_pix']]==satValue
     result['flags'] += satFlag*4
+
+    # check for flat sources
+
+
+    yPos=result['centroid_x_pix'][:].astype('int')
+    xPos=result['centroid_y_pix'][:].astype('int')
     
+    diag = np.array([data[xPos,yPos] - data[xPos-5,yPos],data[xPos,yPos] - data[xPos+5,yPos]]).min(axis=0)
+    diag = diag/data[xPos,yPos]
+    ind = np.where(diag < flatVal)
+    result['flags'][:][ind] += 32
     # calculate more reasonable FWHMs
 
     # subract the background
