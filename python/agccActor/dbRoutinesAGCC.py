@@ -79,61 +79,69 @@ def writeExposureToDB(visitId,exposureId, exptime):
     #print('agc_exposure', df)
 
             
-def writeCentroidsToDB(result,visitId,exposureId,cameraId):
-
+def writeCentroidsToDB(result, visitId, exposureId, cameraId):
     """
-    write the centroids to the database
-    table=mcs_data
-    variables=spot_id,mcs_center_x_pix,mcs_center_y_pix
-              mcs_second_moment_x_pix,mcs_second_moment_y_pix,
-              mcs_second_moment_xy_pix,bgvalue,peakvalue
+    Write the centroids to the database in bulk.
+    Table: agc_data
+    Variables: spot_id, mcs_center_x_pix, mcs_center_y_pix,
+               mcs_second_moment_x_pix, mcs_second_moment_y_pix,
+               mcs_second_moment_xy_pix, bgvalue, peakvalue
     """
     import logging
 
     logger = logging.getLogger('agcc')
     logger.setLevel(logging.INFO)
-    
-    sz=result.shape
 
-    # create array of frameIDs, etc (same for all spots)
-    visitIds=np.repeat(visitId,sz[0]).astype('int')
-    exposureIds=np.repeat(exposureId,sz[0]).astype('int')
-    cameraIds=np.repeat(cameraId,sz[0]).astype('int')
+    sz = result.shape
 
-    # turn the record array into a pandas df
-    df=pd.DataFrame(result)
+    # Create array of frameIDs, etc. (same for all spots)
+    visitIds = np.repeat(visitId, sz[0]).astype('int')
+    exposureIds = np.repeat(exposureId, sz[0]).astype('int')
+    cameraIds = np.repeat(cameraId, sz[0]).astype('int')
 
-    # add the extra fields
-    #df['pfs_visit_id']=visitIds
-    df['agc_exposure_id']=exposureIds
-    df['agc_camera_id']=cameraIds
-    df['spot_id']=np.arange(0,sz[0]).astype('int')
+    # Turn the record array into a pandas DataFrame
+    df = pd.DataFrame(result)
 
-    logger.info(f"Table is prepared.")
+    # Add the extra fields
+    df['agc_exposure_id'] = exposureIds
+    df['agc_camera_id'] = cameraIds
+    df['spot_id'] = np.arange(0, sz[0]).astype('int')
 
-    db = psycopg2.connect(host='db-ics', dbname='opdb', user='pfs')
-    
-    dbString = f'''INSERT INTO agc_data (agc_exposure_id, agc_camera_id, spot_id, image_moment_00_pix, 
-        centroid_x_pix, centroid_y_pix, central_image_moment_20_pix,central_image_moment_11_pix,
-        central_image_moment_02_pix,peak_pixel_x_pix, peak_pixel_y_pix, peak_intensity, background,
-        estimated_magnitude, flags)  VALUES'''
-    
+    logger.info("Table is prepared.")
 
-    for i in range(sz[0]):
-        # Handle NaN values by replacing them with 'NULL' in the SQL string
-        estimated_mag = 'NULL' if pd.isna(df['estimated_magnitude'].values[i]) else df['estimated_magnitude'].values[i]
-        
-        cmdString = f"""{dbString}({df['agc_exposure_id'].values[i]}, {df['agc_camera_id'].values[i]}, {df['spot_id'].values[i]}, 
-            {df['image_moment_00_pix'].values[i]}, {df['centroid_x_pix'].values[i]}, {df['centroid_y_pix'].values[i]},
-            {df['central_image_moment_20_pix'].values[i]}, {df['central_image_moment_11_pix'].values[i]},
-            {df['central_image_moment_02_pix'].values[i]}, 
-            {df['peak_pixel_x_pix'].values[i]}, {df['peak_pixel_y_pix'].values[i]}, 
-            {df['peak_intensity'].values[i]}, {df['background'].values[i]},
-            {estimated_mag}, {df['flags'].values[i]})"""
-  
+    # Replace NaN values with None for compatibility with psycopg2
+    df = df.where(pd.notnull(df), None)
 
-        logger.info(f'{cmdString}')
-    
+    # Prepare the bulk insert query
+    insert_query = """
+        INSERT INTO agc_data (
+            agc_exposure_id, agc_camera_id, spot_id, image_moment_00_pix, 
+            centroid_x_pix, centroid_y_pix, central_image_moment_20_pix,
+            central_image_moment_11_pix, central_image_moment_02_pix,
+            peak_pixel_x_pix, peak_pixel_y_pix, peak_intensity, background,
+            estimated_magnitude, flags
+        ) VALUES %s
+    """
+
+    # Convert DataFrame rows to tuples for bulk insert
+    values = [
+        (
+            row['agc_exposure_id'], row['agc_camera_id'], row['spot_id'],
+            row['image_moment_00_pix'], row['centroid_x_pix'], row['centroid_y_pix'],
+            row['central_image_moment_20_pix'], row['central_image_moment_11_pix'],
+            row['central_image_moment_02_pix'], row['peak_pixel_x_pix'],
+            row['peak_pixel_y_pix'], row['peak_intensity'], row['background'],
+            row['estimated_magnitude'], row['flags']
+        )
+        for _, row in df.iterrows()
+    ]
+
+    # Execute the bulk insert
+    try:
+        db = psycopg2.connect(host='db-ics', dbname='opdb', user='pfs')
         with db as conn:
             with conn.cursor() as curs:
-                curs.execute(cmdString)
+                psycopg2.extras.execute_values(curs, insert_query, values)
+        logger.info("Bulk insert completed successfully.")
+    except Exception as e:
+        logger.error(f"Error during bulk insert: {e}")
