@@ -116,6 +116,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     ellip=cParms['ellip']
     nmin = cParms['nmin']
 
+    
     # get region information for camera
     region = iParms[str(agcid + 1)]['reg']
     satValue = iParms['satVal']
@@ -197,11 +198,25 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     yPos=result['centroid_x_pix'][:].astype('int')
     xPos=result['centroid_y_pix'][:].astype('int')
+
+
+    # for edges of image
     
-    diag = np.array([data[xPos,yPos] - data[xPos-5,yPos],data[xPos,yPos] - data[xPos+5,yPos]]).min(axis=0)
+    xMin = xPos.copy() - 5
+    xMax = xPos.copy() + 5
+    
+    ind=np.where(xMin < 0)        
+    xMin[ind] = 0
+
+    ind = np.where(xMax >= data.shape[0])
+    xMax[ind] = data.shape[0] - 1
+
+    # diagnostic for flat topped sources
+    diag = np.array([data[xPos,yPos] - data[xMin,yPos],data[xPos,yPos] - data[xMax,yPos]]).min(axis=0)
     diag = diag/data[xPos,yPos]
     ind = np.where(diag < flatVal)
     result['flags'][:][ind] += 32
+    
     # calculate more reasonable FWHMs
 
     # subract the background
@@ -219,20 +234,20 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     
         yPos=result['centroid_x_pix'][ii]
         xPos=result['centroid_y_pix'][ii]
-    
+
+        
         xv,yv, xyv, conv = windowedFWHM(newData, yPos, xPos)
         #xv, yv = fittedFWHM(newData, yPos, xPos)
 
         # if the moment didn't converge, revert to the unweighted second moment and set flags
         if(conv == 0):
-            m02.append(xv)
-            m20.append(yv)
+            m20.append(xv)
+            m02.append(yv)
             m11.append(xyv)
         else:
-            m02.append(result['central_image_moment_20_pix'][ii])
-            m20.append(result['central_image_moment_02_pix'][ii])
+            m02.append(result['central_image_moment_02_pix'][ii])
+            m20.append(result['central_image_moment_20_pix'][ii])
             m11.append(result['central_image_moment_11_pix'][ii])
-            
             
         # add flag for non converged sources
         flags.append(conv)
@@ -279,8 +294,6 @@ def windowedFWHM(data,xPos,yPos):
     yVal = np.arange(dMinY,dMaxY)-(dMaxY+dMinY)/2
     xv,yv = np.meshgrid(xVal,yVal)
 
-
-    
     # initial values
     sx = 1.5
     sy = 1.5
@@ -350,7 +363,7 @@ def windowedFWHM(data,xPos,yPos):
         sy = n11/det_n
 
     # if we haven't converged return new values
-    return sx,sy,sxy, 8
+    return sy, sx, sxy, 8
 
 def fittedFWHM(data, xPos, yPos):
 
