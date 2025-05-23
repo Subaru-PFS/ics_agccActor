@@ -43,6 +43,7 @@ def wfits(cmd, visitId, cam, nframe):
         hdr.set('SHUTTER', 'OPEN', 'shutter status')
     hdr.set('CCDAREA', '[%d:%d,%d:%d]' % cam.expArea, 'image area')
     hdr.set('FRAMEID', nframe, 'unique key for exposure')
+    hdr.set('VISITID', visitId, 'visit id')
 
     if cam.spots is not None:
         c1 = pyfits.Column(name='moment_00', format='E', array=cam.spots['image_moment_00_pix'])
@@ -120,6 +121,7 @@ def wfits_combined(cmd, visitId, cams, nframe, seq_id=-1):
             hdr.set('SHUTTER', 'OPEN', 'shutter status')
         hdr.set('CCDAREA', '[%d:%d,%d:%d]' % cam.expArea, 'image area')
         hdr.set('FRAMEID', nframe, 'unique key for exposure')
+        hdr.set('VISITID', visitId, 'visit id')
         if seq_id >= 0:
             hdr.set('REGION1', '[%d,%d,%d]' % cam.regions[0], 'region 1')
             hdr.set('REGION2', '[%d,%d,%d]' % cam.regions[1], 'region 2')
