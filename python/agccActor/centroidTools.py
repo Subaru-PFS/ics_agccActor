@@ -1,18 +1,10 @@
 
-from scipy.stats import sigmaclip
 import yaml
 import os
 import numpy as np
 import sep
-from scipy.ndimage import gaussian_filter
-
-from scipy.integrate import dblquad
-from lmfit import Model
-import lmfit
 
 from lmfit import Model
-import lmfit
-
 
 def getCentroidParams(cmd):
 
@@ -99,9 +91,12 @@ def centroidRegion(data, thresh, minarea, deblend):
     background = bgClass.back()
     rms = bgClass.rms()
     bgClass.subfrom(data)
+
+    # get spots using sextract defaults
     
     spots = sep.extract(data, thresh, rms, minarea = minarea, deblend_cont=deblend)
 
+    # get windowed positions for the spots
     return spots,len(spots),background
     
 def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
@@ -119,7 +114,9 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     
     # get region information for camera
     region = iParms[str(agcid + 1)]['reg']
-    satValue = iParms['satVal']
+    satValue1 = iParms[str(agcid + 1)]['satVal1']
+    satValue2 = iParms[str(agcid + 1)]['satVal2']
+    #satValue = iParms['satVal']
     flatVal = iParms['flatVal']
 
     dataProc=subOverscan(data.astype('float'))
@@ -141,13 +138,14 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     #fx = spots1['x2'].mean()
     #fy = spots1['y2'].mean()
 
+
     fx = 5
     fy = 5
     
     ind1 = np.where(np.any([spots1['x']-2*fx < 0, spots1['x']+2*fx > (region[1]-region[0]),spots1['y']-2*fy < 0, spots1['y']+2*fy > (region[3]-region[2])],axis=0))
     ind2 = np.where(np.all([np.any([spots1['b'] / spots1['a'] < ellip, spots1['b'] / spots1['a'] > 1/ellip],axis=0),spots1['npix'] < nmin],axis=0))
 
-
+    
     result['image_moment_00_pix'][0:nSpots1] = spots1['flux']
     result['centroid_x_pix'][0:nSpots1] = spots1['x']+region[0]
     result['centroid_y_pix'][0:nSpots1] = spots1['y']+region[2]
@@ -158,9 +156,9 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['peak_pixel_y_pix'][0:nSpots1] = spots1['ypeak']+region[2]
     result['peak_intensity'][0:nSpots1] = spots1['peak']
     result['background'][0:nSpots1] = background1[spots1['ypeak'], spots1['xpeak']]
+
     result['flags'][0:nSpots1][ind1] += 2
     result['flags'][0:nSpots1][ind2] += 16
-
     # flag spots near edge of region
 
 
@@ -171,6 +169,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     ind1 = np.where(np.any([spots2['x']-2*fx < 0, spots2['x']+2*fx > (region[5]-region[4]),spots2['y']-2*fy < 0, spots2['y']+2*fy > (region[7]-region[6])],axis=0))
     ind2 = np.where(np.all([np.any([spots2['b'] / spots2['a'] < ellip, spots2['b'] / spots2['a'] > 1/ellip],axis=0),spots2['npix'] < nmin],axis=0))
+
     
     result['image_moment_00_pix'][nSpots1:nElem] = spots2['flux']
     result['centroid_x_pix'][nSpots1:nElem] = spots2['x']+region[4]
@@ -183,14 +182,19 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['peak_intensity'][nSpots1:nElem] = spots2['peak']
     result['background'][nSpots1:nElem] = background2[spots2['ypeak'], spots2['xpeak']]
     # set flag for right half of image
+    
 
     result['flags'][nSpots1:nElem] += 1
-
     result['flags'][nSpots1:nElem][ind1] += 2
     result['flags'][nSpots1:nElem][ind2] += 16
 
     # determine saturation off the unprocessed data
-    satFlag = data[result['peak_pixel_y_pix'],result['peak_pixel_x_pix']]==satValue
+
+    satValue = np.zeros((len(result)))
+    satValue[0:nSpots1] = np.repeat(satValue1,nSpots1)
+    satValue[nSpots1:nElem] = np.repeat(satValue2,nSpots2)
+                        
+    satFlag = data[result['peak_pixel_y_pix'],result['peak_pixel_x_pix']] >= satValue
     result['flags'] += satFlag*4
 
     # check for flat sources
@@ -214,7 +218,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     # diagnostic for flat topped sources
     diag = np.array([data[xPos,yPos] - data[xMin,yPos],data[xPos,yPos] - data[xMax,yPos]]).min(axis=0)
     diag = diag/data[xPos,yPos]
-    ind = np.where(diag < flatVal)
+    ind = np.where(np.all([diag < flatVal,result['peak_intensity'] > 40000],axis=0))
     result['flags'][:][ind] += 32
     
     # calculate more reasonable FWHMs
@@ -230,13 +234,14 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     m11 = []
 
     flags = []
+
     for ii in range(len(result)):
     
         yPos=result['centroid_x_pix'][ii]
         xPos=result['centroid_y_pix'][ii]
 
         
-        xv,yv, xyv, conv = windowedFWHM(newData, yPos, xPos)
+        xv,yv, xyv, conv = windowedFWHM(newData, yPos, xPos, region, result['flags'][ii] & 1)
         #xv, yv = fittedFWHM(newData, yPos, xPos)
 
         # if the moment didn't converge, revert to the unweighted second moment and set flags
@@ -258,45 +263,34 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['central_image_moment_02_pix']=np.array(m02)
     result['central_image_moment_11_pix']=np.array(m11)
     result['flags'] = result['flags']+np.array(flags)
-    print(f'Calculating Magnitude: exptime = {cParms["expTime"]}')
     result['estimated_magnitude'] = calculateApproximateMagnitude(iParms,result['image_moment_00_pix'],cParms['expTime'])
 
     return result
 
-def windowedFWHM(data,xPos,yPos):
+def windowedFWHM(data,xPos,yPos,region,side):
 
     """
     windowed second moments, based on pre-determined positions
+
+
+    If the point is near the edge of the region, we crop the image
+    appropriately; the fit will be attempted, but may produce 
+    poor results.
+
+    IF the fitting process fails, resulting in a negative determinant
+    or negative or zero size, the flag for non-convergence will be set, 
+    and a simple non-iterative weighted second moment set instead. 
+
+    If the result doesn't converge, the same thing is done. 
+
     """
     
     maxIt = 30
     boxSize=20
-
-    # determine the sub-image region
-    dMinX = int(xPos - boxSize)
-    dMaxX = int(xPos + boxSize + 1)
-    dMinY = int(yPos - boxSize)
-    dMaxY = int(yPos + boxSize + 1)
-
-    # check for edges of image
-    dMinX = np.max([dMinX,0])
-    dMinY = np.max([dMinY,0])
-    dMaxX = np.min([dMaxX,data.shape[1]])
-    dMaxY = np.min([dMaxY,data.shape[0]])
-
-
-    # and the sub-image
-    winVal = data[dMinY:dMaxY,dMinX:dMaxX]
-
-    # scale the coordinates by the central position, to avoid numeric overflow
-
-    xVal = np.arange(dMinX,dMaxX)-(dMaxX+dMinX)/2
-    yVal = np.arange(dMinY,dMaxY)-(dMaxY+dMinY)/2
-    xv,yv = np.meshgrid(xVal,yVal)
-
+    
     # initial values
-    sx = 1.5
-    sy = 1.5
+    sx = 6
+    sy = 6
     sxy = 0
 
     w11 = -1
@@ -309,6 +303,37 @@ def windowedFWHM(data,xPos,yPos):
     sx_o=1e6
     tol1=0.001
     tol2=0.01
+
+    # determine the sub-image region
+    dMinX1 = int(np.round(xPos - boxSize))
+    dMaxX1 = int(np.round(xPos + boxSize + 1))
+    dMinY1 = int(np.round(yPos - boxSize))
+    dMaxY1 = int(np.round(yPos + boxSize + 1))
+
+
+    # check for edges of the region, and adjust accordingly. This includes the central
+    # part of the full image
+    if(side == 0):
+        # check for edges of image
+        dMinX = np.max([dMinX1,region[2]])
+        dMinY = np.max([dMinY1,region[0]])
+        dMaxX = np.min([dMaxX1,region[1]])
+        dMaxY = np.min([dMaxY1,region[3]])
+    elif(side == 1):
+        # check for edges of image
+        dMinX = np.max([dMinX1,region[4]])
+        dMinY = np.max([dMinY1,region[6]])
+        dMaxX = np.min([dMaxX1,region[5]])
+        dMaxY = np.min([dMaxY1,region[7]])
+
+    # and the sub-image
+    winVal = data[dMinY:dMaxY,dMinX:dMaxX]
+
+    # scale the coordinates by the central position, to avoid numeric overflow
+
+    xVal = np.arange(dMinX,dMaxX) - xPos
+    yVal = np.arange(dMinY,dMaxY) - yPos
+    xv,yv = np.meshgrid(xVal,yVal)
 
     # now the iteration
     for i in range(0,maxIt):
@@ -327,7 +352,6 @@ def windowedFWHM(data,xPos,yPos):
 
         r2 = xv*xv*w11 + yv*yv*w22 + 2*w12*xv*yv
         w = np.exp(-r2/2)
-        #print(f'{r2.min():.2f},{r2.max():.2f},{w.min():.2f},{w.max():.2f}')
 
         # and calcualte the weighted moments
         sxow = (winVal * w * (xv)**2).sum()/(winVal * w).sum()
@@ -341,7 +365,11 @@ def windowedFWHM(data,xPos,yPos):
 
         # check for convergence
         if(np.all([np.abs(e1-e1_old) < tol1, np.abs(e2-e2_old) < tol1, np.abs(sx/sx_o - 1) < tol2])):
-            return sxow, syow, sxyow, 0
+            if(np.any([sxow <= 0, syow <= 0])):
+                return weightedMoment(winVal, xv, yv, w11, w12, w22)
+            else:
+                return sxow, syow, sxyow, 0
+
 
         # calculate new values 
         e1_old=e1
@@ -352,18 +380,39 @@ def windowedFWHM(data,xPos,yPos):
         ow11 = syow/detow
         ow12 = -sxyow/detow
         ow22 = sxow/detow
+        if(detow <= 0):
+            return weightedMoment(winVal, xv, yv, w11, w12, w22)
 
         n11 = ow11 - w11
         n12 = ow12 - w12
         n22 = ow22 - w22
         det_n = n11*n22 - n12*n12
-        
+        if(det_n <= 0):
+            return weightedMoment(winVal, xv, yv, w11, w12, w22)
+
         sx = n22/det_n
         sxy = -n12/det_n
         sy = n11/det_n
+        if(np.any([sx <= 0, sy <= 0])):
+            return weightedMoment(winVal, xv, yv, w11, w12, w22)
 
     # if we haven't converged return new values
     return sy, sx, sxy, 8
+
+def weightedMoment(winVal, xv, yv, w11, w12, w22):
+
+    """
+    Calculated a weighted moment to return if the iterative process fails. 
+    """
+
+    r2 = xv*xv*w11 + yv*yv*w22 + 2*w12*xv*yv
+    w = np.exp(-r2/2)
+    
+    sx = (winVal * w * (xv)**2).sum()/(winVal * w).sum()
+    sy = (winVal * w * (yv)**2).sum()/(winVal * w).sum()
+    sxy = (winVal * w * xv*yv).sum()/(winVal * w).sum()
+
+    return sx, sy, sxy, 8
 
 def fittedFWHM(data, xPos, yPos):
 
