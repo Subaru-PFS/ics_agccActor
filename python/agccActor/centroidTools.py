@@ -6,6 +6,23 @@ import sep
 
 from lmfit import Model
 
+def getFlagValues(cmd):
+
+    """
+    API for agcc spot flags
+    """
+    
+    try:
+        cmdKeys=cmd.cmd.keywords
+    except:
+        cmdKeys=[]
+
+    fileName=os.path.join(os.environ['PFS_INSTDATA_DIR'],'config/actors','agcc.yaml')
+    with open(fileName, 'r') as inFile:
+        defaultParms=yaml.safe_load(inFile)
+
+    return defaultParms['agcc']['flags']
+
 def getCentroidParams(cmd):
 
     """
