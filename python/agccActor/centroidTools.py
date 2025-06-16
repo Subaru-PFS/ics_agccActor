@@ -153,14 +153,13 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     #fx = spots1['x2'].mean()
     #fy = spots1['y2'].mean()
 
-
     fx = 5
     fy = 5
     
     ind1 = np.where(np.any([spots1['x']-2*fx < 0, spots1['x']+2*fx > (region[1]-region[0]),spots1['y']-2*fy < 0, spots1['y']+2*fy > (region[3]-region[2])],axis=0))
     ind2 = np.where(np.all([np.any([spots1['b'] / spots1['a'] < ellip, spots1['b'] / spots1['a'] > 1/ellip],axis=0),spots1['npix'] < nmin],axis=0))
 
-    
+
     result['image_moment_00_pix'][0:nSpots1] = spots1['flux']
     result['centroid_x_pix'][0:nSpots1] = spots1['x']+region[0]
     result['centroid_y_pix'][0:nSpots1] = spots1['y']+region[2]
@@ -176,7 +175,6 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['flags'][0:nSpots1][ind2] += 16
     # flag spots near edge of region
 
-
     #fx = spots2['x2'].mean()
     #fy = spots2['y2'].mean()
     fx = 5
@@ -185,7 +183,6 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     ind1 = np.where(np.any([spots2['x']-2*fx < 0, spots2['x']+2*fx > (region[5]-region[4]),spots2['y']-2*fy < 0, spots2['y']+2*fy > (region[7]-region[6])],axis=0))
     ind2 = np.where(np.all([np.any([spots2['b'] / spots2['a'] < ellip, spots2['b'] / spots2['a'] > 1/ellip],axis=0),spots2['npix'] < nmin],axis=0))
 
-    
     result['image_moment_00_pix'][nSpots1:nElem] = spots2['flux']
     result['centroid_x_pix'][nSpots1:nElem] = spots2['x']+region[4]
     result['centroid_y_pix'][nSpots1:nElem] = spots2['y']+region[6]
