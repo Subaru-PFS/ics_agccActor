@@ -131,9 +131,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     
     # get region information for camera
     region = iParms[str(agcid + 1)]['reg']
-    satValue1 = iParms[str(agcid + 1)]['satVal1']
-    satValue2 = iParms[str(agcid + 1)]['satVal2']
-    #satValue = iParms['satVal']
+    satValue = iParms['satVal']
     flatVal = iParms['flatVal']
 
     dataProc=subOverscan(data.astype('float'))
@@ -206,12 +204,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['flags'][nSpots1:nElem][ind2] += 16
 
     # determine saturation off the unprocessed data
-
-    satValue = np.zeros((len(result)))
-    satValue[0:nSpots1] = np.repeat(satValue1,nSpots1)
-    satValue[nSpots1:nElem] = np.repeat(satValue2,nSpots2)
-                        
-    satFlag = data[result['peak_pixel_y_pix'],result['peak_pixel_x_pix']] >= satValue
+    satFlag = data[result['peak_pixel_y_pix'],result['peak_pixel_x_pix']]==satValue
     result['flags'] += satFlag*4
 
     # check for flat sources
