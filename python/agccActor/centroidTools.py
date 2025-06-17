@@ -209,7 +209,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     # diagnostic for flat topped sources
     diag = np.array([data[xPos,yPos] - data[xMin,yPos],data[xPos,yPos] - data[xMax,yPos]]).min(axis=0)
     diag = diag/data[xPos,yPos]
-    ind = np.where(np.all([diag < flatVal,result['peak_intensity'] > 40000],axis=0))
+    ind = np.where(diag < flatVal)
     result['flags'][:][ind] += 32
     
     # calculate more reasonable FWHMs
