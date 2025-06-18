@@ -99,9 +99,11 @@ def centroidRegion(data, thresh, minarea, deblend):
     background = bgClass.back()
     rms = bgClass.rms()
     bgClass.subfrom(data)
-    
+
+    # get spots using sourcing extractor defaults
     spots = sep.extract(data, thresh, rms, minarea = minarea, deblend_cont=deblend)
 
+    # get windowed positions for the spots
     return spots,len(spots),background
     
 def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
@@ -246,7 +248,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
         xPos=result['centroid_y_pix'][ii]
 
         
-        xv,yv, xyv, conv = windowedFWHM(newData, yPos, xPos)
+        xv,yv, xyv, conv = windowedFWHM(newData, yPos, xPos, region, result['flags'][ii] & 1)
         #xv, yv = fittedFWHM(newData, yPos, xPos)
 
         # if the moment didn't converge, revert to the unweighted second moment and set flags
@@ -273,40 +275,30 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     return result
 
-def windowedFWHM(data,xPos,yPos):
+def windowedFWHM(data,xPos,yPos,region,side):
 
     """
     windowed second moments, based on pre-determined positions
+
+
+    If the point is near the edge of the region, we crop the image
+    appropriately; the fit will be attempted, but may produce
+    poor results.
+
+    IF the fitting process fails, resulting in a negative determinant
+    or negative or zero size, the flag for non-convergence will be set,
+    and a simple non-iterative weighted second moment set instead.
+
+    If the result doesn't converge, the same thing is done.
+
     """
-    
+
     maxIt = 30
     boxSize=20
 
-    # determine the sub-image region
-    dMinX = int(xPos - boxSize)
-    dMaxX = int(xPos + boxSize + 1)
-    dMinY = int(yPos - boxSize)
-    dMaxY = int(yPos + boxSize + 1)
-
-    # check for edges of image
-    dMinX = np.max([dMinX,0])
-    dMinY = np.max([dMinY,0])
-    dMaxX = np.min([dMaxX,data.shape[1]])
-    dMaxY = np.min([dMaxY,data.shape[0]])
-
-
-    # and the sub-image
-    winVal = data[dMinY:dMaxY,dMinX:dMaxX]
-
-    # scale the coordinates by the central position, to avoid numeric overflow
-
-    xVal = np.arange(dMinX,dMaxX)-(dMaxX+dMinX)/2
-    yVal = np.arange(dMinY,dMaxY)-(dMaxY+dMinY)/2
-    xv,yv = np.meshgrid(xVal,yVal)
-
     # initial values
-    sx = 1.5
-    sy = 1.5
+    sx = 6
+    sy = 6
     sxy = 0
 
     w11 = -1
@@ -319,6 +311,37 @@ def windowedFWHM(data,xPos,yPos):
     sx_o=1e6
     tol1=0.001
     tol2=0.01
+
+    # determine the sub-image region
+    dMinX1 = int(np.round(xPos - boxSize))
+    dMaxX1 = int(np.round(xPos + boxSize + 1))
+    dMinY1 = int(np.round(yPos - boxSize))
+    dMaxY1 = int(np.round(yPos + boxSize + 1))
+
+
+    # check for edges of the region, and adjust accordingly. This includes the central
+    # part of the full image
+    if(side == 0):
+        # check for edges of image
+        dMinX = np.max([dMinX1,region[2]])
+        dMinY = np.max([dMinY1,region[0]])
+        dMaxX = np.min([dMaxX1,region[1]])
+        dMaxY = np.min([dMaxY1,region[3]])
+    elif(side == 1):
+        # check for edges of image
+        dMinX = np.max([dMinX1,region[4]])
+        dMinY = np.max([dMinY1,region[6]])
+        dMaxX = np.min([dMaxX1,region[5]])
+        dMaxY = np.min([dMaxY1,region[7]])
+
+    # and the sub-image
+    winVal = data[dMinY:dMaxY,dMinX:dMaxX]
+
+    # scale the coordinates by the central position, to avoid numeric overflow
+
+    xVal = np.arange(dMinX,dMaxX) - xPos
+    yVal = np.arange(dMinY,dMaxY) - yPos
+    xv,yv = np.meshgrid(xVal,yVal)
 
     # now the iteration
     for i in range(0,maxIt):
@@ -337,7 +360,6 @@ def windowedFWHM(data,xPos,yPos):
 
         r2 = xv*xv*w11 + yv*yv*w22 + 2*w12*xv*yv
         w = np.exp(-r2/2)
-        #print(f'{r2.min():.2f},{r2.max():.2f},{w.min():.2f},{w.max():.2f}')
 
         # and calcualte the weighted moments
         sxow = (winVal * w * (xv)**2).sum()/(winVal * w).sum()
@@ -347,13 +369,17 @@ def windowedFWHM(data,xPos,yPos):
         d = sxow + syow
         e1 = (sxow - syow)/d
         e2 = 2*sxyow/d
-        
+
 
         # check for convergence
         if(np.all([np.abs(e1-e1_old) < tol1, np.abs(e2-e2_old) < tol1, np.abs(sx/sx_o - 1) < tol2])):
-            return sxow, syow, sxyow, 0
+            if(np.any([sxow <= 0, syow <= 0])):
+                return weightedMoment(winVal, xv, yv, w11, w12, w22)
+            else:
+                return sxow, syow, sxyow, 0
 
-        # calculate new values 
+
+        # calculate new values
         e1_old=e1
         e2_old=e2
         sx_o = sx
@@ -362,18 +388,39 @@ def windowedFWHM(data,xPos,yPos):
         ow11 = syow/detow
         ow12 = -sxyow/detow
         ow22 = sxow/detow
+        if(detow <= 0):
+            return weightedMoment(winVal, xv, yv, w11, w12, w22)
 
         n11 = ow11 - w11
         n12 = ow12 - w12
         n22 = ow22 - w22
         det_n = n11*n22 - n12*n12
-        
+        if(det_n <= 0):
+            return weightedMoment(winVal, xv, yv, w11, w12, w22)
+
         sx = n22/det_n
         sxy = -n12/det_n
         sy = n11/det_n
+        if(np.any([sx <= 0, sy <= 0])):
+            return weightedMoment(winVal, xv, yv, w11, w12, w22)
 
     # if we haven't converged return new values
     return sy, sx, sxy, 8
+
+def weightedMoment(winVal, xv, yv, w11, w12, w22):
+
+    """
+    Calculated a weighted moment to return if the iterative process fails.
+    """
+
+    r2 = xv*xv*w11 + yv*yv*w22 + 2*w12*xv*yv
+    w = np.exp(-r2/2)
+
+    sx = (winVal * w * (xv)**2).sum()/(winVal * w).sum()
+    sy = (winVal * w * (yv)**2).sum()/(winVal * w).sum()
+    sxy = (winVal * w * xv*yv).sum()/(winVal * w).sum()
+
+    return sx, sy, sxy, 8
 
 def fittedFWHM(data, xPos, yPos):
 
