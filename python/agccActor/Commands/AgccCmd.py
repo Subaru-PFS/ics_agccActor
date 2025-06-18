@@ -164,7 +164,7 @@ class AgccCmd(object):
         cmdKeys = cmd.cmd.keywords
         expType = cmdKeys[0].name
         visit = self.setOrGetVisit(cmd)
-        self.actor.logger.info(f'text="Starting exposure of type {expType} for pfs_visit_id={visit}"')
+        self.actor.logger.info(f'Starting exposure of type {expType} for pfs_visit_id={visit}')
 
         # Ask gen2 updating the telescope status
         self.actor.cmdr.call(actor='gen2',
@@ -206,7 +206,7 @@ class AgccCmd(object):
         cmd.inform(f'text="TEC OFF status = {tecOFF}"')      
         cmd.inform(f'text="Setting threading delay of {threadDelay} ms"')            
 
-        self.actor.logger.info(f'text="exposure parameters: {visit=} {expTime=} {combined=} {centroid=} {cMethod=} {threadDelay=} {tecOFF=}"')
+        self.actor.logger.info(f'Setting image params: {visit=} {expTime=} {combined=} {centroid=} {cMethod=} {threadDelay=} {tecOFF=}')
         self.setImageParams(cmd)
 
         magFit = self.iParms['magFit']
@@ -473,5 +473,5 @@ class AgccCmd(object):
         top level routine for setting image parameters. Reads the defaults from the config file,
         then changes any specified in the keyword arguments.
         """
-        cmd.inform(f'text="Setting image parameters: {cmd=}"')
+        self.actor.logger.info(f'Setting image parameters: {cmd=}')
         self.iParms = ct.getImageParams(cmd)

@@ -4,6 +4,11 @@ import numpy as np
 from opdb import opdb
 import datetime
 
+import logging
+
+logger = logging.getLogger('agcc')
+logger.setLevel(logging.INFO)
+
 def connectToDB(hostname='db-ics',port='5432',dbname='opdb',username='pfs',passwd=None):
 
     """
@@ -87,11 +92,6 @@ def writeCentroidsToDB(result, visitId, exposureId, cameraId):
                mcs_second_moment_x_pix, mcs_second_moment_y_pix,
                mcs_second_moment_xy_pix, bgvalue, peakvalue
     """
-    import logging
-
-    logger = logging.getLogger('agcc')
-    logger.setLevel(logging.INFO)
-
     sz = result.shape
 
     # Create array of frameIDs, etc. (same for all spots)
