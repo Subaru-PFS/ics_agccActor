@@ -107,7 +107,7 @@ def writeCentroidsToDB(result, visitId, exposureId, cameraId):
     df['agc_camera_id'] = cameraIds
     df['spot_id'] = np.arange(0, sz[0]).astype('int')
 
-    logger.info("Table is prepared.")
+    logger.info(f"Table is prepared for pfs_visit_id={visitId} agc_exposure_id={exposureId} camera={cameraId}.")
 
     # Replace NaN values with None for compatibility with psycopg2
     df = df.where(pd.notnull(df), None)
