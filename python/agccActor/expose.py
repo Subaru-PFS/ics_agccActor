@@ -149,37 +149,37 @@ class Exposure(threading.Thread):
 
     def expose_thr(self, cam, multiproc=True):
         """ Concurrent exposure thread for camera readouts """
-        n = cam.agcid
+        cam_id = cam.agcid + 1
         if self.cmd:
-            self.cmd.inform('agc%d_stat=BUSY' % (n + 1))
+            self.cmd.inform(f'agc{cam_id:d}_stat=BUSY')
 
         try:
             cam.setExpTime(self.expTime_ms)
         except Exception as e:
             if self.cmd:
-                self.cmd.warn(f'text="AGC[{n + 1}]: set exposure time error: {e}"')
+                self.cmd.warn(f'text="AGC[{cam_id}]: set exposure time error: {e}"')
             return
 
         try:
             cam.expose(dark=self.dflag)
         except Exception as e:
             if self.cmd:
-                self.cmd.warn(f'text="AGC[{n + 1}]: exposure error: {e}"')
+                self.cmd.warn(f'text="AGC[{cam_id}]: exposure error: {e}"')
             return
 
         try:
             tread = cam.getTotalTime()
         except Exception as e:
             if self.cmd:
-                self.cmd.warn(f'text="AGC[{n + 1}]: readout error in getTotalTime: {e}"')
+                self.cmd.warn(f'text="AGC[{cam_id}]: readout error in getTotalTime: {e}"')
             return
 
         if self.cmd:
             if tread > 0:
-                self.cmd.inform('text="AGC[%d]: Retrieve camera data in %.2fs"' % (n + 1, tread))
+                self.cmd.inform(f'text="AGC[{cam_id:d}]: Retrieve camera data in {tread:.2f}s"')
             else:
-                self.cmd.inform('text="AGC[%d]: Exposure aborted"' % (n + 1))
-            self.cmd.inform('agc%d_stat=READY' % (n + 1))
+                self.cmd.inform(f'text="AGC[{cam_id:d}]: Exposure aborted"')
+            self.cmd.inform(f'agc{cam_id:d}_stat=READY')
 
         spots = None
         if tread > 0:
@@ -193,26 +193,26 @@ class Exposure(threading.Thread):
                     try:
                         spots = cam.out_queue.get()
                     except Exception as e:
-                        self.cmd.warn(f'text="AGC[{n + 1}]: photometry multiprocessing error with photometry: {e}"')
+                        self.cmd.warn(f'text="AGC[{cam_id}]: photometry multiprocessing error with photometry: {e}"')
                 else:
                     try:
                         spots = photometry.measure(cam.data,cam.agcid,self.cParms,self.iParms,self.cMethod)
                     except Exception as e:
-                        self.cmd.warn(f'text="AGC[{n + 1}]: photometry error: {e}"')
+                        self.cmd.warn(f'text="AGC[{cam_id}]: photometry error: {e}"')
 
                 cam.spots = spots
 
                 # Writing to database when spot number is larger than zero
                 if spots is not None and len(spots) > 0:
                     if self.cmd:
-                        self.cmd.inform('text="AGC[%d]: find %d objects"' % (n + 1, len(spots)))
-                        self.cmd.inform('text="wrote centroids to database"')
+                        self.cmd.inform(f'text="AGC[{cam_id:d}]: find {len(spots):d} objects"')
+                        self.cmd.inform(f'text="AGC[{cam_id:d}]: wrote centroids to database"')
                         aa=spots['estimated_magnitude']
-                        self.cmd.inform(f'text="estimated mags = {aa}"')
+                        self.cmd.inform(f'text="AGC[{cam_id:d}]: estimated mags = {aa}"')
                         
                     dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
                 else:
-                    self.cmd.inform('text="find %d objects, skipping DB writing"' % (len(spots)))
+                    self.cmd.inform(f'text="AGC[{{cam_id:d}}]: find {len(spots):d} objects, skipping DB writing"')
             else:
                 cam.spots = spots
 
