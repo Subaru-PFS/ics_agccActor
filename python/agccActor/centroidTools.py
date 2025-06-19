@@ -13,6 +13,8 @@ import lmfit
 from lmfit import Model
 import lmfit
 
+from pfs.utils.datamodel.ag import SourceDetectionFlag
+
 
 def getCentroidParams(cmd):
 
@@ -165,8 +167,8 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['peak_pixel_y_pix'][0:nSpots1] = spots1['ypeak']+region[2]
     result['peak_intensity'][0:nSpots1] = spots1['peak']
     result['background'][0:nSpots1] = background1[spots1['ypeak'], spots1['xpeak']]
-    result['flags'][0:nSpots1][ind1] += 2
-    result['flags'][0:nSpots1][ind2] += 16
+    result['flags'][0:nSpots1][ind1] += SourceDetectionFlag.EDGE
+    result['flags'][0:nSpots1][ind2] += SourceDetectionFlag.BAD_ELLIP
 
     # flag spots near edge of region
 
@@ -191,10 +193,10 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     result['background'][nSpots1:nElem] = background2[spots2['ypeak'], spots2['xpeak']]
     # set flag for right half of image
 
-    result['flags'][nSpots1:nElem] += 1
+    result['flags'][nSpots1:nElem] += SourceDetectionFlag.RIGHT
 
-    result['flags'][nSpots1:nElem][ind1] += 2
-    result['flags'][nSpots1:nElem][ind2] += 16
+    result['flags'][nSpots1:nElem][ind1] += SourceDetectionFlag.EDGE
+    result['flags'][nSpots1:nElem][ind2] += SourceDetectionFlag.BAD_ELLIP
 
     # determine saturation off the unprocessed data
     satValue = np.zeros((len(result)))
@@ -203,7 +205,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
 
     satFlag = data[result['peak_pixel_y_pix'],result['peak_pixel_x_pix']] >= satValue
 
-    result['flags'] += satFlag*4
+    result['flags'] += satFlag * SourceDetectionFlag.SATURATED
 
     # check for flat sources
 
@@ -227,7 +229,7 @@ def getCentroidsSep(data,iParms,cParms,spotDtype,agcid):
     diag = np.array([data[xPos,yPos] - data[xMin,yPos],data[xPos,yPos] - data[xMax,yPos]]).min(axis=0)
     diag = diag/data[xPos,yPos]
     ind = np.where(diag < flatVal)
-    result['flags'][:][ind] += 32
+    result['flags'][:][ind] += SourceDetectionFlag.FLAT_TOP
     
     # calculate more reasonable FWHMs
 
@@ -405,7 +407,7 @@ def windowedFWHM(data,xPos,yPos,region,side):
             return weightedMoment(winVal, xv, yv, w11, w12, w22)
 
     # if we haven't converged return new values
-    return sy, sx, sxy, 8
+    return sy, sx, sxy, SourceDetectionFlag.BAD_SHAPE
 
 def weightedMoment(winVal, xv, yv, w11, w12, w22):
 
@@ -420,7 +422,7 @@ def weightedMoment(winVal, xv, yv, w11, w12, w22):
     sy = (winVal * w * (yv)**2).sum()/(winVal * w).sum()
     sxy = (winVal * w * xv*yv).sum()/(winVal * w).sum()
 
-    return sx, sy, sxy, 8
+    return sx, sy, sxy, SourceDetectionFlag.BAD_SHAPE
 
 def fittedFWHM(data, xPos, yPos):
 
