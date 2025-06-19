@@ -41,7 +41,7 @@ class Camera(object):
                         cam.setTemperature(temp)
                         cam.regions = ((0, 0, 0), (0, 0, 0))
                         cam.in_queue, cam.out_queue, cam.proc = photometry.createProc()
-                        self.logger.info(f'Creating process ID {cam.proc.pid}.')
+                        self.logger.info(f'Creating process ID for Cam {cam.agcid + 1} {cam.proc.pid}.')
                         break
                 #else:
                 #    cam.close()
@@ -161,6 +161,7 @@ class Camera(object):
             cmd.inform('text="Receive expose command"')
 
         active_cams = [self.cams[n] for n in cams_available]
+        self.logger.info(f'Exposing cameras: {[cam.agcid + 1 for cam in active_cams]} for {expTime}s as {expType}.')
         if expType == 'test':
             for n in cams_available:
                 self.cams[n].expose_test()

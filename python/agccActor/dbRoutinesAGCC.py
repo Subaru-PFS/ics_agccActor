@@ -4,6 +4,11 @@ import numpy as np
 from opdb import opdb
 import datetime
 
+import logging
+
+logger = logging.getLogger('agcc')
+logger.setLevel(logging.INFO)
+
 def connectToDB(hostname='db-ics',port='5432',dbname='opdb',username='pfs',passwd=None):
 
     """
@@ -87,11 +92,6 @@ def writeCentroidsToDB(result, visitId, exposureId, cameraId):
                mcs_second_moment_x_pix, mcs_second_moment_y_pix,
                mcs_second_moment_xy_pix, bgvalue, peakvalue
     """
-    import logging
-
-    logger = logging.getLogger('agcc')
-    logger.setLevel(logging.INFO)
-
     sz = result.shape
 
     # Create array of frameIDs, etc. (same for all spots)
@@ -107,7 +107,7 @@ def writeCentroidsToDB(result, visitId, exposureId, cameraId):
     df['agc_camera_id'] = cameraIds
     df['spot_id'] = np.arange(0, sz[0]).astype('int')
 
-    logger.info("Table is prepared.")
+    logger.info(f"Table is prepared for pfs_visit_id={visitId} agc_exposure_id={exposureId} camera={cameraId}.")
 
     # Replace NaN values with None for compatibility with psycopg2
     df = df.where(pd.notnull(df), None)
