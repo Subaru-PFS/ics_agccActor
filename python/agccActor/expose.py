@@ -122,9 +122,11 @@ class Exposure(threading.Thread):
             thr = threading.Thread(target=self.expose_thr, args=(cam,))
             thr.start()
             thrs.append(thr)
+        self.cmd.debug(f'text="done starting {len(thrs)} exposure threads"')
 
         for thr in thrs:
             thr.join()
+        self.cmd.debug('text="done joining exposure threads"')
 
         with Exposure.exp_lock:
             Exposure.n_busy -= len(self.cams)
@@ -199,6 +201,7 @@ class Exposure(threading.Thread):
                         spots = photometry.measure(cam.data,cam.agcid,self.cParms,self.iParms,self.cMethod)
                     except Exception as e:
                         self.cmd.warn(f'text="AGC[{cam_id}]: photometry error: {e}"')
+                        spots = None
 
                 cam.spots = spots
 
@@ -212,7 +215,7 @@ class Exposure(threading.Thread):
                         
                     dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
                 else:
-                    self.cmd.inform(f'text="AGC[{{cam_id:d}}]: find {len(spots):d} objects, skipping DB writing"')
+                    self.cmd.inform(f'text="AGC[{cam_id:d}]: found no objects, skipping DB writing"')
             else:
                 cam.spots = spots
 
