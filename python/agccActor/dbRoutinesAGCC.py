@@ -126,12 +126,21 @@ def writeCentroidsToDB(result, visitId, exposureId, cameraId):
     # Convert DataFrame rows to tuples for bulk insert
     values = [
         (
-            row['agc_exposure_id'], row['agc_camera_id'], row['spot_id'],
-            row['image_moment_00_pix'], row['centroid_x_pix'], row['centroid_y_pix'],
-            row['central_image_moment_20_pix'], row['central_image_moment_11_pix'],
-            row['central_image_moment_02_pix'], row['peak_pixel_x_pix'],
-            row['peak_pixel_y_pix'], row['peak_intensity'], row['background'],
-            row['estimated_magnitude'], row['flags']
+            int(row['agc_exposure_id']),
+            int(row['agc_camera_id']),
+            int(row['spot_id']),
+            float(row['image_moment_00_pix']),
+            float(row['centroid_x_pix']),
+            float(row['centroid_y_pix']),
+            float(row['central_image_moment_20_pix']),
+            float(row['central_image_moment_11_pix']),
+            float(row['central_image_moment_02_pix']),
+            float(row['peak_pixel_x_pix']),
+            float(row['peak_pixel_y_pix']),
+            float(row['peak_intensity']),
+            float(row['background']),
+            float(row['estimated_magnitude']),
+            int(row['flags'])
         )
         for _, row in df.iterrows()
     ]
