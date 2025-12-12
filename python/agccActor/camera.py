@@ -1,3 +1,4 @@
+from agccActor import dbRoutinesAGCC
 from expose import Exposure
 from setmode import SetMode
 from sequence import Sequence, SEQ_IDLE, SEQ_RUNNING, SEQ_ABORT
@@ -16,6 +17,10 @@ class Camera(object):
         """ connect to AG cameras """
 
         self.logger = logging.getLogger('agcc')
+
+        db_params = config.get("db", {})
+        self.logger.info(f'Setting default database connection with parameters: {db_params}')
+        dbRoutinesAGCC.opdb.OpDB.set_default_connection(**db_params)
 
         simulator = config['simulator']
         self.cams = [None, None, None, None, None, None]

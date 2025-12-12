@@ -1,5 +1,5 @@
 import numpy as np
-import centroidTools as ct
+from agccActor import centroidTools as ct
 from importlib import reload
 import multiprocessing as mp
 import sep

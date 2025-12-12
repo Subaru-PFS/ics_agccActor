@@ -1,12 +1,11 @@
-import multiprocessing
 import threading
 import writeFits
 import photometry
 import os
 import time
-from opdb import opdb
 
-import dbRoutinesAGCC as dbRoutinesAGCC
+from agccActor import dbRoutinesAGCC
+
 
 class Exposure(threading.Thread):
     exp_lock = threading.Lock()
@@ -63,15 +62,8 @@ class Exposure(threading.Thread):
         else:
             self.timeDelay = threadDelay/1000
 
-        # Getting last entry of agc_exposure_id from DB
-        db=opdb.OpDB(hostname='db-ics', port=5432,dbname='opdb',
-                        username='pfs')
-        
-        query = db.bulkSelect('agc_exposure','select agc_exposure_id from agc_exposure ORDER BY '
-                      f'agc_exposure_id DESC LIMIT 1')
-        last_nframe = query['agc_exposure_id'].values[0]
-        self.nframe = last_nframe + 1
-        self.cmd.inform(f'text="Getting agc_exposure_id = {self.nframe} from opDB"')
+        self.nframe = dbRoutinesAGCC.getNextAgcExposureId()
+        self.cmd.inform(f'text="Getting agc_exposure_id = {self.nframe} from OpDB"')
         
         # get nframe keyword, unique for each exposure
         path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
@@ -92,7 +84,9 @@ class Exposure(threading.Thread):
                 with open(filename, 'w') as f:
                     f.write(str(self.nframe))
             self.cmd.inform(f'text="Recording agc_exposure_id = {self.nframe} to {filename}"')
+
         dbRoutinesAGCC.writeExposureToDB(self.visitId,self.nframe, expTime_ms/1000.0)
+
 
     def run(self):
         # check if any camera is available
@@ -212,7 +206,7 @@ class Exposure(threading.Thread):
                         self.cmd.inform(f'text="AGC[{cam_id:d}]: wrote centroids to database"')
                         aa=spots['estimated_magnitude']
                         self.cmd.inform(f'text="AGC[{cam_id:d}]: estimated mags = {aa}"')
-                        
+
                     dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
                 else:
                     self.cmd.inform(f'text="AGC[{cam_id:d}]: found no objects, skipping DB writing"')
