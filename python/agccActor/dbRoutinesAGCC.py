@@ -1,103 +1,139 @@
-import psycopg2
-import pandas as pd
-import numpy as np
-from opdb import opdb
 import datetime
-
 import logging
+
+import numpy as np
+import pandas as pd
+from pfs.utils.database import opdb
 
 logger = logging.getLogger('agcc')
 logger.setLevel(logging.INFO)
 
-def connectToDB(hostname='db-ics',port='5432',dbname='opdb',username='pfs',passwd=None):
 
+def getNextAgcExposureId(db: opdb.OpDB | None = None) -> int:
+    """Get the next available AGC exposure identifier.
+
+    Parameters
+    ----------
+    db : opdb.OpDB, optional
+        The database connection object. If not provided, a new connection is created.
+
+    Returns
+    -------
+    int
+        The next available AGC exposure identifier.
     """
-    connect to DB
+    db = db or opdb.OpDB()
+    result = db.query_scalar('SELECT MAX(agc_exposure_id) + 1 AS next_id FROM agc_exposure')
+    return result if result is not None else 0
+
+
+def writeVisitToDB(pfsVisitId: int, db: opdb.OpDB | None = None) -> None:
+    """Write the visit number to the pfs_visit table.
+
+    Parameters
+    ----------
+    pfsVisitId : int
+        The PFS visit identifier.
+    db : opdb.OpDB, optional
+        The database connection object. If not provided, a new connection is created.
     """
-    
-    db = opdb.OpDB(hostname=hostname, port=port, dbname=dbname, username=username)
-    db.connect()
-    
-    return db
+    db = db or opdb.OpDB()
+    db.insert_kw('pfs_visit', pfs_visit_id=pfsVisitId, pfs_visit_description='')
 
 
-def writeVisitToDB(pfsVisitId):
+def writeExposureToDB(visitId: int, exposureId: int, exptime: float, db: opdb.OpDB | None = None) -> None:
+    """Write exposure information to the agc_exposure table.
 
+    This includes telescope information and environmental conditions.
+
+    Parameters
+    ----------
+    visitId : int
+        The PFS visit identifier.
+    exposureId : int
+        The AGC exposure identifier.
+    exptime : float
+        The exposure time in seconds.
+    db : opdb.OpDB, optional
+        The database connection object. If not provided, a new connection is created.
     """
-    Temporary routine for testing: write visit number to pfs_visit. In operation this will be 
-    done from a higher level
-    
-    """
-
-    db=connectToDB()
-    
-
-    df = pd.DataFrame({'pfs_visit_id': [pfsVisitId], 'pfs_visit_description': ['']})
-    #pd.set_option('display.max_columns', None)
-    #pd.set_option('display.width', None)
-    #print('pfs_visit', df)
-
-    try:
-        db.insert('pfs_visit', df)
-    except:
-        pass
-    
-
-def writeExposureToDB(visitId,exposureId, exptime):
-
-    """
-    Temporary routine for testing: write to agcc_exposure so we can write to agcc_data. 
-    In real operation will be done from a higher level
-    
-    """
-
-
-    db=connectToDB()
+    db = db or opdb.OpDB()
 
     # Getting telescope information
-    teleInfo = db.bulkSelect('tel_status','select pfs_visit_id, altitude, azimuth, insrot, adc_pa, m2_pos3 FROM tel_status '
-                        f'ORDER BY pfs_visit_id DESC limit 1')
+    teleInfo = db.query_series(
+        'select pfs_visit_id, altitude, azimuth, insrot, adc_pa, m2_pos3 '
+        'FROM tel_status WHERE pfs_visit_id = :pfs_visit_id ORDER BY status_sequence_id DESC limit 1',
+        params={'pfs_visit_id': visitId}
+    )
 
-    obsCond = db.bulkSelect('env_condition','select pfs_visit_id, outside_temperature, outside_pressure, outside_humidity '
-                        f' FROM env_condition ORDER BY pfs_visit_id DESC limit 1')
+    if teleInfo is None:
+        logger.error(f"No telescope status found for pfs_visit_id={visitId}. Cannot write exposure record.")
+        raise RuntimeError(f"No telescope status found for pfs_visit_id={visitId}.")
 
-    df = pd.DataFrame({'pfs_visit_id': visitId, 
-                    'agc_exposure_id': exposureId,
-                    'agc_exptime': exptime,
-                    'altitude': teleInfo['altitude'],
-                    'azimuth': teleInfo['azimuth'],
-                    'insrot': teleInfo['insrot'],
-                    'adc_pa': teleInfo['adc_pa'],
-                    'm2_pos3': teleInfo['m2_pos3'],
-                    'outside_temperature': obsCond['outside_temperature'],
-                    'outside_pressure' : obsCond['outside_pressure'],
-                    'outside_humidity': obsCond['outside_humidity'],
-                    'taken_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    'measurement_algorithm': 'SEP',
-                    'version_actor': 'git',
-                    'version_instdata': 'git',
-                    })
+    obsCond = db.query_series(
+        'select pfs_visit_id, outside_temperature, outside_pressure, outside_humidity '
+        'FROM env_condition WHERE pfs_visit_id = :pfs_visit_id ORDER BY status_sequence_id DESC limit 1',
+        params={'pfs_visit_id': visitId}
+    )
 
-    db.insert('agc_exposure', df)
-    #pd.set_option('display.max_columns', None)
-    #pd.set_option('display.width', None)
-    #print('agc_exposure', df)
+    if obsCond is None:
+        logger.error(f"No environmental conditions found for pfs_visit_id={visitId}. Cannot write exposure record.")
+        raise RuntimeError(f"No environmental conditions found for pfs_visit_id={visitId}.")
 
-            
-def writeCentroidsToDB(result, visitId, exposureId, cameraId):
-    """
-    Write the centroids to the database in bulk.
+    cols = {'pfs_visit_id': visitId,
+            'agc_exposure_id': exposureId,
+            'agc_exptime': exptime,
+            'altitude': teleInfo['altitude'],
+            'azimuth': teleInfo['azimuth'],
+            'insrot': teleInfo['insrot'],
+            'adc_pa': teleInfo['adc_pa'],
+            'm2_pos3': teleInfo['m2_pos3'],
+            'outside_temperature': obsCond['outside_temperature'],
+            'outside_pressure': obsCond['outside_pressure'],
+            'outside_humidity': obsCond['outside_humidity'],
+            'taken_at': datetime.datetime.now(),
+            'measurement_algorithm': 'SEP',
+            'version_actor': 'git',
+            'version_instdata': 'git',
+            }
+
+    try:
+        db.insert_kw('agc_exposure', **cols)
+    except Exception as e:
+        logger.error(
+            f"Failed to insert agc_exposure record for pfs_visit_id={visitId} agc_exposure_id={exposureId}: {e}"
+        )
+        raise
+
+
+def writeCentroidsToDB(result: np.ndarray, visitId: int, exposureId: int, cameraId: int, db: opdb.OpDB | None = None
+                       ) -> None:
+    """Write the centroids to the database in bulk.
+
     Table: agc_data
     Variables: spot_id, mcs_center_x_pix, mcs_center_y_pix,
                mcs_second_moment_x_pix, mcs_second_moment_y_pix,
                mcs_second_moment_xy_pix, bgvalue, peakvalue
+
+    Parameters
+    ----------
+    result : numpy.ndarray
+        The array of centroiding results.
+    visitId : int
+        The PFS visit identifier.
+    exposureId : int
+        The AGC exposure identifier.
+    cameraId : int
+        The AGC camera identifier.
+    db : opdb.OpDB, optional
+        The database connection object. If not provided, a new connection is created.
     """
-    sz = result.shape
+    db = db or opdb.OpDB()
+    num_centroids = result.shape[0]
 
     # Create array of frameIDs, etc. (same for all spots)
-    visitIds = np.repeat(visitId, sz[0]).astype('int')
-    exposureIds = np.repeat(exposureId, sz[0]).astype('int')
-    cameraIds = np.repeat(cameraId, sz[0]).astype('int')
+    exposureIds = np.repeat(exposureId, num_centroids).astype('int')
+    cameraIds = np.repeat(cameraId, num_centroids).astype('int')
 
     # Turn the record array into a pandas DataFrame
     df = pd.DataFrame(result)
@@ -105,52 +141,8 @@ def writeCentroidsToDB(result, visitId, exposureId, cameraId):
     # Add the extra fields
     df['agc_exposure_id'] = exposureIds
     df['agc_camera_id'] = cameraIds
-    df['spot_id'] = np.arange(0, sz[0]).astype('int')
+    df['spot_id'] = np.arange(0, num_centroids).astype('int')
 
     logger.info(f"Table is prepared for pfs_visit_id={visitId} agc_exposure_id={exposureId} camera={cameraId}.")
 
-    # Replace NaN values with None for compatibility with psycopg2
-    df = df.where(pd.notnull(df), None)
-
-    # Prepare the bulk insert query
-    insert_query = """
-        INSERT INTO agc_data (
-            agc_exposure_id, agc_camera_id, spot_id, image_moment_00_pix, 
-            centroid_x_pix, centroid_y_pix, central_image_moment_20_pix,
-            central_image_moment_11_pix, central_image_moment_02_pix,
-            peak_pixel_x_pix, peak_pixel_y_pix, peak_intensity, background,
-            estimated_magnitude, flags
-        ) VALUES %s
-    """
-
-    # Convert DataFrame rows to tuples for bulk insert
-    values = [
-        (
-            int(row['agc_exposure_id']),
-            int(row['agc_camera_id']),
-            int(row['spot_id']),
-            float(row['image_moment_00_pix']),
-            float(row['centroid_x_pix']),
-            float(row['centroid_y_pix']),
-            float(row['central_image_moment_20_pix']),
-            float(row['central_image_moment_11_pix']),
-            float(row['central_image_moment_02_pix']),
-            float(row['peak_pixel_x_pix']),
-            float(row['peak_pixel_y_pix']),
-            float(row['peak_intensity']),
-            float(row['background']),
-            float(row['estimated_magnitude']),
-            int(row['flags'])
-        )
-        for _, row in df.iterrows()
-    ]
-
-    # Execute the bulk insert
-    try:
-        db = psycopg2.connect(host='db-ics', dbname='opdb', user='pfs')
-        with db as conn:
-            with conn.cursor() as curs:
-                psycopg2.extras.execute_values(curs, insert_query, values)
-        logger.info("Bulk insert completed successfully.")
-    except Exception as e:
-        logger.error(f"Error during bulk insert: {e}")
+    db.insert_dataframe('agc_data', df=df)
