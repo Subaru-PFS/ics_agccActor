@@ -18,9 +18,12 @@ class Camera(object):
 
         self.logger = logging.getLogger('agcc')
 
-        db_params = config.get("db", {})
-        self.logger.info(f'Setting default database connection with parameters: {db_params}')
-        dbRoutinesAGCC.opdb.OpDB.set_default_connection(**db_params)
+        try:
+            db_params = config["db"]["opdb"]
+            self.logger.info(f'Setting default database connection with parameters: {db_params}')
+            dbRoutinesAGCC.opdb.OpDB.set_default_connection(**db_params)
+        except KeyError:
+            self.logger.info('No database configuration for opdb found, using defaults.')
 
         simulator = config['simulator']
         self.cams = [None, None, None, None, None, None]
