@@ -6,7 +6,6 @@ import logging
 import os
 from typing import Any
 
-import fli_camera
 import photometry
 import writeFits
 from expose import Exposure
@@ -51,9 +50,11 @@ class Camera(object):
         self.logger.info(f"Setting TEC to {temp}.")
 
         self.temp = temp
-        fli_camera.CameraInit()
 
         if simulator == 0:
+            import fli_camera
+
+            fli_camera.CameraInit()
             self.numberOfCamera = fli_camera.numberOfCamera()
             for n in range(self.numberOfCamera):
                 cam = fli_camera.Camera(n)
