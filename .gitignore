@@ -29,4 +29,3 @@ python/ics_agcc_actor.egg-info/
 /agcc_*.fits
 
 python/agccActor/version.py
-/REFACTORING.md
