@@ -7,3 +7,26 @@
 *.a
 *~
 python/agccActor/fli/fli_camera.c
+
+# Python caches and virtual environments
+__pycache__/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE/editor and OS-local files
+.idea/
+.DS_Store
+
+# Notebook checkpoints
+**/.ipynb_checkpoints/
+
+# Packaging/build artifacts
+python/ics_agcc_actor.egg-info/
+
+# Locally generated AGCC FITS files in repository root
+/agcc_*.fits
+
+python/agccActor/version.py
+/REFACTORING.md

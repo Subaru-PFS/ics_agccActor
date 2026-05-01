@@ -1,26 +1,33 @@
+"""Threaded helper for camera mode changes."""
+
+from __future__ import annotations
+
 import threading
+from typing import Any
+
 
 class SetMode(threading.Thread):
-    def __init__(self, cams, mode, cmd=None):
-        """ Run exposure command
+    """Set readout mode for a group of cameras in parallel."""
 
-        Args:
-           cams        - list of active cameras
-           mode        - readout mode
-           cmd         - a Command object to report to. Ignored if None.
+    def __init__(self, cams: list[Any], mode: int, cmd: Any | None = None) -> None:
+        """Initialize a setmode worker thread.
 
-        Returns:
-           - NULL
-
-        Keys:
-           stat_cam[1-6]
+        Parameters
+        ----------
+        cams : list[Any]
+            Active camera objects.
+        mode : int
+            Readout mode to apply.
+        cmd : Any, optional
+            Command object for status reporting.
         """
         threading.Thread.__init__(self, daemon=False)
         self.cams = cams
         self.mode = mode
         self.cmd = cmd
 
-    def run(self):
+    def run(self) -> None:
+        """Execute mode changes for all selected cameras."""
         # check if any camera is available
         if len(self.cams) <= 0:
             if self.cmd:

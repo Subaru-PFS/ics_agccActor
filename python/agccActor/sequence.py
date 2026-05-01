@@ -1,30 +1,60 @@
+"""Timed sequence of repeated exposures for AGCC."""
+
+from __future__ import annotations
+
 import threading
+from typing import Any
+
 from expose import Exposure
 
 SEQ_IDLE = 0
 SEQ_RUNNING = 1
 SEQ_ABORT = 2
 
+
 class Sequence(threading.Thread):
-    def __init__(self, cams, expTime_ms, seq_id, count, seq_stat, seq_count, combined, centroid, cParms, iParms, cmd=None):
-        """ Run exposure command
+    """Execute a counted sequence of exposures on a group of cameras."""
 
-        Args:
-           cams        - list of active cameras
-           expTime_ms  - exposure time
-           seq_id      - Sequence ID
-           count       - number of exposures
-           seq_stat    - seq_stat in Camera class
-           seq_count   - seq_count in Camera class
-           combined    - True if Multiple FITS files else Single FITS file
-           centroid    - True if do centroid else don't
-           cmd         - a Command object to report to. Ignored if None.
+    def __init__(
+        self,
+        cams: list[Any],
+        expTime_ms: int,
+        seq_id: int,
+        count: int,
+        seq_stat: list[int],
+        seq_count: list[int],
+        combined: bool,
+        centroid: bool,
+        cParms: dict[str, Any],
+        iParms: dict[str, Any],
+        cmd: Any | None = None,
+    ) -> None:
+        """Initialize a sequence thread.
 
-        Returns:
-           - NULL
-
-        Keys:
-           stat_cam[1-6]
+        Parameters
+        ----------
+        cams : list[Any]
+            Active camera objects.
+        expTime_ms : int
+            Exposure time in milliseconds.
+        seq_id : int
+            Sequence identifier (0-based).
+        count : int
+            Total number of exposures to take.
+        seq_stat : list[int]
+            Shared sequence-status array (one entry per slot).
+        seq_count : list[int]
+            Shared exposure-count array (one entry per slot).
+        combined : bool
+            ``True`` to write a single multi-extension FITS file per exposure.
+        centroid : bool
+            ``True`` to run centroiding after each readout.
+        cParms : dict[str, Any]
+            Centroid parameters forwarded to each ``Exposure``.
+        iParms : dict[str, Any]
+            Image/instrument parameters forwarded to each ``Exposure``.
+        cmd : Any, optional
+            Command object for status reporting.
         """
         threading.Thread.__init__(self, daemon=False)
         self.cams = cams
@@ -35,9 +65,16 @@ class Sequence(threading.Thread):
         self.seq_count = seq_count
         self.combined = combined
         self.centroid = centroid
+        self.cParms = cParms
+        self.iParms = iParms
         self.cmd = cmd
 
-    def run(self):
+    def run(self) -> None:
+        """Run exposures until the count is reached or the sequence is aborted.
+
+        Calls ``cmd.finish()`` when the sequence ends (whether completed or
+        aborted).
+        """
         # check if any camera is available
         if len(self.cams) <= 0:
             if self.cmd:
@@ -46,14 +83,25 @@ class Sequence(threading.Thread):
             return
 
         while self.seq_stat[self.seq_id] == SEQ_RUNNING and self.seq_count[self.seq_id] < self.count:
-            exp_thr = Exposure(self.cams, self.expTime_ms, False, cParms, iParms, self.cmd, self.combined, self.centroid, self.seq_id)
+            exp_thr = Exposure(
+                self.cams,
+                self.expTime_ms,
+                False,
+                self.cParms,
+                self.iParms,
+                self.cmd,
+                self.combined,
+                self.centroid,
+                self.seq_id,
+            )
             exp_thr.start()
             exp_thr.join()
 
             self.seq_count[self.seq_id] += 1
             if self.cmd:
-                self.cmd.inform('text="Sequence [%d] count [%d] done"' % \
-                                (self.seq_id + 1, self.seq_count[self.seq_id]))
+                self.cmd.inform(
+                    'text="Sequence [%d] count [%d] done"' % (self.seq_id + 1, self.seq_count[self.seq_id])
+                )
 
         self.seq_stat[self.seq_id] = SEQ_IDLE
         if self.cmd:

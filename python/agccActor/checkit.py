@@ -1,14 +1,10 @@
-
-
 import centroidTools as ct
-from astropy.io.fits import getdata
-import numpy as np
 import dbRoutinesAGCC as dbRoutinesAGCC
-import pandas as pd
+from astropy.io.fits import getdata
 
-cParm=ct.getCentroidParams([])
-image=getdata("/Users/karr/test1.fits")
+cParm = ct.getCentroidParams([])
+image = getdata("/Users/karr/test1.fits")
 
-centroids=ct.getCentroids(image,cParm)
+centroids = ct.getCentroids(image, cParm)
 
-dbRoutinesAGCC.writeCentroidsToDB(centroids,100,1)
+dbRoutinesAGCC.writeCentroidsToDB(centroids, 100, 1)

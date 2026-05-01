@@ -1,36 +1,74 @@
-import threading
-import writeFits
-import photometry
+"""Concurrent multi-camera exposure thread for AGCC."""
+
+from __future__ import annotations
+
 import os
+import threading
 import time
+from typing import Any
+
+import photometry
+import writeFits
 
 from agccActor import dbRoutinesAGCC
 
 
 class Exposure(threading.Thread):
+    """Run a concurrent multi-camera exposure and optional centroiding.
+
+    Class-level attributes ``exp_lock`` and ``n_busy`` are intentionally
+    shared across all instances to provide a global exposure counter.
+    """
+
     exp_lock = threading.Lock()
     n_busy = 0
 
-    def __init__(self, cams, expTime_ms, dflag, cParms, iParms, visitId, cMethod, 
-                 cmd = None, combined = False, centroid = False, seq_id = -1, 
-                 threadDelay=None, tecOFF=False):
-        
-        """ Run exposure command
+    def __init__(
+        self,
+        cams: list[Any],
+        expTime_ms: int,
+        dflag: bool,
+        cParms: dict[str, Any],
+        iParms: dict[str, Any],
+        visitId: int,
+        cMethod: str,
+        cmd: Any | None = None,
+        combined: bool = False,
+        centroid: bool = False,
+        seq_id: int = -1,
+        threadDelay: int | None = None,
+        tecOFF: bool = False,
+    ) -> None:
+        """Initialize an exposure thread.
 
-        Args:
-           cams        - list of active cameras
-           expTime_ms  - the exposure time in ms
-           dflag       - true for dark exposure
-           cmd         - a Command object to report to. Ignored if None.
-           combined    - Multiple FITS files/Single FITS file
-           centroid    - True if do centroid else don't
-           seq_id      - Sequence id
-
-        Returns:
-           - NULL
-
-        Keys:
-           stat_cam[1-6]
+        Parameters
+        ----------
+        cams : list[Any]
+            Active camera objects.
+        expTime_ms : int
+            Exposure time in milliseconds.
+        dflag : bool
+            ``True`` for a dark exposure.
+        cParms : dict[str, Any]
+            Centroid parameters.
+        iParms : dict[str, Any]
+            Image/instrument parameters.
+        visitId : int
+            PFS visit identifier.
+        cMethod : str
+            Centroid algorithm selector (e.g. ``'sep'``).
+        cmd : Any, optional
+            Command object for status reporting.
+        combined : bool, optional
+            ``True`` to write a single multi-extension FITS file.
+        centroid : bool, optional
+            ``True`` to run centroiding after readout.
+        seq_id : int, optional
+            Sequence identifier; ``-1`` if not part of a sequence.
+        threadDelay : int | None, optional
+            Delay in milliseconds applied between per-camera thread launches.
+        tecOFF : bool, optional
+            ``True`` to disable the TEC during the exposure.
         """
         threading.Thread.__init__(self, daemon=False)
         self.cams = cams
@@ -47,7 +85,7 @@ class Exposure(threading.Thread):
 
         # update the exposure time in cParms
 
-        self.cParms['expTime']=expTime_ms/1000
+        self.cParms["expTime"] = expTime_ms / 1000
 
         self.tecOFFtemp = 20
 
@@ -60,35 +98,40 @@ class Exposure(threading.Thread):
         if threadDelay is None:
             self.timeDelay = 0.0
         else:
-            self.timeDelay = threadDelay/1000
+            self.timeDelay = threadDelay / 1000
 
         self.nframe = dbRoutinesAGCC.getNextAgcExposureId()
         self.cmd.inform(f'text="Getting agc_exposure_id = {self.nframe} from OpDB"')
-        
+
         # get nframe keyword, unique for each exposure
-        path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
-        #path = os.path.join('/data/raw', time.strftime('%Y-%m-%d', time.gmtime()), 'agcc')
+        path = os.path.join("$ICS_MHS_DATA_ROOT", "agcc")
+        # path = os.path.join('/data/raw', time.strftime('%Y-%m-%d', time.gmtime()), 'agcc')
 
         path = os.path.expandvars(os.path.expanduser(path))
         if not os.path.isdir(path):
             os.makedirs(path, 0o755)
-        filename = os.path.join(path, 'nframe.txt')
+        filename = os.path.join(path, "nframe.txt")
 
         with Exposure.exp_lock:
-            #if os.path.isfile(filename):
+            # if os.path.isfile(filename):
             #    with open(filename, 'r') as f:
             #        self.nframe = int(f.read()) + 1
-            #else:
+            # else:
             #    self.nframe = 1
             if os.path.isfile(filename):
-                with open(filename, 'w') as f:
+                with open(filename, "w") as f:
                     f.write(str(self.nframe))
             self.cmd.inform(f'text="Recording agc_exposure_id = {self.nframe} to {filename}"')
 
-        dbRoutinesAGCC.writeExposureToDB(self.visitId,self.nframe, expTime_ms/1000.0)
+        dbRoutinesAGCC.writeExposureToDB(self.visitId, self.nframe, expTime_ms / 1000.0)
 
+    def run(self) -> None:
+        """Execute exposure threads and write results.
 
-    def run(self):
+        Starts one per-camera thread, waits for all to complete, then
+        writes the combined FITS file when requested.  Calls
+        ``cmd.finish()`` on completion unless running inside a sequence.
+        """
         # check if any camera is available
         if len(self.cams) <= 0:
             if self.cmd:
@@ -99,13 +142,13 @@ class Exposure(threading.Thread):
         with Exposure.exp_lock:
             Exposure.n_busy += len(self.cams)
             if self.cmd:
-                self.cmd.inform('agc_exposing=%d' % Exposure.n_busy)
+                self.cmd.inform("agc_exposing=%d" % Exposure.n_busy)
 
         thrs = []
         for cam in self.cams:
             self.cmd.inform(f'text="Applying time delay of {self.timeDelay} second on Cam {cam.devsn}"')
             time.sleep(self.timeDelay)
-            
+
             if self.tecOFF is True:
                 targetTemp = cam.temp
                 self.cmd.inform(f'text="AGCC sets CCD temp = {targetTemp}"')
@@ -125,29 +168,40 @@ class Exposure(threading.Thread):
         with Exposure.exp_lock:
             Exposure.n_busy -= len(self.cams)
             if self.cmd:
-                self.cmd.inform('agc_exposing=%d' % Exposure.n_busy)
-                self.cmd.inform('agc_frameid=%d' % self.nframe)
+                self.cmd.inform("agc_exposing=%d" % Exposure.n_busy)
+                self.cmd.inform("agc_frameid=%d" % self.nframe)
 
         if self.combined and self.cams[0].getTotalTime() > 0:
             writeFits.wfits_combined(self.cmd, self.visitId, self.cams, self.nframe, self.seq_id)
-        
-        
+
         if self.tecOFF is True:
-            '''
+            """
                 Turning TEC on!
-            '''
+            """
             for cam in self.cams:
                 self.cmd.inform(f'text="Turing on TEC to {targetTemp}C"')
                 cam.setTemperature(targetTemp)
-        
+
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
 
-    def expose_thr(self, cam, multiproc=True):
-        """ Concurrent exposure thread for camera readouts """
+    def expose_thr(self, cam: Any, multiproc: bool = True) -> None:
+        """Run a single-camera exposure in a dedicated thread.
+
+        Performs exposure, optional centroiding via a multiprocessing queue
+        or direct call, database centroid write, and per-camera FITS write.
+
+        Parameters
+        ----------
+        cam : Any
+            Camera object (``fli_camera.Camera`` or ``fake_camera.Camera``).
+        multiproc : bool, optional
+            ``True`` to dispatch centroiding to the pre-spawned worker
+            process; ``False`` to run in the calling thread.
+        """
         cam_id = cam.agcid + 1
         if self.cmd:
-            self.cmd.inform(f'agc{cam_id:d}_stat=BUSY')
+            self.cmd.inform(f"agc{cam_id:d}_stat=BUSY")
 
         try:
             cam.setExpTime(self.expTime_ms)
@@ -175,7 +229,7 @@ class Exposure(threading.Thread):
                 self.cmd.inform(f'text="AGC[{cam_id:d}]: Retrieve camera data in {tread:.2f}s"')
             else:
                 self.cmd.inform(f'text="AGC[{cam_id:d}]: Exposure aborted"')
-            self.cmd.inform(f'agc{cam_id:d}_stat=READY')
+            self.cmd.inform(f"agc{cam_id:d}_stat=READY")
 
         spots = None
         if tread > 0:
@@ -189,10 +243,14 @@ class Exposure(threading.Thread):
                     try:
                         spots = cam.out_queue.get()
                     except Exception as e:
-                        self.cmd.warn(f'text="AGC[{cam_id}]: photometry multiprocessing error with photometry: {e}"')
+                        self.cmd.warn(
+                            f'text="AGC[{cam_id}]: photometry multiprocessing error with photometry: {e}"'
+                        )
                 else:
                     try:
-                        spots = photometry.measure(cam.data,cam.agcid,self.cParms,self.iParms,self.cMethod)
+                        spots = photometry.measure(
+                            cam.data, cam.agcid, self.cParms, self.iParms, self.cMethod
+                        )
                     except Exception as e:
                         self.cmd.warn(f'text="AGC[{cam_id}]: photometry error: {e}"')
                         spots = None
@@ -204,10 +262,10 @@ class Exposure(threading.Thread):
                     if self.cmd:
                         self.cmd.inform(f'text="AGC[{cam_id:d}]: find {len(spots):d} objects"')
                         self.cmd.inform(f'text="AGC[{cam_id:d}]: wrote centroids to database"')
-                        aa=spots['estimated_magnitude']
+                        aa = spots["estimated_magnitude"]
                         self.cmd.inform(f'text="AGC[{cam_id:d}]: estimated mags = {aa}"')
 
-                    dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
+                    dbRoutinesAGCC.writeCentroidsToDB(spots, self.visitId, self.nframe, cam.agcid)
                 else:
                     self.cmd.inform(f'text="AGC[{cam_id:d}]: found no objects, skipping DB writing"')
             else:
