@@ -14,14 +14,22 @@ uv run ruff check python/
 # Format
 uv run ruff format python/
 
-# Run tests
+# Run tests (note: test suite is minimal; see Testing note below)
 uv run pytest
 
 # Build the Cython FLI extension (requires libfli in c/libfli-1.999.1-180223/)
 pip install -e .
 ```
 
-The Cython extension `fli_camera` (from `python/agccActor/fli/fli_camera.pyx`) must be built against the FLI C library in `c/libfli-1.999.1-180223/`. It requires `libusb-1.0`. When the FLI hardware is unavailable, `fli/fake_camera.py` is used instead (controlled by the `simulator` key in actor config).
+### Cython Extension Build
+
+The Cython extension `fli_camera` (from `python/agccActor/fli/fli_camera.pyx`) must be built against the FLI C library in `c/libfli-1.999.1-180223/`. It requires `libusb-1.0`. The extension is declared in `setup.py` (legacy sdss3tools build) and `pyproject.toml`.
+
+When the FLI hardware is unavailable or the extension fails to build, `fli/fake_camera.py` is used instead (controlled by the `simulator: 0 | 1` key in actor config). In simulator mode, there is no need to build the extension.
+
+### Testing
+
+**Note:** The codebase has minimal automated test coverage. `pyproject.toml` declares a `tests/` directory, but there are currently no test files. When making changes, test manually in simulator mode using `fli/fake_camera.py` (set `simulator: 1` in actor config).
 
 ## Architecture
 
@@ -48,6 +56,18 @@ AgccCmd.expose()
 ```
 
 Each camera has its own `multiprocessing.Queue` pair and worker process (created at init in `photometry.createProc()`).
+
+### Threading and Multiprocessing Model
+
+- **Main actor thread** (`main.py`): Connects to tron hub; receives and dispatches commands via `AgccCmd`.
+- **Command handler threads**: `Camera.expose()`, `Camera.setmode()` return immediately and spawn worker threads:
+  - `Exposure` (threading.Thread): Per-exposure work; runs per-camera threads concurrently.
+  - `Sequence` (threading.Thread): Timed loop of repeated `Exposure` instances.
+  - `SetMode` (threading.Thread): Parallel mode changes across cameras.
+- **Photometry worker processes** (multiprocessing.Process): One per camera, created at `Camera.__init__()`, runs centroiding in `photometry.worker()`. Communicates with `Exposure` via queues.
+- **Global exposure counter** (`Exposure.n_busy`, `Exposure.exp_lock`): Shared class-level state protected by a single lock across all `Exposure` instances and visits (intentional for global coordination).
+
+**Thread-safety note**: The multiprocessing worker processes and per-camera threads are independent and do not hold a global lock during exposure. Database writes happen after image readout and centroiding complete. Caution when adding concurrent operations.
 
 ### Camera Indexing
 
@@ -102,3 +122,21 @@ The actor config (camera serial numbers, TEC temperature, simulator flag, DB con
   - `ICS_MHS_DATA_ROOT` — data output root (referenced in `expose.py`; `writeFits.py` currently hardcodes `/data/raw`)
 - **Version**: Managed by `lsst-versions`; written to `python/agccActor/version.py` at build time via `[tool.lsst_versions]` in `pyproject.toml`.
 - **EUPS/ups**: The `ups/ics_agccActor.table` file declares EUPS dependencies (`ics_actorkeys`, `tron_actorcore`, `pfs_utils`). This is the legacy EUPS build system used at Subaru alongside the modern `pyproject.toml`.
+
+## Import Conventions and Gotchas
+
+**Bare relative imports** are used throughout (e.g., `import camera`, `from expose import Exposure`, `import centroidTools as ct`). These work only because tron's actor loader manipulates `sys.path`. They are fragile and enable unconditional import of `fli_camera` even in simulator mode (see issue #5 in REFACTORING.md). When refactoring, prefer fully-qualified imports (e.g., `from agccActor.expose import Exposure`); see REFACTORING.md issue #16 for context.
+
+Code uses both styles inconsistently:
+- **Bare relative** (requires sys.path shim): `camera.py`, `expose.py`, `sequence.py`, `setmode.py`, `photometry.py`, `Commands/AgccCmd.py`
+- **Fully qualified** (portable): `from agccActor import centroidTools as ct` (used in `photometry.py` and recommended for new code)
+
+## Known Issues and Refactoring Notes
+
+The codebase has a comprehensive list of known bugs, code quality issues, and refactoring recommendations documented in `REFACTORING.md`. Key categories include:
+
+- **Critical bugs** (#1–6, #8): Runtime crashes (NameError in sequence start, cmd.inform with None guard, undefined cParms/iParms, targetTemp scoping, unconditional fli_camera import, photometry.measure() NameError).
+- **High-priority issues** (#7, #9, #16, #25, #30, #32): None-dereference safety, hardcoded paths, fragile imports, thread-unsafe state, type errors, and missing tests.
+- **Medium-priority improvements** (#12, #18, #20, #23, #24, #29, #34, #35, #36, #38): Refactor opportunities, correctness, and observability.
+
+**When making changes**, consult REFACTORING.md to avoid introducing or compounding existing issues. Several issues are marked resolved as of 2026-04-30 (writeFits.py issues #10, #11, #14).
