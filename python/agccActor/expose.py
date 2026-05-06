@@ -1,10 +1,16 @@
 import threading
-import writeFits
-import photometry
+import queue
 import os
 import time
 
+from agccActor import writeFits
+from agccActor import photometry
 from agccActor import dbRoutinesAGCC
+
+# Bound on how long the main thread will wait for a per-camera photometry
+# worker to return a result. If exceeded, we assume the worker has crashed
+# or hung and proceed without spots for that camera (INSTRM-2920).
+PHOTOMETRY_TIMEOUT_S = 20
 
 
 class Exposure(threading.Thread):
@@ -187,9 +193,15 @@ class Exposure(threading.Thread):
                     cam.in_queue.put(self.iParms)
                     cam.in_queue.put(self.cMethod)
                     try:
-                        spots = cam.out_queue.get()
+                        spots = cam.out_queue.get(timeout=PHOTOMETRY_TIMEOUT_S)
+                    except queue.Empty:
+                        if self.cmd:
+                            self.cmd.warn(f'text="AGC[{cam_id}]: photometry worker did not respond within {PHOTOMETRY_TIMEOUT_S}s -- worker may have crashed"')
+                        spots = None
                     except Exception as e:
-                        self.cmd.warn(f'text="AGC[{cam_id}]: photometry multiprocessing error with photometry: {e}"')
+                        if self.cmd:
+                            self.cmd.warn(f'text="AGC[{cam_id}]: photometry multiprocessing error with photometry: {e}"')
+                        spots = None
                 else:
                     try:
                         spots = photometry.measure(cam.data,cam.agcid,self.cParms,self.iParms,self.cMethod)

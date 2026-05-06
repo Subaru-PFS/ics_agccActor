@@ -22,6 +22,7 @@ def measure(data,agcid,cParms,iParms,cMethod,thresh=10):
 def createProc():
     """ multiprocessing for photometry """
     def worker(in_q, out_q):
+        logger = logging.getLogger('agcc')
         while (True):
 
             data = in_q.get()
@@ -29,8 +30,14 @@ def createProc():
             cParms = in_q.get()
             iParms = in_q.get()
             cMethod = in_q.get()
-            
-            result = measure(data,agcid,cParms,iParms,cMethod)
+
+            try:
+                result = measure(data, agcid, cParms, iParms, cMethod)
+            except Exception as e:
+                # Never let the worker die silently: log, return None so the
+                # consumer's bounded .get() always sees a value (INSTRM-2920).
+                logger.exception(f'AGC[{agcid + 1}]: photometry.measure failed: {e}')
+                result = None
 
             out_q.put(result)
 
