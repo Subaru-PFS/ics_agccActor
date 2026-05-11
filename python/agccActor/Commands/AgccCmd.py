@@ -85,7 +85,7 @@ class AgccCmd(object):
             keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
         )
         # initialize centroid parameters
-        self.setCentroidParams(None)
+        self.cParms = ct.getCentroidParams(None)
 
     def ping(self, cmd: Any) -> None:
         """Query the actor for liveness/happiness."""
@@ -473,17 +473,16 @@ class AgccCmd(object):
         cmd.respond('stat_cam%d="%s"' % (cam_id + 1, stat))
         cmd.finish()
 
-    def setCentroidParams(self, cmd: Any | None) -> None:
+    def setCentroidParams(self, cmd: Any) -> None:
         """Set centroid parameters from config and command overrides."""
 
         self.cParms = ct.getCentroidParams(cmd)
         thresh = self.cParms["thresh"]
         deblend = self.cParms["deblend"]
         nmin = self.cParms["nmin"]
-        if cmd is not None:
-            cmd.finish(f'text="centroid parameters set thresh/deblend/nmin = {thresh} {deblend} {nmin}"')
+        cmd.finish(f'text="centroid parameters set thresh/deblend/nmin = {thresh} {deblend} {nmin}"')
 
-    def setImageParams(self, cmd: Any | None) -> None:
+    def setImageParams(self, cmd: Any) -> None:
         """Set image-processing parameters from config and command overrides."""
 
         self.actor.logger.info(f"Setting image parameters: {cmd=}")

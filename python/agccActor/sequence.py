@@ -27,7 +27,7 @@ class Sequence(threading.Thread):
         centroid: bool,
         cParms: dict[str, Any],
         iParms: dict[str, Any],
-        cmd: Any | None = None,
+        cmd: Any,
     ) -> None:
         """Initialize a sequence thread.
 
@@ -53,7 +53,7 @@ class Sequence(threading.Thread):
             Centroid parameters forwarded to each ``Exposure``.
         iParms : dict[str, Any]
             Image/instrument parameters forwarded to each ``Exposure``.
-        cmd : Any, optional
+        cmd : Any
             Command object for status reporting.
         """
         threading.Thread.__init__(self, daemon=False)
@@ -77,9 +77,8 @@ class Sequence(threading.Thread):
         """
         # check if any camera is available
         if len(self.cams) <= 0:
-            if self.cmd:
-                self.cmd.warn('text="No available cameras"')
-                self.cmd.finish()
+            self.cmd.warn('text="No available cameras"')
+            self.cmd.finish()
             return
 
         while self.seq_stat[self.seq_id] == SEQ_RUNNING and self.seq_count[self.seq_id] < self.count:
@@ -99,16 +98,14 @@ class Sequence(threading.Thread):
             exp_thr.join()
 
             self.seq_count[self.seq_id] += 1
-            if self.cmd:
-                self.cmd.inform(
-                    'text="Sequence [%d] count [%d] done"' % (self.seq_id + 1, self.seq_count[self.seq_id])
-                )
+            self.cmd.inform(
+                'text="Sequence [%d] count [%d] done"' % (self.seq_id + 1, self.seq_count[self.seq_id])
+            )
 
         self.seq_stat[self.seq_id] = SEQ_IDLE
-        if self.cmd:
-            self.cmd.inform('inused_seq%d="NO"' % (self.seq_id + 1))
-            if self.seq_count[self.seq_id] >= self.count:
-                self.cmd.inform('text="Sequence [%d] finished"' % (self.seq_id + 1))
-            else:
-                self.cmd.inform('text="Sequence [%d] aborted"' % (self.seq_id + 1))
-            self.cmd.finish()
+        self.cmd.inform('inused_seq%d="NO"' % (self.seq_id + 1))
+        if self.seq_count[self.seq_id] >= self.count:
+            self.cmd.inform('text="Sequence [%d] finished"' % (self.seq_id + 1))
+        else:
+            self.cmd.inform('text="Sequence [%d] aborted"' % (self.seq_id + 1))
+        self.cmd.finish()

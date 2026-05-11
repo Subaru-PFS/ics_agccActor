@@ -212,22 +212,19 @@ class Camera(object):
             if self.cams[n] is not None:
                 cams_available.append(n)
         if len(cams_available) <= 0:
-            if cmd:
-                cmd.warn('text="No available cameras"')
-                cmd.finish()
+            cmd.warn('text="No available cameras"')
+            cmd.finish()
             return
 
         # check if all cameras are ready
         for n in cams_available:
             if not self.cams[n].isReady():
-                if cmd:
-                    cmd.fail('text="camera busy, command ignored"')
+                cmd.fail('text="camera busy, command ignored"')
                 return
 
         if not expType:
             expType = "test"
-        if cmd:
-            cmd.inform('text="Receive expose command"')
+        cmd.inform('text="Receive expose command"')
 
         active_cams = [self.cams[n] for n in cams_available]
         self.logger.info(
@@ -242,10 +239,9 @@ class Camera(object):
             if combined:
                 writeFits.wfits_combined(cmd, active_cams)
             for n in cams_available:
-                if cmd:
-                    tread = self.cams[n].getTotalTime()
-                    cmd.inform('text="AGC[%d]: Retrieve camera data in %.2fs"' % (n + 1, tread))
-                    cmd.finish()
+                tread = self.cams[n].getTotalTime()
+                cmd.inform('text="AGC[%d]: Retrieve camera data in %.2fs"' % (n + 1, tread))
+                cmd.finish()
         else:
             expTime_ms = int(expTime * 1000)
             if expType == "dark":
@@ -312,22 +308,19 @@ class Camera(object):
 
         for n in cams:
             if self.cams[n] is not None and not self.cams[n].isReady():
-                if cmd:
-                    cmd.fail('text="camera busy, command ignored"')
+                cmd.fail('text="camera busy, command ignored"')
                 return
 
         for n in cams:
             if self.cams[n] is not None:
-                if cmd:
-                    cmd.inform('text="Send setframe command to AGC[%d]"' % (n + 1))
+                cmd.inform('text="Send setframe command to AGC[%d]"' % (n + 1))
                 if bx > 0:
                     self.cams[n].setHBin(bx)
                 if by > 0:
                     self.cams[n].setVBin(by)
                 self.cams[n].setFrame(cx, cy, sx, sy)
-        if cmd:
-            cmd.inform('text="Camera expose area set"')
-            cmd.finish()
+        cmd.inform('text="Camera expose area set"')
+        cmd.finish()
 
     def openShutter(self, cmd: Any, cams: list[int]) -> None:
         """Open the mechanical shutter on the specified cameras.
@@ -341,18 +334,15 @@ class Camera(object):
         """
         for n in cams:
             if self.cams[n] is not None and not self.cams[n].isReady():
-                if cmd:
-                    cmd.fail('text="camera busy, command ignored"')
+                cmd.fail('text="camera busy, command ignored"')
                 return
 
         for n in cams:
             if self.cams[n] is not None:
-                if cmd:
-                    cmd.inform('text="Send shutter opening command to AGC[%d]"' % (n + 1))
+                cmd.inform('text="Send shutter opening command to AGC[%d]"' % (n + 1))
                 self.cams[n].openShutter()
-        if cmd:
-            cmd.inform('text="Camera shutter opened"')
-            cmd.finish()
+        cmd.inform('text="Camera shutter opened"')
+        cmd.finish()
 
     def closeShutter(self, cmd: Any, cams: list[int]) -> None:
         """Close the mechanical shutter on the specified cameras.
@@ -366,18 +356,15 @@ class Camera(object):
         """
         for n in cams:
             if self.cams[n] is not None and not self.cams[n].isReady():
-                if cmd:
-                    cmd.fail('text="camera busy, command ignored"')
+                cmd.fail('text="camera busy, command ignored"')
                 return
 
         for n in cams:
             if self.cams[n] is not None:
-                if cmd:
-                    cmd.inform('text="Send shutter opening command to AGC[%d]"' % (n + 1))
+                cmd.inform('text="Send shutter opening command to AGC[%d]"' % (n + 1))
                 self.cams[n].closeShutter()
-        if cmd:
-            cmd.inform('text="Camera shutter closed"')
-            cmd.finish()
+        cmd.inform('text="Camera shutter closed"')
+        cmd.finish()
 
     def resetframe(self, cmd: Any, cams: list[int]) -> None:
         """Reset the imaging area to the full-frame default.
@@ -392,18 +379,15 @@ class Camera(object):
 
         for n in cams:
             if self.cams[n] is not None and not self.cams[n].isReady():
-                if cmd:
-                    cmd.fail('text="camera busy, command ignored"')
+                cmd.fail('text="camera busy, command ignored"')
                 return
 
         for n in cams:
             if self.cams[n] is not None:
-                if cmd:
-                    cmd.inform('text="Send resetframe command to AGC[%d]"' % (n + 1))
+                cmd.inform('text="Send resetframe command to AGC[%d]"' % (n + 1))
                 self.cams[n].resetFrame()
-        if cmd:
-            cmd.inform('text="Camera expose area reset"')
-            cmd.finish()
+        cmd.inform('text="Camera expose area reset"')
+        cmd.finish()
 
     def setmode(self, cmd: Any, mode: int, cams: list[int]) -> None:
         """Set the readout mode for the specified cameras.
@@ -422,8 +406,7 @@ class Camera(object):
         for n in cams:
             if self.cams[n] is not None:
                 if not self.cams[n].isReady():
-                    if cmd:
-                        cmd.fail('text="camera busy, command ignored"')
+                    cmd.fail('text="camera busy, command ignored"')
                     return
                 else:
                     cams_available.append(n)
@@ -445,14 +428,12 @@ class Camera(object):
 
         for n in cams:
             if self.cams[n] is not None and not self.cams[n].isReady():
-                if cmd:
-                    cmd.fail('text="camera busy, command ignored"')
+                cmd.fail('text="camera busy, command ignored"')
                 return
         for n in cams:
             if self.cams[n] is not None:
                 mode = self.cams[n].getMode()
-                if cmd:
-                    cmd.respond('text="AGC[%d] readout mode: %d"' % (n + 1, mode))
+                cmd.respond('text="AGC[%d] readout mode: %d"' % (n + 1, mode))
         cmd.inform('text="Camera getmode command done"')
         cmd.finish()
 
@@ -469,14 +450,12 @@ class Camera(object):
             if self.cams[n] is not None and self.cams[n].isReady():
                 s0 = self.cams[n].getModeString(0)
                 s1 = self.cams[n].getModeString(1)
-                if cmd:
-                    cmd.respond('text="mode 0: %s"' % (s0))
-                    cmd.respond('text="mode 1: %s"' % (s1))
-                    cmd.inform('text="Camera getmodestring command done"')
-                    cmd.finish()
+                cmd.respond('text="mode 0: %s"' % (s0))
+                cmd.respond('text="mode 1: %s"' % (s1))
+                cmd.inform('text="Camera getmodestring command done"')
+                cmd.finish()
                 return
-        if cmd:
-            cmd.fail('text="camera busy or none attached, command ignored"')
+        cmd.fail('text="camera busy or none attached, command ignored"')
 
     def setcamtemperature(self, cmd: Any, cam: int, temp: float) -> None:
         """Set the CCD temperature for an individual camera.
@@ -493,8 +472,7 @@ class Camera(object):
         if self.cams[cam].isReady():
             self.cams[cam].setTemperature(temp)
         else:
-            if cmd:
-                cmd.warn('text="Camera [%d] is busy"' % cam)
+            cmd.warn('text="Camera [%d] is busy"' % cam)
 
     def settemperature(self, cmd: Any, temp: float) -> None:
         """Set the CCD temperature for all connected cameras.
@@ -514,14 +492,12 @@ class Camera(object):
                     self.cams[n].setTemperature(temp)
                 else:
                     busy = True
-                    if cmd:
-                        cmd.warn('text="Camera [%d] is busy"' % n)
-        if cmd:
-            if busy:
-                cmd.fail('text="Camera settemperature command abort"')
-            else:
-                cmd.inform('text="Camera settemperature command done"')
-                cmd.finish()
+                    cmd.warn('text="Camera [%d] is busy"' % n)
+        if busy:
+            cmd.fail('text="Camera settemperature command abort"')
+        else:
+            cmd.inform('text="Camera settemperature command done"')
+            cmd.finish()
 
     def setregions(self, cmd: Any, camid: int, regions_str: str) -> None:
         """Set the regions of interest for a camera.
@@ -546,13 +522,11 @@ class Camera(object):
             self.cams[camid].regions = ((pars[0], pars[1], pars[2]), (pars[3], pars[4], pars[5]))
         else:
             # wrong number of parameters
-            if cmd:
-                cmd.fail('text="setregions command failed, invalid parameter: %s"' % regions_str)
+            cmd.fail('text="setregions command failed, invalid parameter: %s"' % regions_str)
             return
 
-        if cmd:
-            cmd.inform('text="setregions command done"')
-            cmd.finish()
+        cmd.inform('text="setregions command done"')
+        cmd.finish()
 
     def startsequence(
         self,
@@ -594,22 +568,19 @@ class Camera(object):
         for n in cams:
             if self.cams[n] is not None and self.cams[n].isReady():
                 cams_available.append(n)
-            elif cmd:
+            else:
                 cmd.warn('text="Camera [%d] is not available"' % n)
         if len(cams_available) <= 0:
-            if cmd:
-                cmd.fail('text="No usable camera"')
+            cmd.fail('text="No usable camera"')
             return
 
         if self.seq_stat[seq_id] != SEQ_IDLE:
-            if cmd:
-                cmd.fail('text="Sequence ID %d in used"' % (seq_id + 1))
+            cmd.fail('text="Sequence ID %d in used"' % (seq_id + 1))
             return
         self.seq_stat[seq_id] = SEQ_RUNNING
         self.seq_count[seq_id] = 0
         expTime_ms = int(expTime * 1000)
-        if cmd:
-            cmd.inform('inused_seq%d="YES"' % (seq_id + 1))
+        cmd.inform('inused_seq%d="YES"' % (seq_id + 1))
 
         active_cams = [self.cams[n] for n in cams_available]
         sequence_thr = Sequence(
@@ -639,14 +610,12 @@ class Camera(object):
         """
 
         if self.seq_stat[seq_id] != SEQ_RUNNING:
-            if cmd:
-                cmd.fail('text="Sequence ID %d not in used"' % (seq_id + 1))
+            cmd.fail('text="Sequence ID %d not in used"' % (seq_id + 1))
             return
         self.seq_stat[seq_id] = SEQ_ABORT
 
-        if cmd:
-            cmd.inform('text="Camera stopsequence [%d] command sent"' % (seq_id + 1))
-            cmd.finish()
+        cmd.inform('text="Camera stopsequence [%d] command sent"' % (seq_id + 1))
+        cmd.finish()
 
     def sequence_in_use(self, seq_id: int) -> bool:
         """Return ``True`` if the given sequence slot is active.

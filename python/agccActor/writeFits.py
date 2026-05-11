@@ -1,12 +1,31 @@
+from __future__ import annotations
+
 import os
 import time
 from datetime import datetime
+from typing import Any
 
 from astropy.io import fits
 
 
-def wfits(cmd, visitId, cam, nframe):
-    """Write the image to a FITS file"""
+def wfits(cmd: Any, visitId: int, cam: Any, nframe: int) -> None:
+    """Write a single-camera image to a FITS file.
+
+    Parameters
+    ----------
+    cmd : Any
+        Command object for status reporting.
+    visitId : int
+        PFS visit identifier.
+    cam : Any
+        Camera object whose ``data`` and metadata will be written.
+    nframe : int
+        Global exposure counter used to build the output filename.
+
+    Returns
+    -------
+    None
+    """
 
     path = os.path.join("/data/raw", time.strftime("%Y-%m-%d", time.gmtime()), "agcc")
     path = os.path.expandvars(os.path.expanduser(path))
@@ -64,13 +83,30 @@ def wfits(cmd, visitId, cam, nframe):
         hdu.writeto(pfsFilename, overwrite=True, checksum=True)
 
     cam.filename = pfsFilename
-    if cmd:
-        cmd.inform(f'agc{cam.agcid + 1}_fitsfile="{pfsFilename}",{cam.tstart:.1f}')
-        cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
+    cmd.inform(f'agc{cam.agcid + 1}_fitsfile="{pfsFilename}",{cam.tstart:.1f}')
+    cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
 
 
-def wfits_combined(cmd, visitId, cams, nframe, seq_id=-1):
-    """Write the images to a FITS file"""
+def wfits_combined(cmd: Any, visitId: int, cams: list[Any], nframe: int, seq_id: int = -1) -> None:
+    """Write all camera images into a single multi-extension FITS file.
+
+    Parameters
+    ----------
+    cmd : Any
+        Command object for status reporting.
+    visitId : int
+        PFS visit identifier.
+    cams : list[Any]
+        Camera objects whose ``data`` and metadata will be written.
+    nframe : int
+        Global exposure counter used to build the output filename.
+    seq_id : int, optional
+        Sequence slot identifier (0-based); ``-1`` for a single exposure.
+
+    Returns
+    -------
+    None
+    """
 
     path = os.path.join("/data/raw", time.strftime("%Y-%m-%d", time.gmtime()), "agcc")
     path = os.path.expandvars(os.path.expanduser(path))
@@ -140,9 +176,8 @@ def wfits_combined(cmd, visitId, cams, nframe, seq_id=-1):
 
     hdulist.writeto(pfsFilename, checksum=True, overwrite=True)
 
-    if cmd:
-        if seq_id >= 0:
-            cmd.inform(f'agc_seq{seq_id + 1}="{filename}"')
-        else:
-            cmd.inform(f'agc_fitsfile="{pfsFilename}",{cams[0].tstart:.1f}')
-        cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
+    if seq_id >= 0:
+        cmd.inform(f'agc_seq{seq_id + 1}="{filename}"')
+    else:
+        cmd.inform(f'agc_fitsfile="{pfsFilename}",{cams[0].tstart:.1f}')
+    cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
