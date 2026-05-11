@@ -64,6 +64,8 @@ def measure(
 
     if cMethod == "sep":
         result = ct.getCentroidsSep(data, iParms, cParms, spotDtype, agcid)
+    else:
+        raise ValueError(f"Unsupported centroiding method: {cMethod}")
 
     return result
 
