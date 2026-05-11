@@ -6,13 +6,10 @@ import logging
 import os
 from typing import Any
 
-import photometry
-import writeFits
-from expose import Exposure
-from sequence import SEQ_ABORT, SEQ_IDLE, SEQ_RUNNING, Sequence
-from setmode import SetMode
-
-from agccActor import dbRoutinesAGCC
+from agccActor import dbRoutinesAGCC, photometry, writeFits
+from agccActor.expose import Exposure
+from agccActor.sequence import SEQ_ABORT, SEQ_IDLE, SEQ_RUNNING, Sequence
+from agccActor.setmode import SetMode
 
 nCams = 6
 

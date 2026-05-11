@@ -6,10 +6,11 @@ from __future__ import annotations
 
 from typing import Any
 
-import centroidTools as ct
-import dbRoutinesAGCC as dbRoutinesAGCC
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+
+from agccActor import centroidTools as ct
+from agccActor import dbRoutinesAGCC
 
 nCams = 6
 

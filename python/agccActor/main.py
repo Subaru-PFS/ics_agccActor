@@ -11,8 +11,9 @@ from __future__ import annotations
 from importlib import reload
 from typing import Any
 
-import camera
 from actorcore.Actor import Actor
+
+from agccActor import camera
 
 
 class AgccActor(Actor):
