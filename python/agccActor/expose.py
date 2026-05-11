@@ -102,27 +102,6 @@ class Exposure(threading.Thread):
 
         self.nframe = dbRoutinesAGCC.getNextAgcExposureId()
         self.cmd.inform(f'text="Getting agc_exposure_id = {self.nframe} from OpDB"')
-
-        # get nframe keyword, unique for each exposure
-        path = os.path.join("$ICS_MHS_DATA_ROOT", "agcc")
-        # path = os.path.join('/data/raw', time.strftime('%Y-%m-%d', time.gmtime()), 'agcc')
-
-        path = os.path.expandvars(os.path.expanduser(path))
-        if not os.path.isdir(path):
-            os.makedirs(path, 0o755)
-        filename = os.path.join(path, "nframe.txt")
-
-        with Exposure.exp_lock:
-            # if os.path.isfile(filename):
-            #    with open(filename, 'r') as f:
-            #        self.nframe = int(f.read()) + 1
-            # else:
-            #    self.nframe = 1
-            if os.path.isfile(filename):
-                with open(filename, "w") as f:
-                    f.write(str(self.nframe))
-            self.cmd.inform(f'text="Recording agc_exposure_id = {self.nframe} to {filename}"')
-
         dbRoutinesAGCC.writeExposureToDB(self.visitId, self.nframe, expTime_ms / 1000.0)
 
     def run(self) -> None:
