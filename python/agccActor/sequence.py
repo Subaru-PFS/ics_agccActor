@@ -93,6 +93,7 @@ class Sequence(threading.Thread):
                 cMethod="sep",
                 cmd=self.cmd,
                 combined=self.combined,
+                centroid=self.centroid,
             )
             exp_thr.start()
             exp_thr.join()

@@ -57,6 +57,8 @@ def wfits(cmd, visitId, cam, nframe):
 
         tbhdu = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
         hdulist = fits.HDUList([hdu, tbhdu])
+        # TODO: centroid path writes to legacy timestamped filename, not pfsFilename;
+        # cam.filename below will point to a file that was not written.
         hdulist.writeto(filename, checksum=True, overwrite=True)
     else:
         hdu.writeto(pfsFilename, overwrite=True, checksum=True)

@@ -68,8 +68,6 @@ class Camera(object):
                         cam.in_queue, cam.out_queue, cam.proc = photometry.createProc()
                         self.logger.info(f"Creating process ID for Cam {cam.agcid + 1} {cam.proc.pid}.")
                         break
-                # else:
-                #    cam.close()
         else:
             from fli import fake_camera
 

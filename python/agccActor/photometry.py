@@ -98,7 +98,6 @@ def createProc() -> tuple[mp.Queue, mp.Queue, mp.Process]:
                 logger.exception(f'AGC[{agcid + 1}]: photometry.measure failed: {e}')
                 result = None
 
-
             out_q.put(result)
 
     in_q = mp.Queue()

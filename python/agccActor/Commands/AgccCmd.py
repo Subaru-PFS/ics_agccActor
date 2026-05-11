@@ -196,9 +196,6 @@ class AgccCmd(object):
             if cmdKeys["centroid"].values[0] == 1:
                 centroid = True
 
-        # moved this to configurable option
-        # self.setCentroidParams(cmd)
-
         cMethod = "sep"
         if "cMethod" in cmdKeys:
             cMethod = cmdKeys["cMethod"].values[0]
