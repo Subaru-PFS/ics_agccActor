@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import multiprocessing as mp
 from typing import Any
 
@@ -81,6 +82,7 @@ def createProc() -> tuple[mp.Queue, mp.Queue, mp.Process]:
 
     def worker(in_q: mp.Queue, out_q: mp.Queue) -> None:
         """Process queue items and return photometry results."""
+        logger = logging.getLogger("agcc")
         while True:
             data = in_q.get()
             agcid = in_q.get()
@@ -88,7 +90,14 @@ def createProc() -> tuple[mp.Queue, mp.Queue, mp.Process]:
             iParms = in_q.get()
             cMethod = in_q.get()
 
-            result = measure(data, agcid, cParms, iParms, cMethod)
+            try:
+                result = measure(data, agcid, cParms, iParms, cMethod)
+            except Exception as e:
+                # Never let the worker die silently: log, return None so the
+                # consumer's bounded .get() always sees a value (INSTRM-2920).
+                logger.exception(f'AGC[{agcid + 1}]: photometry.measure failed: {e}')
+                result = None
+
 
             out_q.put(result)
 
