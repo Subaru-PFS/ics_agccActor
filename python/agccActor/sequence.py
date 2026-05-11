@@ -89,10 +89,10 @@ class Sequence(threading.Thread):
                 False,
                 self.cParms,
                 self.iParms,
-                self.cmd,
-                self.combined,
-                self.centroid,
-                self.seq_id,
+                visitId=self.seq_id,
+                cMethod="sep",
+                cmd=self.cmd,
+                combined=self.combined,
             )
             exp_thr.start()
             exp_thr.join()
