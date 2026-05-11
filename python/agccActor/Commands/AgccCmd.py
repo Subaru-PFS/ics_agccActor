@@ -156,7 +156,7 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
+                    cmd.error(f'text="camera list error: {camList}"')
                     cmd.fail()
                     return
                 cams.append(k)
@@ -229,7 +229,7 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
+                    cmd.error(f'text="camera list error: {camList}"')
                     cmd.fail()
                     return
                 cams.append(k)
@@ -265,7 +265,7 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
+                    cmd.error(f'text="camera list error: {camList}"')
                     cmd.fail()
                     return
                 cams.append(k)
@@ -286,7 +286,7 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
+                    cmd.error(f'text="camera list error: {camList}"')
                     cmd.fail()
                     return
                 cams.append(k)
@@ -323,7 +323,7 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
+                    cmd.error(f'text="camera list error: {camList}"')
                     cmd.fail()
                     return
                 cams.append(k)
@@ -345,7 +345,7 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
+                    cmd.error(f'text="camera list error: {camList}"')
                     cmd.fail()
                     return
                 cams.append(k)
@@ -365,7 +365,7 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
+                    cmd.error(f'text="camera list error: {camList}"')
                     cmd.fail()
                     return
                 cams.append(k)
@@ -422,18 +422,18 @@ class AgccCmd(object):
         for cam in camList:
             k = int(cam) - 1
             if k < 0 or k >= nCams:
-                cmd.error('text="camera list error: %s"' % camList)
+                cmd.error(f'text="camera list error: {camList}"')
                 cmd.fail()
                 return
             cams.append(k)
         if count < 0:
-            cmd.error('text="parameter count invalid: %d"' % count)
+            cmd.error(f'text="parameter count invalid: {count:d}"')
             cmd.fail()
         elif len(cams) <= 0:
             cmd.error('text="No usable camera"')
             cmd.fail()
         elif expTime <= 0:
-            cmd.error('text="exposure time invalid: %f"' % expTime)
+            cmd.error(f'text="exposure time invalid: {expTime:f}"')
             cmd.fail()
         else:
             self.actor.camera.startsequence(
@@ -453,12 +453,12 @@ class AgccCmd(object):
         cmdKeys = cmd.cmd.keywords
         seq_id = cmdKeys["sequence"].values[0] - 1
         if seq_id < 0 or seq_id >= nCams:
-            cmd.fail('text="sequence id error: %d"' % (seq_id + 1))
+            cmd.fail(f'text="sequence id error: {seq_id + 1:d}"')
             return
         if self.actor.camera.sequence_in_use(seq_id):
-            cmd.respond('inused_seq%d="YES"' % (seq_id + 1))
+            cmd.respond(f'inused_seq{seq_id + 1:d}="YES"')
         else:
-            cmd.respond('inused_seq%d="NO"' % (seq_id + 1))
+            cmd.respond(f'inused_seq{seq_id + 1:d}="NO"')
         cmd.finish()
 
     def inusecamera(self, cmd: Any) -> None:
@@ -467,10 +467,10 @@ class AgccCmd(object):
         cmdKeys = cmd.cmd.keywords
         cam_id = cmdKeys["camera"].values[0] - 1
         if cam_id < 0 or cam_id >= nCams:
-            cmd.fail('text="camera id error: %d"' % (cam_id + 1))
+            cmd.fail(f'text="camera id error: {cam_id + 1:d}"')
             return
         stat = self.actor.camera.camera_stat(cam_id)
-        cmd.respond('stat_cam%d="%s"' % (cam_id + 1, stat))
+        cmd.respond(f'stat_cam{cam_id + 1:d}="{stat}"')
         cmd.finish()
 
     def setCentroidParams(self, cmd: Any) -> None:
