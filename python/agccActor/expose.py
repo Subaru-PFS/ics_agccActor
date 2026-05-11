@@ -59,7 +59,7 @@ class Exposure(threading.Thread):
             PFS visit identifier.
         cMethod : str
             Centroid algorithm selector (e.g. ``'sep'``).
-        cmd : Any, optional
+        cmd : Any
             Command object for status reporting.
         combined : bool, optional
             ``True`` to write a single multi-extension FITS file.
