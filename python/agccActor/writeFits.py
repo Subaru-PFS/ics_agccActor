@@ -1,28 +1,12 @@
-"""FITS file writing helpers for AGCC single-camera and combined exposures."""
-
-from __future__ import annotations
-
 import os
 import time
-from typing import Any
+from datetime import datetime
 
-import astropy.io.fits as pyfits
+from astropy.io import fits
 
 
-def wfits(cmd: Any, visitId: int, cam: Any, nframe: int) -> None:
-    """Write a single-camera image to a per-camera FITS file.
-
-    Parameters
-    ----------
-    cmd : Any
-        Command object for status reporting.
-    visitId : int
-        PFS visit identifier.
-    cam : Any
-        Camera object whose ``data`` and header attributes are used.
-    nframe : int
-        Unique AG exposure identifier used in the output filename.
-    """
+def wfits(cmd, visitId, cam, nframe):
+    """Write the image to a FITS file"""
 
     path = os.path.join("/data/raw", time.strftime("%Y-%m-%d", time.gmtime()), "agcc")
     path = os.path.expandvars(os.path.expanduser(path))
@@ -32,12 +16,17 @@ def wfits(cmd: Any, visitId: int, cam: Any, nframe: int) -> None:
         except Exception as e:
             raise RuntimeError(f"failed to makedirs({path}): {e}")
 
+    tstart = datetime.fromtimestamp(cam.tstart)
+    mtimestamp = tstart.strftime("%Y%m%d_%H%M%S%f")[:-5]
+
     pfsFilename = os.path.join(path, f"agcc_{visitId:06d}_{nframe:08d}_cam{cam.agcid + 1}.fits")
+    filename = os.path.join(path, f"agcc_c{cam.agcid + 1}_{mtimestamp}.fits")
 
     if cam.data.size == 0:
-        cmd.warn('text="No image available for AGC[%d]"' % (cam.agcid + 1))
+        cmd.warn(f'text="No image available for AGC[{cam.agcid + 1}]"')
         return
-    hdu = pyfits.PrimaryHDU(cam.data)
+
+    hdu = fits.PrimaryHDU(cam.data)
     hdr = hdu.header
     hdr.set("DATE", cam.timestamp, "exposure begin date")
     hdr.set("INSTRUME", cam.devname, "this instrument")
@@ -55,68 +44,62 @@ def wfits(cmd: Any, visitId: int, cam: Any, nframe: int) -> None:
     hdr.set("VISITID", visitId, "visit id")
 
     if cam.spots is not None:
-        c1 = pyfits.Column(name="moment_00", format="E", array=cam.spots["image_moment_00_pix"])
-        c2 = pyfits.Column(name="centroid_x", format="E", array=cam.spots["centroid_x_pix"])
-        c3 = pyfits.Column(name="centroid_y", format="E", array=cam.spots["centroid_y_pix"])
-        c4 = pyfits.Column(name="moment_20", format="E", array=cam.spots["central_image_moment_20_pix"])
-        c5 = pyfits.Column(name="moment_11", format="E", array=cam.spots["central_image_moment_11_pix"])
-        c6 = pyfits.Column(name="moment_02", format="E", array=cam.spots["central_image_moment_02_pix"])
-        c7 = pyfits.Column(name="peak_x", format="I", array=cam.spots["peak_pixel_x_pix"])
-        c8 = pyfits.Column(name="peak_y", format="I", array=cam.spots["peak_pixel_y_pix"])
-        c9 = pyfits.Column(name="peak_intensity", format="E", array=cam.spots["peak_intensity"])
-        c10 = pyfits.Column(name="background", format="E", array=cam.spots["background"])
+        c1 = fits.Column(name="moment_00", format="E", array=cam.spots["image_moment_00_pix"])
+        c2 = fits.Column(name="centroid_x", format="E", array=cam.spots["centroid_x_pix"])
+        c3 = fits.Column(name="centroid_y", format="E", array=cam.spots["centroid_y_pix"])
+        c4 = fits.Column(name="moment_20", format="E", array=cam.spots["central_image_moment_20_pix"])
+        c5 = fits.Column(name="moment_11", format="E", array=cam.spots["central_image_moment_11_pix"])
+        c6 = fits.Column(name="moment_02", format="E", array=cam.spots["central_image_moment_02_pix"])
+        c7 = fits.Column(name="peak_x", format="I", array=cam.spots["peak_pixel_x_pix"])
+        c8 = fits.Column(name="peak_y", format="I", array=cam.spots["peak_pixel_y_pix"])
+        c9 = fits.Column(name="peak_intensity", format="E", array=cam.spots["peak_intensity"])
+        c10 = fits.Column(name="background", format="E", array=cam.spots["background"])
 
-        tbhdu = pyfits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
-        hdulist = pyfits.HDUList([hdu, tbhdu])
-        hdulist.writeto(pfsFilename, checksum=True, overwrite=True)
+        tbhdu = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
+        hdulist = fits.HDUList([hdu, tbhdu])
+        hdulist.writeto(filename, checksum=True, overwrite=True)
     else:
         hdu.writeto(pfsFilename, overwrite=True, checksum=True)
 
     cam.filename = pfsFilename
     if cmd:
-        cmd.inform('agc%d_fitsfile="%s",%.1f' % (cam.agcid + 1, pfsFilename, cam.tstart))
+        cmd.inform(f'agc{cam.agcid + 1}_fitsfile="{pfsFilename}",{cam.tstart:.1f}')
+        cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
 
 
-def wfits_combined(cmd: Any, visitId: int, cams: list[Any], nframe: int, seq_id: int = -1) -> None:
-    """Write all camera images into a single multi-extension FITS file.
-
-    Each active camera occupies one image extension (``cam1``–``cam6``);
-    absent cameras produce an empty ``ImageHDU``.  When centroiding has
-    run, a companion binary-table extension (``table{N}``) is appended.
-
-    Parameters
-    ----------
-    cmd : Any
-        Command object for status reporting.
-    visitId : int
-        PFS visit identifier.
-    cams : list[Any]
-        Camera objects that have completed an exposure.
-    nframe : int
-        Unique AG exposure identifier used in the output filename.
-    seq_id : int, optional
-        Sequence identifier; ``-1`` if not part of a sequence.
-    """
+def wfits_combined(cmd, visitId, cams, nframe, seq_id=-1):
+    """Write the images to a FITS file"""
 
     path = os.path.join("/data/raw", time.strftime("%Y-%m-%d", time.gmtime()), "agcc")
     path = os.path.expandvars(os.path.expanduser(path))
     if not os.path.isdir(path):
         os.makedirs(path, 0o755)
 
+    if len(cams) > 0:
+        now = datetime.fromtimestamp(cams[0].tstart)
+    else:
+        now = datetime.now()
+    mtimestamp = now.strftime("%Y%m%d_%H%M%S%f")[:-5]
+
+    if seq_id >= 0:
+        filename = os.path.join(path, f"agcc_s{seq_id + 1}_{mtimestamp}.fits")
+    else:
+        filename = os.path.join(path, f"agcc_{mtimestamp}.fits")
+
     pfsFilename = os.path.join(path, f"agcc_{visitId:06d}_{nframe:08d}.fits")
 
-    hdulist = pyfits.HDUList([pyfits.PrimaryHDU()])
+    hdulist = fits.HDUList([fits.PrimaryHDU()])
     for n in range(6):
-        extname = "cam%d" % (n + 1)
+        extname = f"cam{n + 1}"
 
         for cam in cams:
             if cam.agcid == n:
                 break
         else:
-            hdulist.append(pyfits.ImageHDU(name=extname))
+            hdulist.append(fits.ImageHDU(name=extname))
             continue
 
-        hdu = pyfits.ImageHDU(cam.data, name=extname)
+        hdu = fits.ImageHDU(cam.data, name=extname)
         hdr = hdu.header
         hdr.set("DATE", cam.timestamp, "exposure begin date")
         hdr.set("INSTRUME", cam.devname, "this instrument")
@@ -138,25 +121,26 @@ def wfits_combined(cmd: Any, visitId: int, cams: list[Any], nframe: int, seq_id:
         hdulist.insert(n + 1, hdu)
 
         if cam.spots is not None:
-            c1 = pyfits.Column(name="moment_00", format="E", array=cam.spots["image_moment_00_pix"])
-            c2 = pyfits.Column(name="centroid_x", format="E", array=cam.spots["centroid_x_pix"])
-            c3 = pyfits.Column(name="centroid_y", format="E", array=cam.spots["centroid_y_pix"])
-            c4 = pyfits.Column(name="moment_20", format="E", array=cam.spots["central_image_moment_20_pix"])
-            c5 = pyfits.Column(name="moment_11", format="E", array=cam.spots["central_image_moment_11_pix"])
-            c6 = pyfits.Column(name="moment_02", format="E", array=cam.spots["central_image_moment_02_pix"])
-            c7 = pyfits.Column(name="peak_x", format="I", array=cam.spots["peak_pixel_x_pix"])
-            c8 = pyfits.Column(name="peak_y", format="I", array=cam.spots["peak_pixel_y_pix"])
-            c9 = pyfits.Column(name="peak_intensity", format="E", array=cam.spots["peak_intensity"])
-            c10 = pyfits.Column(name="background", format="E", array=cam.spots["background"])
+            c1 = fits.Column(name="moment_00", format="E", array=cam.spots["image_moment_00_pix"])
+            c2 = fits.Column(name="centroid_x", format="E", array=cam.spots["centroid_x_pix"])
+            c3 = fits.Column(name="centroid_y", format="E", array=cam.spots["centroid_y_pix"])
+            c4 = fits.Column(name="moment_20", format="E", array=cam.spots["central_image_moment_20_pix"])
+            c5 = fits.Column(name="moment_11", format="E", array=cam.spots["central_image_moment_11_pix"])
+            c6 = fits.Column(name="moment_02", format="E", array=cam.spots["central_image_moment_02_pix"])
+            c7 = fits.Column(name="peak_x", format="I", array=cam.spots["peak_pixel_x_pix"])
+            c8 = fits.Column(name="peak_y", format="I", array=cam.spots["peak_pixel_y_pix"])
+            c9 = fits.Column(name="peak_intensity", format="E", array=cam.spots["peak_intensity"])
+            c10 = fits.Column(name="background", format="E", array=cam.spots["background"])
 
-            tbhdu = pyfits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
-            tbhdu.name = "table%d" % (n + 1)
+            tbhdu = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
+            tbhdu.name = f"table{n + 1}"
             hdulist.append(tbhdu)
 
     hdulist.writeto(pfsFilename, checksum=True, overwrite=True)
 
     if cmd:
         if seq_id >= 0:
-            cmd.inform('agc_seq%d="%s"' % (seq_id + 1, pfsFilename))
+            cmd.inform(f'agc_seq{seq_id + 1}="{filename}"')
         else:
-            cmd.inform('agc_fitsfile="%s",%.1f' % (pfsFilename, cams[0].tstart))
+            cmd.inform(f'agc_fitsfile="{pfsFilename}",{cams[0].tstart:.1f}')
+        cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
