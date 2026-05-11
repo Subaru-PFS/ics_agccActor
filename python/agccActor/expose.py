@@ -32,7 +32,7 @@ class Exposure(threading.Thread):
         iParms: dict[str, Any],
         visitId: int,
         cMethod: str,
-        cmd: Any | None = None,
+        cmd: Any,
         combined: bool = False,
         centroid: bool = False,
         seq_id: int = -1,
