@@ -567,6 +567,8 @@ class Camera(object):
         count: int,
         cams: list[int],
         combined: bool,
+        cParms: dict[str, Any],
+        iParms: dict[str, Any],
         centroid: bool = False,
     ) -> None:
         """Start a repeated exposure sequence on the specified cameras.
@@ -585,6 +587,10 @@ class Camera(object):
             Camera indices (0-based).
         combined : bool
             ``True`` to write a single multi-extension FITS per frame.
+        cParms : dict[str, Any]
+            Centroid parameters.
+        iParms : dict[str, Any]
+            Image/instrument parameters.
         centroid : bool, optional
             ``True`` to run centroiding after each readout.
         """

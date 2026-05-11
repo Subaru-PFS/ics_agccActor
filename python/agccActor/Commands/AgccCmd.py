@@ -305,7 +305,7 @@ class AgccCmd(object):
         else:
             by = 0
         if "cx" not in cmdKeys or "cy" not in cmdKeys or "sx" not in cmdKeys or "sy" not in cmdKeys:
-            cmd.error('text="reqired parameters (cx,cy,sx,sy) missing"')
+            cmd.error('text="required parameters (cx,cy,sx,sy) missing"')
             cmd.fail()
             return
         cx = cmdKeys["cx"].values[0]
@@ -438,7 +438,7 @@ class AgccCmd(object):
             cmd.error('text="exposure time invalid: %f"' % expTime)
             cmd.fail()
         else:
-            self.actor.camera.startsequence(cmd, seq_id, expTime, count, cams, combined)
+            self.actor.camera.startsequence(cmd, seq_id, expTime, count, cams, combined, self.cParms, self.iParms)
 
     def stopsequence(self, cmd: Any) -> None:
         """Stop a exposure sequence"""
