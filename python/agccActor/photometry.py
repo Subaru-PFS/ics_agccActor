@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy as np
 
-from agccActor import centroidTools as ct
+from agccActor import centroidTools
 
 # Structured dtype used by centroidTools/getCentroidsSep return values.
 spotDtype = np.dtype(
@@ -64,7 +64,7 @@ def measure(
     """
 
     if cMethod == "sep":
-        result = ct.getCentroidsSep(data, iParms, cParms, spotDtype, agcid)
+        result = centroidTools.getCentroidsSep(data, iParms, cParms, spotDtype, agcid)
     else:
         raise ValueError(f"Unsupported centroiding method: {cMethod}")
 
