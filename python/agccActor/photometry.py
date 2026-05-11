@@ -95,7 +95,7 @@ def createProc() -> tuple[mp.Queue, mp.Queue, mp.Process]:
             except Exception as e:
                 # Never let the worker die silently: log, return None so the
                 # consumer's bounded .get() always sees a value (INSTRM-2920).
-                logger.exception(f'AGC[{agcid + 1}]: photometry.measure failed: {e}')
+                logger.exception(f"AGC[{agcid + 1}]: photometry.measure failed: {e}")
                 result = None
 
             out_q.put(result)

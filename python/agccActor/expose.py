@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import threading
 import queue
+import threading
 import time
+from typing import Any
 
-from agccActor import writeFits
-from agccActor import photometry
-from agccActor import dbRoutinesAGCC
+from agccActor import dbRoutinesAGCC, photometry, writeFits
 
 # Bound on how long the main thread will wait for a per-camera photometry
 # worker to return a result. If exceeded, we assume the worker has crashed
@@ -226,13 +225,16 @@ class Exposure(threading.Thread):
                         spots = cam.out_queue.get(timeout=PHOTOMETRY_TIMEOUT_S)
                     except queue.Empty:
                         if self.cmd:
-                            self.cmd.warn(f'text="AGC[{cam_id}]: photometry worker did not respond within {PHOTOMETRY_TIMEOUT_S}s -- worker may have crashed"')
+                            self.cmd.warn(
+                                f'text="AGC[{cam_id}]: photometry worker did not respond within '
+                                f'{PHOTOMETRY_TIMEOUT_S}s -- worker may have crashed"'
+                            )
                         spots = None
                     except Exception as e:
                         if self.cmd:
                             self.cmd.warn(
-                            f'text="AGC[{cam_id}]: photometry multiprocessing error with photometry: {e}"'
-                        )
+                                f'text="AGC[{cam_id}]: photometry multiprocessing error with photometry: {e}"'
+                            )
                         spots = None
                 else:
                     try:
