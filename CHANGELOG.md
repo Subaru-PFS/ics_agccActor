@@ -12,6 +12,10 @@ database schema is changed.
 
 ### Fixed
 
+- **`centroidTools` boundary indexing bug** — Fixed a bug in `windowedFWHM` where the
+  X and Y boundary clipping indices were swapped for the left imaging region
+  (`side == 0`), causing incorrect windowed moment calculations for sources near the
+  region edges.
 - **`writeFits` legacy filename bug** — `wfits` was writing the spots/centroid
   binary-table HDU to a legacy timestamped path (`agcc_c{n}_{timestamp}.fits`) while
   setting `cam.filename` and reporting `agc{n}_fitsfile` against `pfsFilename`; the
