@@ -398,7 +398,7 @@ class AgccCmd(object):
         cmd.finish('text="Setting camera TEC finished!"')
 
     def setregions(self, cmd: Any) -> None:
-        """Set regoins of interest"""
+        """Set regions of interest"""
 
         cmdKeys = cmd.cmd.keywords
         camid = cmdKeys["camera"].values[0]

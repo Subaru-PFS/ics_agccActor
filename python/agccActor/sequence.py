@@ -88,7 +88,6 @@ class Sequence(threading.Thread):
                 False,
                 self.cParms,
                 self.iParms,
-                visitId=self.seq_id,
                 cMethod="sep",
                 cmd=self.cmd,
                 combined=self.combined,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
@@ -10,6 +11,8 @@ import sep
 import yaml
 from lmfit import Model
 from pfs.utils.datamodel.ag import SourceDetectionFlag
+
+logger = logging.getLogger("agcc")
 
 
 def getCentroidParams(cmd: Any) -> dict[str, Any]:
@@ -374,7 +377,7 @@ def getCentroidsSep(
     result["central_image_moment_02_pix"] = np.array(m02)
     result["central_image_moment_11_pix"] = np.array(m11)
     result["flags"] = result["flags"] + np.array(flags)
-    print(f"Calculating Magnitude: exptime = {cParms['expTime']}")
+    logger.debug(f"Calculating Magnitude: exptime = {cParms['expTime']}")
     result["estimated_magnitude"] = calculateApproximateMagnitude(
         iParms, result["image_moment_00_pix"], cParms["expTime"]
     )
