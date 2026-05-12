@@ -77,7 +77,7 @@ def wfits(cmd: Any, visitId: int, cam: Any, nframe: int) -> None:
 
     cam.filename = pfsFilename
     cmd.inform(f'agc{cam.agcid + 1}_fitsfile="{pfsFilename}",{cam.tstart:.1f}')
-    cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
+    cmd.inform(f'text="AG images are written into {pfsFilename}"')
 
 
 def wfits_combined(cmd: Any, visitId: int, cams: list[Any], nframe: int, seq_id: int = -1) -> None:
@@ -162,4 +162,4 @@ def wfits_combined(cmd: Any, visitId: int, cams: list[Any], nframe: int, seq_id:
         cmd.inform(f'agc_seq{seq_id + 1}="{pfsFilename}"')
     else:
         cmd.inform(f'agc_fitsfile="{pfsFilename}",{cams[0].tstart:.1f}')
-    cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
+    cmd.inform(f'text="AG images are written into {pfsFilename}"')
