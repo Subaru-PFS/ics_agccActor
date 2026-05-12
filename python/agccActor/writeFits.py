@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import datetime
 from typing import Any
 
 from astropy.io import fits
@@ -35,11 +34,7 @@ def wfits(cmd: Any, visitId: int, cam: Any, nframe: int) -> None:
         except Exception as e:
             raise RuntimeError(f"failed to makedirs({path}): {e}")
 
-    tstart = datetime.fromtimestamp(cam.tstart)
-    mtimestamp = tstart.strftime("%Y%m%d_%H%M%S%f")[:-5]
-
     pfsFilename = os.path.join(path, f"agcc_{visitId:06d}_{nframe:08d}_cam{cam.agcid + 1}.fits")
-    filename = os.path.join(path, f"agcc_c{cam.agcid + 1}_{mtimestamp}.fits")
 
     if cam.data.size == 0:
         cmd.warn(f'text="No image available for AGC[{cam.agcid + 1}]"')
@@ -76,9 +71,7 @@ def wfits(cmd: Any, visitId: int, cam: Any, nframe: int) -> None:
 
         tbhdu = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10])
         hdulist = fits.HDUList([hdu, tbhdu])
-        # TODO: centroid path writes to legacy timestamped filename, not pfsFilename;
-        # cam.filename below will point to a file that was not written.
-        hdulist.writeto(filename, checksum=True, overwrite=True)
+        hdulist.writeto(pfsFilename, checksum=True, overwrite=True)
     else:
         hdu.writeto(pfsFilename, overwrite=True, checksum=True)
 
@@ -112,17 +105,6 @@ def wfits_combined(cmd: Any, visitId: int, cams: list[Any], nframe: int, seq_id:
     path = os.path.expandvars(os.path.expanduser(path))
     if not os.path.isdir(path):
         os.makedirs(path, 0o755)
-
-    if len(cams) > 0:
-        now = datetime.fromtimestamp(cams[0].tstart)
-    else:
-        now = datetime.now()
-    mtimestamp = now.strftime("%Y%m%d_%H%M%S%f")[:-5]
-
-    if seq_id >= 0:
-        filename = os.path.join(path, f"agcc_s{seq_id + 1}_{mtimestamp}.fits")
-    else:
-        filename = os.path.join(path, f"agcc_{mtimestamp}.fits")
 
     pfsFilename = os.path.join(path, f"agcc_{visitId:06d}_{nframe:08d}.fits")
 
@@ -177,7 +159,7 @@ def wfits_combined(cmd: Any, visitId: int, cams: list[Any], nframe: int, seq_id:
     hdulist.writeto(pfsFilename, checksum=True, overwrite=True)
 
     if seq_id >= 0:
-        cmd.inform(f'agc_seq{seq_id + 1}="{filename}"')
+        cmd.inform(f'agc_seq{seq_id + 1}="{pfsFilename}"')
     else:
         cmd.inform(f'agc_fitsfile="{pfsFilename}",{cams[0].tstart:.1f}')
     cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
