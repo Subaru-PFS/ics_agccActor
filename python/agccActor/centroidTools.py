@@ -318,13 +318,13 @@ def getCentroidsSep(
 
     # check for flat sources
 
-    yPos = result["centroid_x_pix"][:].astype("int")
-    xPos = result["centroid_y_pix"][:].astype("int")
+    colIdx = result["centroid_x_pix"][:].astype("int")
+    rowIdx = result["centroid_y_pix"][:].astype("int")
 
     # for edges of image
 
-    xMin = xPos.copy() - 5
-    xMax = xPos.copy() + 5
+    xMin = rowIdx.copy() - 5
+    xMax = rowIdx.copy() + 5
 
     ind = np.where(xMin < 0)
     xMin[ind] = 0
@@ -333,8 +333,8 @@ def getCentroidsSep(
     xMax[ind] = data.shape[0] - 1
 
     # diagnostic for flat topped sources
-    diag = np.array([data[xPos, yPos] - data[xMin, yPos], data[xPos, yPos] - data[xMax, yPos]]).min(axis=0)
-    diag = diag / data[xPos, yPos]
+    diag = np.array([data[rowIdx, colIdx] - data[xMin, colIdx], data[rowIdx, colIdx] - data[xMax, colIdx]]).min(axis=0)
+    diag = diag / data[rowIdx, colIdx]
     ind = np.where(diag < flatVal)
     result["flags"][:][ind] += SourceDetectionFlag.FLAT_TOP
 
@@ -352,10 +352,10 @@ def getCentroidsSep(
 
     flags = []
     for ii in range(len(result)):
-        yPos = result["centroid_x_pix"][ii]
-        xPos = result["centroid_y_pix"][ii]
+        colIdx = result["centroid_x_pix"][ii]
+        rowIdx = result["centroid_y_pix"][ii]
 
-        xv, yv, xyv, conv = windowedFWHM(newData, yPos, xPos, region, result["flags"][ii] & 1)
+        xv, yv, xyv, conv = windowedFWHM(newData, colIdx, rowIdx, region, result["flags"][ii] & 1)
 
         # if the moment didn't converge, revert to the unweighted second moment and set flags
         if conv == 0:
