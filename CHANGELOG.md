@@ -55,6 +55,9 @@ database schema is changed.
   non-existent function (`ct.getCentroids`), contained a hardcoded developer path, and
   had no production purpose.
 - **`python/agccActor/agparms.ipynb`** — stale scratch notebook committed by mistake.
+- **`fittedFWHM` / `gaussian` in `centroidTools.py`** — Gaussian-fit FWHM path that
+  was never called in production (the call site had been commented out in favour of
+  `windowedFWHM`). Removed along with the `lmfit` import it required.
 
 ### Changed
 

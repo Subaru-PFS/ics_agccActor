@@ -9,7 +9,6 @@ from typing import Any
 import numpy as np
 import sep
 import yaml
-from lmfit import Model
 from pfs.utils.datamodel.ag import SourceDetectionFlag
 
 logger = logging.getLogger("agcc")
@@ -357,7 +356,6 @@ def getCentroidsSep(
         xPos = result["centroid_y_pix"][ii]
 
         xv, yv, xyv, conv = windowedFWHM(newData, yPos, xPos, region, result["flags"][ii] & 1)
-        # xv, yv = fittedFWHM(newData, yPos, xPos)
 
         # if the moment didn't converge, revert to the unweighted second moment and set flags
         if conv == 0:
@@ -571,98 +569,6 @@ def weightedMoment(
     sxy = (winVal * w * xv * yv).sum() / (winVal * w).sum()
 
     return sx, sy, sxy, SourceDetectionFlag.BAD_SHAPE
-
-
-def fittedFWHM(data: np.ndarray, xPos: float, yPos: float) -> tuple[float, float]:
-    """Fit a 2-D Gaussian to a sub-image centred on a source.
-
-    Parameters
-    ----------
-    data : numpy.ndarray
-        2-D image array.
-    xPos : float
-        Source centroid x-coordinate (column).
-    yPos : float
-        Source centroid y-coordinate (row).
-
-    Returns
-    -------
-    tuple[float, float]
-        Best-fit Gaussian sigma parameters (fX, fY) in pixels.
-    """
-
-    ww = 10
-
-    # x and y position grid
-    sz = data.shape
-    x = np.arange(0, sz[0])
-    y = np.arange(0, sz[1])
-    xx, yy = np.meshgrid(y, x)
-
-    # determine subImage
-    miX = int(xPos - ww)
-    maX = int(xPos + ww + 1)
-    miY = int(yPos - ww)
-    maY = int(yPos + ww + 1)
-
-    subX = xx[miX:maX, miY:maY]
-    subY = yy[miX:maX, miY:maY]
-    subD = data[miX:maX, miY:maY]
-
-    sz = subX.shape
-
-    dd = np.empty((sz[0] * sz[1], 3))
-    dd[:, 0] = subX.flatten()
-    dd[:, 1] = subY.flatten()
-    dd[:, 2] = subD.flatten()
-
-    gmod = Model(gaussian)
-    gmod.set_param_hint("xC", value=yPos)
-    gmod.set_param_hint("yC", value=xPos)
-    gmod.set_param_hint("fX", value=2, min=0, max=10)
-    gmod.set_param_hint("fY", value=2, min=0, max=10)
-    gmod.set_param_hint("a", value=1000, min=0, max=subD.max() * 1.5)
-    gmod.set_param_hint("b", value=subD.min())
-
-    params = gmod.make_params()
-    params["xC"].set(vary=False)
-    params["yC"].set(vary=False)
-
-    fitResult = gmod.fit(dd[:, 2], x=dd[:, 0:2], params=params)
-
-    return fitResult.best_values["fX"], fitResult.best_values["fY"]
-
-
-def gaussian(x: np.ndarray, xC: float, yC: float, fX: float, fY: float, a: float, b: float) -> np.ndarray:
-    """Evaluate a 2-D elliptical Gaussian over a coordinate array.
-
-    Parameters
-    ----------
-    x : numpy.ndarray
-        Shape ``(N, 2)`` array of ``[column, row]`` coordinates.
-    xC : float
-        Gaussian centre in the column direction.
-    yC : float
-        Gaussian centre in the row direction.
-    fX : float
-        Gaussian sigma in the column direction (pixels).
-    fY : float
-        Gaussian sigma in the row direction (pixels).
-    a : float
-        Peak amplitude.
-    b : float
-        Background offset.
-
-    Returns
-    -------
-    numpy.ndarray
-        1-D array of evaluated Gaussian values.
-    """
-
-    xx = x[:, 0]
-    yy = x[:, 1]
-    val = a * np.exp(-((xx - xC) ** 2) / (2 * fX**2) - (yy - yC) ** 2 / (2 * fY**2)) + b
-    return val
 
 
 def calculateApproximateMagnitude(
