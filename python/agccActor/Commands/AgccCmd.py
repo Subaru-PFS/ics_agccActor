@@ -9,8 +9,8 @@ from typing import Any
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 
-from agccActor import centroidTools as ct
-from agccActor import dbRoutinesAGCC
+from agccActor import centroid
+from agccActor import database
 
 nCams = 6
 
@@ -85,7 +85,7 @@ class AgccCmd(object):
             keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
         )
         # initialize centroid parameters
-        self.cParms = ct.getCentroidParams(None)
+        self.cParms = centroid.getCentroidParams(None)
 
     def ping(self, cmd: Any) -> None:
         """Query the actor for liveness/happiness."""
@@ -144,7 +144,7 @@ class AgccCmd(object):
     def insertVisit(self, cmd: Any) -> None:
         cmdKeys = cmd.cmd.keywords
         visit = cmdKeys["visit"].values[0]
-        dbRoutinesAGCC.writeVisitToDB(visit)
+        database.writeVisitToDB(visit)
         cmd.finish()
 
     def shutterOps(self, cmd: Any) -> None:
@@ -476,7 +476,7 @@ class AgccCmd(object):
     def setCentroidParams(self, cmd: Any) -> None:
         """Set centroid parameters from config and command overrides."""
 
-        self.cParms = ct.getCentroidParams(cmd)
+        self.cParms = centroid.getCentroidParams(cmd)
         thresh = self.cParms["thresh"]
         deblend = self.cParms["deblend"]
         nmin = self.cParms["nmin"]
@@ -486,4 +486,4 @@ class AgccCmd(object):
         """Set image-processing parameters from config and command overrides."""
 
         self.actor.logger.info(f"Setting image parameters: {cmd=}")
-        self.iParms = ct.getImageParams(cmd)
+        self.iParms = centroid.getImageParams(cmd)

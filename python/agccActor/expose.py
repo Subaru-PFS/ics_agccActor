@@ -7,7 +7,7 @@ import threading
 import time
 from typing import Any
 
-from agccActor import dbRoutinesAGCC, photometry, writeFits
+from agccActor import database, photometry, writeFits
 
 # Bound on how long the main thread will wait for a per-camera photometry
 # worker to return a result. If exceeded, we assume the worker has crashed
@@ -102,9 +102,9 @@ class Exposure(threading.Thread):
         else:
             self.timeDelay = threadDelay / 1000
 
-        self.nframe = dbRoutinesAGCC.getNextAgcExposureId()
+        self.nframe = database.getNextAgcExposureId()
         self.cmd.inform(f'text="Writing agc_exposure_id = {self.nframe} from OpDB"')
-        dbRoutinesAGCC.writeExposureToDB(self.visitId, self.nframe, expTime_ms / 1000.0)
+        database.writeExposureToDB(self.visitId, self.nframe, expTime_ms / 1000.0)
 
     def run(self) -> None:
         """Execute exposure threads and write results.
@@ -243,7 +243,7 @@ class Exposure(threading.Thread):
                     self.cmd.inform(f'text="AGC[{cam_id:d}]: wrote centroids to database"')
                     aa = spots["estimated_magnitude"]
                     self.cmd.inform(f'text="AGC[{cam_id:d}]: estimated mags = {aa}"')
-                    dbRoutinesAGCC.writeCentroidsToDB(spots, self.visitId, self.nframe, cam.agcid)
+                    database.writeCentroidsToDB(spots, self.visitId, self.nframe, cam.agcid)
                 else:
                     self.cmd.inform(f'text="AGC[{cam_id:d}]: found no objects, skipping DB writing"')
             else:

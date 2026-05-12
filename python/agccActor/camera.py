@@ -6,7 +6,8 @@ import logging
 import os
 from typing import Any
 
-from agccActor import dbRoutinesAGCC, photometry, writeFits
+from pfs.utils.database.opdb import OpDB
+from agccActor import photometry, writeFits
 from agccActor.expose import Exposure
 from agccActor.sequence import SEQ_ABORT, SEQ_IDLE, SEQ_RUNNING, Sequence
 from agccActor.setmode import SetMode
@@ -34,7 +35,7 @@ class Camera(object):
         try:
             db_params = config["db"]["opdb"]
             self.logger.info(f"Setting default database connection with parameters: {db_params}")
-            dbRoutinesAGCC.opdb.OpDB.set_default_connection(**db_params)
+            OpDB.set_default_connection(**db_params)
         except KeyError:
             self.logger.info("No database configuration for opdb found, using defaults.")
 
