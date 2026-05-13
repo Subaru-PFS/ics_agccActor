@@ -49,20 +49,33 @@ class Camera(object):
         if simulator == 0:
             from agccActor.fli import fli_camera
 
-            fli_camera.CameraInit()
+            # Put available cameras in a dict by serial number.
+            available_cams = {}
             self.numberOfCamera = fli_camera.numberOfCamera()
             for n in range(self.numberOfCamera):
                 cam = fli_camera.Camera(n)
                 cam.open()
-                for k in range(nCams):
-                    if cam.devsn == config["cam" + str(k + 1)]:
-                        self.cams[k] = cam
-                        cam.agcid = k
-                        cam.setTemperature(temp)
-                        cam.regions = ((0, 0, 0), (0, 0, 0))
-                        cam.in_queue, cam.out_queue, cam.proc = photometry.createProc()
-                        self.logger.info(f"Creating process ID for Cam {cam.agcid + 1} {cam.proc.pid}.")
-                        break
+                available_cams[cam.devsn] = cam
+
+            # Match the available to what is in the config.
+            for k in range(nCams):
+                expected_serial = config.get("cam" + str(k + 1))
+
+                if expected_serial in available_cams:
+                    cam = available_cams.pop(expected_serial)
+
+                    self.cams[k] = cam
+                    cam.agcid = k
+                    cam.setTemperature(temp)
+                    cam.regions = ((0, 0, 0), (0, 0, 0))
+                    cam.in_queue, cam.out_queue, cam.proc = photometry.createProc()
+                    self.logger.info(f"Creating process ID for Cam {cam.agcid + 1}: {cam.proc.pid}.")
+                else:
+                    self.logger.warning(f"Configured camera {expected_serial} was not found on the bus!")
+
+            for unassigned_serial, unused_cam in available_cams.items():
+                self.logger.info(f"Closing unconfigured camera {unassigned_serial}.")
+                unused_cam.close()
         else:
             from agccActor.fli import fake_camera
 
