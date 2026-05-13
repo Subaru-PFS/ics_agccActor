@@ -361,7 +361,6 @@ class AgccCmd(object):
     def getmodestring(self, cmd):
         """Get current readout mode string."""
 
-        cmdKeys = cmd.cmd.keywords
         self.actor.camera.getmodestring(cmd)
 
     def settemperature(self, cmd):

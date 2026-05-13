@@ -100,7 +100,7 @@ class Camera(object):
         """Return the AG temperature"""
         cmd.inform('text="Number of AG cameras = %d"' % self.numberOfCamera)
         for n in range(nCams):
-            if self.cams[n] != None:
+            if self.cams[n] is not None:
                 tempstr = "%5.1f" % self.cams[n].getTemperature()
                 cmd.inform(
                     'text="[%d] %s SN=%s status=%s temp=%s"'
@@ -112,7 +112,7 @@ class Camera(object):
 
         cmd.inform('text="Number of AG cameras = %d"' % self.numberOfCamera)
         for n in range(nCams):
-            if self.cams[n] != None:
+            if self.cams[n] is not None:
                 if self.cams[n].isReady():
                     tempstr = "%5.1f" % self.cams[n].getTemperature()
                     cmd.inform("agc%d_stat=READY" % (n + 1))
@@ -171,7 +171,7 @@ class Camera(object):
         # check if any camera is available
         cams_available = []
         for n in cams:
-            if self.cams[n] != None:
+            if self.cams[n] is not None:
                 cams_available.append(n)
         if len(cams_available) <= 0:
             if cmd:
@@ -240,7 +240,7 @@ class Camera(object):
         """
 
         for n in cams:
-            if self.cams[n] != None and not self.cams[n].isReady():
+            if self.cams[n] is not None and not self.cams[n].isReady():
                 cmd.inform('text="Send abort command to AGC[%d]"' % (n + 1))
                 self.cams[n].cancelExposure()
 
@@ -256,13 +256,13 @@ class Camera(object):
         """
 
         for n in cams:
-            if self.cams[n] != None and not self.cams[n].isReady():
+            if self.cams[n] is not None and not self.cams[n].isReady():
                 if cmd:
                     cmd.fail('text="camera busy, command ignored"')
                 return
 
         for n in cams:
-            if self.cams[n] != None:
+            if self.cams[n] is not None:
                 if cmd:
                     cmd.inform('text="Send setframe command to AGC[%d]"' % (n + 1))
                 if bx > 0:
@@ -282,13 +282,13 @@ class Camera(object):
            cams    - list of active cameras [1-8]
         """
         for n in cams:
-            if self.cams[n] != None and not self.cams[n].isReady():
+            if self.cams[n] is not None and not self.cams[n].isReady():
                 if cmd:
                     cmd.fail('text="camera busy, command ignored"')
                 return
 
         for n in cams:
-            if self.cams[n] != None:
+            if self.cams[n] is not None:
                 if cmd:
                     cmd.inform('text="Send shutter opening command to AGC[%d]"' % (n + 1))
                 self.cams[n].openShutter()
@@ -304,13 +304,13 @@ class Camera(object):
            cams    - list of active cameras [1-8]
         """
         for n in cams:
-            if self.cams[n] != None and not self.cams[n].isReady():
+            if self.cams[n] is not None and not self.cams[n].isReady():
                 if cmd:
                     cmd.fail('text="camera busy, command ignored"')
                 return
 
         for n in cams:
-            if self.cams[n] != None:
+            if self.cams[n] is not None:
                 if cmd:
                     cmd.inform('text="Send shutter opening command to AGC[%d]"' % (n + 1))
                 self.cams[n].closeShutter()
@@ -327,13 +327,13 @@ class Camera(object):
         """
 
         for n in cams:
-            if self.cams[n] != None and not self.cams[n].isReady():
+            if self.cams[n] is not None and not self.cams[n].isReady():
                 if cmd:
                     cmd.fail('text="camera busy, command ignored"')
                 return
 
         for n in cams:
-            if self.cams[n] != None:
+            if self.cams[n] is not None:
                 if cmd:
                     cmd.inform('text="Send resetframe command to AGC[%d]"' % (n + 1))
                 self.cams[n].resetFrame()
@@ -352,7 +352,7 @@ class Camera(object):
 
         cams_available = []
         for n in cams:
-            if self.cams[n] != None:
+            if self.cams[n] is not None:
                 if not self.cams[n].isReady():
                     if cmd:
                         cmd.fail('text="camera busy, command ignored"')
@@ -373,12 +373,12 @@ class Camera(object):
         """
 
         for n in cams:
-            if self.cams[n] != None and not self.cams[n].isReady():
+            if self.cams[n] is not None and not self.cams[n].isReady():
                 if cmd:
                     cmd.fail('text="camera busy, command ignored"')
                 return
         for n in cams:
-            if self.cams[n] != None:
+            if self.cams[n] is not None:
                 mode = self.cams[n].getMode()
                 if cmd:
                     cmd.respond('text="AGC[%d] readout mode: %d"' % (n + 1, mode))
@@ -393,7 +393,7 @@ class Camera(object):
         """
 
         for n in range(nCams):
-            if self.cams[n] != None and self.cams[n].isReady():
+            if self.cams[n] is not None and self.cams[n].isReady():
                 s0 = self.cams[n].getModeString(0)
                 s1 = self.cams[n].getModeString(1)
                 if cmd:
@@ -411,11 +411,9 @@ class Camera(object):
            cmd     - a Command object to report to. Ignored if None.
            temp    - CCD temperature
         """
-        busy = False
         if self.cams[cam].isReady():
             self.cams[cam].setTemperature(temp)
         else:
-            busy = True
             if cmd:
                 cmd.warn('text="Camera [%d] is busy"' % cam)
 
@@ -429,7 +427,7 @@ class Camera(object):
 
         busy = False
         for n in range(nCams):
-            if self.cams[n] != None:
+            if self.cams[n] is not None:
                 if self.cams[n].isReady():
                     self.cams[n].setTemperature(temp)
                 else:
@@ -483,7 +481,7 @@ class Camera(object):
 
         cams_available = []
         for n in cams:
-            if self.cams[n] != None and self.cams[n].isReady():
+            if self.cams[n] is not None and self.cams[n].isReady():
                 cams_available.append(n)
             elif cmd:
                 cmd.warn('text="Camera [%d] is not available"' % n)

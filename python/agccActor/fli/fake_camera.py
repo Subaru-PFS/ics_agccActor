@@ -253,8 +253,6 @@ class Camera:
                 self.abort = 0
                 self.tend = 0
             else:
-                xsize = self.xsize
-                ysize = self.ysize
                 self.data = self.rawdata[self.expArea[1] : self.expArea[3], self.expArea[0] : self.expArea[2]]
                 self.tend = time.time()
             self.status = READY

@@ -41,9 +41,9 @@ def getImageParams(cmd):
     """
 
     try:
-        cmdKeys = cmd.cmd.keywords
+        pass
     except:
-        cmdKeys = []
+        pass
 
     fileName = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
 
