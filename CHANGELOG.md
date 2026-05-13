@@ -49,6 +49,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   and the `startsequence` (and related) commands in `Commands/AgccCmd.py` have been
   removed. The sequence code was broken and unused in production; it will be easier to
   reintroduce from scratch if needed.
+- **Exposure ID written to `nframe.txt`** - No longer write the exposure id to the
+  plain text file. It appears to be legacy code and is not read by anything.
 - **`python/agccActor/checkit.py`** — leftover development script that called a
   non-existent function (`ct.getCentroids`), contained a hardcoded developer path, and
   had no production purpose.
