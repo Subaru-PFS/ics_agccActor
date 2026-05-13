@@ -3,7 +3,7 @@ import queue
 import threading
 import time
 
-from agccActor import photometry, writeFits
+from agccActor import database, photometry, writeFits
 
 # Bound on how long the main thread will wait for a per-camera photometry
 # worker to return a result. If exceeded, we assume the worker has crashed
@@ -78,7 +78,7 @@ class Exposure(threading.Thread):
         else:
             self.timeDelay = threadDelay / 1000
 
-        self.nframe = dbRoutinesAGCC.getNextAgcExposureId()
+        self.nframe = database.getNextAgcExposureId()
         self.cmd.inform(f'text="Getting agc_exposure_id = {self.nframe} from OpDB"')
 
         # get nframe keyword, unique for each exposure
@@ -101,7 +101,7 @@ class Exposure(threading.Thread):
                     f.write(str(self.nframe))
             self.cmd.inform(f'text="Recording agc_exposure_id = {self.nframe} to {filename}"')
 
-        dbRoutinesAGCC.writeExposureToDB(self.visitId, self.nframe, expTime_ms / 1000.0)
+        database.writeExposureToDB(self.visitId, self.nframe, expTime_ms / 1000.0)
 
     def run(self):
         # check if any camera is available
@@ -205,7 +205,8 @@ class Exposure(threading.Thread):
                     except queue.Empty:
                         if self.cmd:
                             self.cmd.warn(
-                                f'text="AGC[{cam_id}]: photometry worker did not respond within {PHOTOMETRY_TIMEOUT_S}s -- worker may have crashed"'
+                                f'text="AGC[{cam_id}]: photometry worker did not respond '
+                                f'within {PHOTOMETRY_TIMEOUT_S}s -- worker may have crashed"'
                             )
                         spots = None
                     except Exception as e:
@@ -233,7 +234,7 @@ class Exposure(threading.Thread):
                         aa = spots["estimated_magnitude"]
                         self.cmd.inform(f'text="AGC[{cam_id:d}]: estimated mags = {aa}"')
 
-                    dbRoutinesAGCC.writeCentroidsToDB(spots, self.visitId, self.nframe, cam.agcid)
+                    database.writeCentroidsToDB(spots, self.visitId, self.nframe, cam.agcid)
                 else:
                     self.cmd.inform(f'text="AGC[{cam_id:d}]: found no objects, skipping DB writing"')
             else:

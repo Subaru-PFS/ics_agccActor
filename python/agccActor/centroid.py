@@ -14,7 +14,7 @@ def getCentroidParams(cmd):
 
     try:
         cmdKeys = cmd.cmd.keywords
-    except:
+    except AttributeError:
         cmdKeys = []
 
     fileName = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
@@ -39,12 +39,6 @@ def getImageParams(cmd):
     """
     read in instrumental parameters from config file
     """
-
-    try:
-        pass
-    except:
-        pass
-
     fileName = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
 
     with open(fileName, "r") as inFile:

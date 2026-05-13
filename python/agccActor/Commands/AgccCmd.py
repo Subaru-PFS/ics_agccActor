@@ -199,7 +199,8 @@ class AgccCmd(object):
         cmd.inform(f'text="Setting threading delay of {threadDelay} ms"')
 
         self.actor.logger.info(
-            f"Setting image params: {visit=} {expTime=} {combined=} {centroid=} {cMethod=} {threadDelay=} {tecOFF=}"
+            f"Setting image params: {visit=} {expTime=} {combined=} "
+            f"{centroid=} {cMethod=} {threadDelay=} {tecOFF=}"
         )
         self.setImageParams(cmd)
 

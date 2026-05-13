@@ -104,7 +104,8 @@ def writeExposureToDB(visitId: int, exposureId: int, exptime: float, db: opdb.Op
         db.insert_kw("agc_exposure", **cols)
     except Exception as e:
         logger.error(
-            f"Failed to insert agc_exposure record for pfs_visit_id={visitId} agc_exposure_id={exposureId}: {e}"
+            f"Failed to insert agc_exposure record for "
+            f"pfs_visit_id={visitId} agc_exposure_id={exposureId}: {e}"
         )
         raise
 
