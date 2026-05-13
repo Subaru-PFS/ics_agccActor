@@ -6,7 +6,6 @@ import writeFits
 
 from agccActor import database
 from agccActor.expose import Exposure
-from agccActor.sequence import SEQ_ABORT, SEQ_IDLE, SEQ_RUNNING, Sequence
 from agccActor.setmode import SetMode
 
 nCams = 6
@@ -29,8 +28,6 @@ class Camera(object):
 
         simulator = config["simulator"]
         self.cams = [None, None, None, None, None, None]
-        self.seq_stat = [SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE]
-        self.seq_count = [0, 0, 0, 0, 0, 0]
         temp = config["temperature"]
 
         self.logger.info(f"Setting TEC to {temp}.")
@@ -469,81 +466,6 @@ class Camera(object):
         if cmd:
             cmd.inform('text="setregions command done"')
             cmd.finish()
-
-    def startsequence(self, cmd, seq_id, expTime, count, cams, combined, centroid=False):
-        """Start a exposure sequence
-
-        Args:
-           cmd      - a Command object to report to. Ignored if None.
-           seq_id   - Sequence ID
-           expTime  - exposure time
-           count    - number of exposures
-           cams     - list of active cameras [1-6]
-           centroid - True if do centroid else don't
-        """
-
-        cams_available = []
-        for n in cams:
-            if self.cams[n] is not None and self.cams[n].isReady():
-                cams_available.append(n)
-            elif cmd:
-                cmd.warn('text="Camera [%d] is not available"' % n)
-        if len(cams_available) <= 0:
-            if cmd:
-                cmd.fail('text="No usable camera"')
-            return
-
-        if self.seq_stat[seq_id] != SEQ_IDLE:
-            if cmd:
-                cmd.fail('text="Sequence ID %d in used"' % (seq_id + 1))
-            return
-        self.seq_stat[seq_id] = SEQ_RUNNING
-        self.seq_count[seq_id] = 0
-        expTime_ms = int(expTime * 1000)
-        if cmd:
-            cmd.inform('inused_seq%d="YES"' % (seq_id + 1))
-
-        active_cams = [self.cams[n] for n in cams_available]
-        sequence_thr = Sequence(
-            active_cams,
-            expTime_ms,
-            seq_id,
-            count,
-            self.seq_stat,
-            self.seq_count,
-            combined,
-            centroid,
-            cParms,
-            iParms,
-            cmd,
-        )
-        sequence_thr.start()
-
-    def stopsequence(self, cmd, seq_id):
-        """Stop a exposure sequence
-
-        Args:
-           cmd      - a Command object to report to. Ignored if None.
-           seq_id   - Sequence ID
-        """
-
-        if self.seq_stat[seq_id] != SEQ_RUNNING:
-            if cmd:
-                cmd.fail('text="Sequence ID %d not in used"' % (seq_id + 1))
-            return
-        self.seq_stat[seq_id] = SEQ_ABORT
-
-        if cmd:
-            cmd.inform('text="Camera stopsequence [%d] command sent"' % (seq_id + 1))
-            cmd.finish()
-
-    def sequence_in_use(self, seq_id):
-        """Check if a sequence is in use"""
-
-        if self.seq_stat[seq_id] != SEQ_IDLE:
-            return True
-        else:
-            return False
 
     def camera_stat(self, cam_id):
         """Return the status of a camera"""

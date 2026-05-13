@@ -391,58 +391,19 @@ class AgccCmd(object):
         self.actor.camera.setregions(cmd, camid, regions)
 
     def startsequence(self, cmd):
-        """Start a exposure sequence"""
+        """Deprecated no-op. The exposure sequence feature has been removed."""
 
-        cmdKeys = cmd.cmd.keywords
-        seq_id = cmdKeys["sequence"].values[0] - 1
-        expTime = cmdKeys["exptime"].values[0]
-        count = cmdKeys["count"].values[0]
-        combined = True
-        if "combined" in cmdKeys:
-            if cmdKeys["combined"].values[0] == 0:
-                combined = False
-
-        cams = []
-        camList = cmdKeys["cameras"].values[0]
-        for cam in camList:
-            k = int(cam) - 1
-            if k < 0 or k >= nCams:
-                cmd.error('text="camera list error: %s"' % camList)
-                cmd.fail()
-                return
-            cams.append(k)
-        if count < 0:
-            cmd.error('text="parameter count invalid: %d"' % count)
-            cmd.fail()
-        elif len(cams) <= 0:
-            cmd.error('text="No usable camera"')
-            cmd.fail()
-        elif expTime <= 0:
-            cmd.error('text="exposure time invalid: %f"' % expTime)
-            cmd.fail()
-        else:
-            self.actor.camera.startsequence(cmd, seq_id, expTime, count, cams, combined)
+        cmd.finish('text="startsequence is deprecated and no longer supported; command ignored"')
 
     def stopsequence(self, cmd):
-        """Stop a exposure sequence"""
+        """Deprecated no-op. The exposure sequence feature has been removed."""
 
-        cmdKeys = cmd.cmd.keywords
-        seq_id = cmdKeys["sequence"].values[0] - 1
-        self.actor.camera.stopsequence(cmd, seq_id)
+        cmd.finish('text="stopsequence is deprecated and no longer supported; command ignored"')
 
     def inusesequence(self, cmd):
-        """Check if a sequence is running"""
+        """Deprecated no-op. The exposure sequence feature has been removed."""
 
-        cmdKeys = cmd.cmd.keywords
-        seq_id = cmdKeys["sequence"].values[0] - 1
-        if seq_id < 0 or seq_id >= nCams:
-            cmd.fail('text="sequence id error: %d"' % (seq_id + 1))
-            return
-        if self.actor.camera.sequence_in_use(seq_id):
-            cmd.respond('inused_seq%d="YES"' % (seq_id + 1))
-        else:
-            cmd.respond('inused_seq%d="NO"' % (seq_id + 1))
-        cmd.finish()
+        cmd.finish('text="inusesequence is deprecated and no longer supported; command ignored"')
 
     def inusecamera(self, cmd):
         """Check if a camera is in use"""
