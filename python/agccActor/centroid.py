@@ -3,7 +3,6 @@ import os
 import numpy as np
 import sep
 import yaml
-from lmfit import Model
 from pfs.utils.datamodel.ag import SourceDetectionFlag
 
 
@@ -432,64 +431,6 @@ def weightedMoment(winVal, xv, yv, w11, w12, w22):
     sxy = (winVal * w * xv * yv).sum() / (winVal * w).sum()
 
     return sx, sy, sxy, SourceDetectionFlag.BAD_SHAPE
-
-
-def fittedFWHM(data, xPos, yPos):
-    """
-    fit gaussian to pre-calculated centre
-    """
-
-    ww = 10
-
-    # x and y position grid
-    sz = data.shape
-    x = np.arange(0, sz[0])
-    y = np.arange(0, sz[1])
-    xx, yy = np.meshgrid(y, x)
-
-    # determine subImage
-    miX = int(xPos - ww)
-    maX = int(xPos + ww + 1)
-    miY = int(yPos - ww)
-    maY = int(yPos + ww + 1)
-
-    subX = xx[miX:maX, miY:maY]
-    subY = yy[miX:maX, miY:maY]
-    subD = data[miX:maX, miY:maY]
-
-    sz = subX.shape
-
-    dd = np.empty((sz[0] * sz[1], 3))
-    dd[:, 0] = subX.flatten()
-    dd[:, 1] = subY.flatten()
-    dd[:, 2] = subD.flatten()
-
-    gmod = Model(gaussian)
-    gmod.set_param_hint("xC", value=yPos)
-    gmod.set_param_hint("yC", value=xPos)
-    gmod.set_param_hint("fX", value=2, min=0, max=10)
-    gmod.set_param_hint("fY", value=2, min=0, max=10)
-    gmod.set_param_hint("a", value=1000, min=0, max=subD.max() * 1.5)
-    gmod.set_param_hint("b", value=subD.min())
-
-    params = gmod.make_params()
-    params["xC"].set(vary=False)
-    params["yC"].set(vary=False)
-
-    fitResult = gmod.fit(dd[:, 2], x=dd[:, 0:2], params=params)
-
-    return fitResult.best_values["fX"], fitResult.best_values["fY"]
-
-
-def gaussian(x, xC, yC, fX, fY, a, b):
-    """
-    2D gaussian functino for fit s
-    """
-
-    xx = x[:, 0]
-    yy = x[:, 1]
-    val = a * np.exp(-((xx - xC) ** 2) / (2 * fX**2) - (yy - yC) ** 2 / (2 * fY**2)) + b
-    return val
 
 
 def calculateApproximateMagnitude(iParms, instrumentFlux, expTime):

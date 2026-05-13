@@ -3,6 +3,7 @@ import os
 
 import photometry
 import writeFits
+
 from agccActor import database
 from agccActor.expose import Exposure
 from agccActor.sequence import SEQ_ABORT, SEQ_IDLE, SEQ_RUNNING, Sequence
@@ -38,6 +39,7 @@ class Camera(object):
 
         if simulator == 0:
             from agccActor.fli import fli_camera
+
             fli_camera.CameraInit()
             self.numberOfCamera = fli_camera.numberOfCamera()
             for n in range(self.numberOfCamera):
