@@ -1,12 +1,12 @@
 import logging
 import os
 
-import fli_camera
 import photometry
 import writeFits
-from expose import Exposure
-from sequence import SEQ_ABORT, SEQ_IDLE, SEQ_RUNNING, Sequence
-from setmode import SetMode
+from agccActor import database
+from agccActor.expose import Exposure
+from agccActor.sequence import SEQ_ABORT, SEQ_IDLE, SEQ_RUNNING, Sequence
+from agccActor.setmode import SetMode
 
 nCams = 6
 
@@ -22,7 +22,7 @@ class Camera(object):
         try:
             db_params = config["db"]["opdb"]
             self.logger.info(f"Setting default database connection with parameters: {db_params}")
-            dbRoutinesAGCC.opdb.OpDB.set_default_connection(**db_params)
+            database.opdb.OpDB.set_default_connection(**db_params)
         except KeyError:
             self.logger.info("No database configuration for opdb found, using defaults.")
 
@@ -35,9 +35,10 @@ class Camera(object):
         self.logger.info(f"Setting TEC to {temp}.")
 
         self.temp = temp
-        fli_camera.CameraInit()
 
         if simulator == 0:
+            from agccActor.fli import fli_camera
+            fli_camera.CameraInit()
             self.numberOfCamera = fli_camera.numberOfCamera()
             for n in range(self.numberOfCamera):
                 cam = fli_camera.Camera(n)
