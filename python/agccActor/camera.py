@@ -1,4 +1,4 @@
-from agccActor import dbRoutinesAGCC
+from agccActor import database
 from expose import Exposure
 from setmode import SetMode
 from sequence import Sequence, SEQ_IDLE, SEQ_RUNNING, SEQ_ABORT

@@ -5,7 +5,7 @@ import time
 
 from agccActor import writeFits
 from agccActor import photometry
-from agccActor import dbRoutinesAGCC
+from agccActor import database
 
 # Bound on how long the main thread will wait for a per-camera photometry
 # worker to return a result. If exceeded, we assume the worker has crashed

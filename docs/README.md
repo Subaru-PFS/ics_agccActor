@@ -1,3 +1,5 @@
+# Hardware instructions
+
 In order to use FLI usb camera, you need to install the USB driver and the library first.
 
 - USB driver
