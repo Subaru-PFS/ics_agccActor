@@ -29,6 +29,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Refactored
 
+- **`writeFits.py` cleanup and modernisation** — removed the legacy time-based
+  `filename` (a leftover from the removed `sequence` command) and now use a single
+  `pfsFilename` (`agcc_{visitId:06d}_{nframe:08d}[_cam{N}].fits`) throughout. Adopted
+  `pathlib.Path` for all path handling, factored shared logic into `_outputDir()`,
+  `_spotsTableHDU()`, and `_fillImageHeader()` helpers, dropped dead `os.symlink` /
+  commented-out code, fixed `wfits()` writing the with-spots branch to the stale
+  `filename` instead of `pfsFilename`, fixed the misleading "NOT written" status
+  message, and made `wfits_combined()` robust to an empty `cams` list. The legacy
+  `seq_id` kwarg is kept (deprecated and ignored) for backward compatibility with
+  `expose.py`.
 - **Numpy-style docstrings** — rewrote docstrings of every function and method across
   the `agccActor` Python module (`camera.py`, `centroid.py`, `expose.py`, `setmode.py`,
   `photometry.py`, `writeFits.py`, `main.py`, and `Commands/AgccCmd.py`) into numpy
