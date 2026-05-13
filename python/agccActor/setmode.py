@@ -1,8 +1,9 @@
 import threading
 
+
 class SetMode(threading.Thread):
     def __init__(self, cams, mode, cmd=None):
-        """ Run exposure command
+        """Run exposure command
 
         Args:
            cams        - list of active cameras

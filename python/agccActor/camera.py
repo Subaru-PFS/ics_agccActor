@@ -1,95 +1,94 @@
-from agccActor import database
-from expose import Exposure
-from setmode import SetMode
-from sequence import Sequence, SEQ_IDLE, SEQ_RUNNING, SEQ_ABORT
-import writeFits
-import photometry
-import os, logging
-import fli_camera
+import logging
+import os
 
+import fli_camera
+import photometry
+import writeFits
+from expose import Exposure
+from sequence import SEQ_ABORT, SEQ_IDLE, SEQ_RUNNING, Sequence
+from setmode import SetMode
 
 nCams = 6
 
+
 class Camera(object):
-    """ Subaru PFI AG cameras """
+    """Subaru PFI AG cameras"""
 
     def __init__(self, config):
-        """ connect to AG cameras """
+        """connect to AG cameras"""
 
-        self.logger = logging.getLogger('agcc')
+        self.logger = logging.getLogger("agcc")
 
         try:
             db_params = config["db"]["opdb"]
-            self.logger.info(f'Setting default database connection with parameters: {db_params}')
+            self.logger.info(f"Setting default database connection with parameters: {db_params}")
             dbRoutinesAGCC.opdb.OpDB.set_default_connection(**db_params)
         except KeyError:
-            self.logger.info('No database configuration for opdb found, using defaults.')
+            self.logger.info("No database configuration for opdb found, using defaults.")
 
-        simulator = config['simulator']
+        simulator = config["simulator"]
         self.cams = [None, None, None, None, None, None]
         self.seq_stat = [SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE, SEQ_IDLE]
         self.seq_count = [0, 0, 0, 0, 0, 0]
-        temp = config['temperature']
+        temp = config["temperature"]
 
-        self.logger.info(f'Setting TEC to {temp}.')
+        self.logger.info(f"Setting TEC to {temp}.")
 
         self.temp = temp
         fli_camera.CameraInit()
-        
-        if simulator == 0:
 
+        if simulator == 0:
             self.numberOfCamera = fli_camera.numberOfCamera()
             for n in range(self.numberOfCamera):
                 cam = fli_camera.Camera(n)
                 cam.open()
                 for k in range(nCams):
-                    if cam.devsn == config['cam' + str(k + 1)]:
+                    if cam.devsn == config["cam" + str(k + 1)]:
                         self.cams[k] = cam
                         cam.agcid = k
                         cam.setTemperature(temp)
                         cam.regions = ((0, 0, 0), (0, 0, 0))
                         cam.in_queue, cam.out_queue, cam.proc = photometry.createProc()
-                        self.logger.info(f'Creating process ID for Cam {cam.agcid + 1} {cam.proc.pid}.')
+                        self.logger.info(f"Creating process ID for Cam {cam.agcid + 1} {cam.proc.pid}.")
                         break
-                #else:
+                # else:
                 #    cam.close()
         else:
             from fli import fake_camera
 
             self.numberOfCamera = fake_camera.numberOfCamera()
-            simImagePath = config['simulatedImagePath']
+            simImagePath = config["simulatedImagePath"]
             if len(simImagePath) == 0:
                 simImagePath = None
             else:
                 simImagePath = os.path.expandvars(simImagePath)
 
             for n in range(self.numberOfCamera):
-                devsn = config['cam' + str(n + 1)]
+                devsn = config["cam" + str(n + 1)]
                 cam = fake_camera.Camera(n, devsn, simImagePath)
                 cam.open()
                 self.cams[n] = cam
                 cam.agcid = n
                 cam.setTemperature(temp)
                 cam.regions = ((0, 0, 0), (0, 0, 0))
-                cam.in_queue, cam.out_queue,cam.proc = photometry.createProc()
+                cam.in_queue, cam.out_queue, cam.proc = photometry.createProc()
 
     def closeCamera(self):
         for c_i, cam in enumerate(self.cams):
             if cam is not None:
                 # close the queue as well
-                self.logger.info(f'Closing process ID {cam.proc.pid}.')
-                #if cam.proc.is_alive():
-                #os.kill(cam.proc.pid, signal.SIGTERM)
+                self.logger.info(f"Closing process ID {cam.proc.pid}.")
+                # if cam.proc.is_alive():
+                # os.kill(cam.proc.pid, signal.SIGTERM)
                 cam.proc.kill()  # Send stop signal to the input queue
-                self.logger.info(f'Join the process {cam.proc.pid}.')
+                self.logger.info(f"Join the process {cam.proc.pid}.")
                 cam.proc.join()
 
                 cam.close()
                 self.cams[c_i] = None
-                
 
     def runningCameras(self):
-        """Return the list of valid camera Ids """
+        """Return the list of valid camera Ids"""
 
         cams = []
         for n in range(nCams):
@@ -98,41 +97,65 @@ class Camera(object):
         return cams
 
     def reportTEC(self, cmd):
-        """Return the AG temperature  """
+        """Return the AG temperature"""
         cmd.inform('text="Number of AG cameras = %d"' % self.numberOfCamera)
         for n in range(nCams):
             if self.cams[n] != None:
-                tempstr = '%5.1f' % self.cams[n].getTemperature()
-                cmd.inform('text="[%d] %s SN=%s status=%s temp=%s"'
-                    % (n + 1, self.cams[n].devname, self.cams[n].devsn,
-                           self.cams[n].getStatusStr(), tempstr))
+                tempstr = "%5.1f" % self.cams[n].getTemperature()
+                cmd.inform(
+                    'text="[%d] %s SN=%s status=%s temp=%s"'
+                    % (n + 1, self.cams[n].devname, self.cams[n].devsn, self.cams[n].getStatusStr(), tempstr)
+                )
 
     def sendStatusKeys(self, cmd):
-        """ Send our status keys to the given command. """ 
-    
+        """Send our status keys to the given command."""
+
         cmd.inform('text="Number of AG cameras = %d"' % self.numberOfCamera)
         for n in range(nCams):
             if self.cams[n] != None:
                 if self.cams[n].isReady():
-                    tempstr = '%5.1f' % self.cams[n].getTemperature()
-                    cmd.inform('agc%d_stat=READY' % (n + 1))
+                    tempstr = "%5.1f" % self.cams[n].getTemperature()
+                    cmd.inform("agc%d_stat=READY" % (n + 1))
                 else:
-                    tempstr = '<%5.1f>' % self.cams[n].temp
-                    cmd.inform('agc%d_stat=BUSY' % (n + 1))
-                cmd.inform('text="[%d] %s SN=%s status=%s temp=%s regions=%s bin=(%d,%d) expArea=%s"'
-                           % (n + 1, self.cams[n].devname, self.cams[n].devsn,
-                           self.cams[n].getStatusStr(), tempstr, self.cams[n].regions,
-                           self.cams[n].hbin, self.cams[n].vbin, self.cams[n].expArea))
+                    tempstr = "<%5.1f>" % self.cams[n].temp
+                    cmd.inform("agc%d_stat=BUSY" % (n + 1))
+                cmd.inform(
+                    'text="[%d] %s SN=%s status=%s temp=%s regions=%s bin=(%d,%d) expArea=%s"'
+                    % (
+                        n + 1,
+                        self.cams[n].devname,
+                        self.cams[n].devsn,
+                        self.cams[n].getStatusStr(),
+                        tempstr,
+                        self.cams[n].regions,
+                        self.cams[n].hbin,
+                        self.cams[n].vbin,
+                        self.cams[n].expArea,
+                    )
+                )
             else:
-                cmd.inform('agc%d_stat=ABSENT' % (n + 1))
+                cmd.inform("agc%d_stat=ABSENT" % (n + 1))
 
-    def expose(self, cmd, expTime, expType, cams, combined, centroid, pfsVisitId, 
-               cParms, cMethod, iParms, threadDelay=None, tecOFF= False):
-        """ Generate an 'exposure' image.
+    def expose(
+        self,
+        cmd,
+        expTime,
+        expType,
+        cams,
+        combined,
+        centroid,
+        pfsVisitId,
+        cParms,
+        cMethod,
+        iParms,
+        threadDelay=None,
+        tecOFF=False,
+    ):
+        """Generate an 'exposure' image.
 
         Args:
            cmd      - a Command object to report to. Ignored if None.
-           expTime  - the exposure time. 
+           expTime  - the exposure time.
            expType  - ("dark", "object", "test")
            cams     - list of active cameras [1-6]
            combined - Multiple FITS files/Single FITS file
@@ -164,13 +187,15 @@ class Camera(object):
                 return
 
         if not expType:
-            expType = 'test'
+            expType = "test"
         if cmd:
             cmd.inform('text="Receive expose command"')
 
         active_cams = [self.cams[n] for n in cams_available]
-        self.logger.info(f'Exposing cameras: {[cam.agcid + 1 for cam in active_cams]} for {expTime}s as {expType}.')
-        if expType == 'test':
+        self.logger.info(
+            f"Exposing cameras: {[cam.agcid + 1 for cam in active_cams]} for {expTime}s as {expType}."
+        )
+        if expType == "test":
             for n in cams_available:
                 self.cams[n].expose_test()
                 self.cams[n].spots = None
@@ -185,18 +210,29 @@ class Camera(object):
                     cmd.finish()
         else:
             expTime_ms = int(expTime * 1000)
-            if expType == 'dark':
+            if expType == "dark":
                 dflag = True
             else:
                 dflag = False
 
-            exp_thr = Exposure(active_cams, expTime_ms, dflag, cParms, iParms, 
-                               pfsVisitId, cMethod, cmd, combined, centroid, 
-                               threadDelay=threadDelay, tecOFF=tecOFF)
+            exp_thr = Exposure(
+                active_cams,
+                expTime_ms,
+                dflag,
+                cParms,
+                iParms,
+                pfsVisitId,
+                cMethod,
+                cmd,
+                combined,
+                centroid,
+                threadDelay=threadDelay,
+                tecOFF=tecOFF,
+            )
             exp_thr.start()
 
     def abort(self, cmd, cams):
-        """ Abort current exposure
+        """Abort current exposure
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
@@ -209,7 +245,7 @@ class Camera(object):
                 self.cams[n].cancelExposure()
 
     def setframe(self, cmd, cams, bx, by, cx, cy, sx, sy):
-        """ set exposure area
+        """set exposure area
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
@@ -237,9 +273,9 @@ class Camera(object):
         if cmd:
             cmd.inform('text="Camera expose area set"')
             cmd.finish()
-    
+
     def openShutter(self, cmd, cams):
-        """ Open shutter
+        """Open shutter
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
@@ -259,9 +295,9 @@ class Camera(object):
         if cmd:
             cmd.inform('text="Camera shutter opened"')
             cmd.finish()
-    
+
     def closeShutter(self, cmd, cams):
-        """ close shutter
+        """close shutter
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
@@ -283,7 +319,7 @@ class Camera(object):
             cmd.finish()
 
     def resetframe(self, cmd, cams):
-        """ reset exposure area
+        """reset exposure area
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
@@ -306,7 +342,7 @@ class Camera(object):
             cmd.finish()
 
     def setmode(self, cmd, mode, cams):
-        """ Set camera readout mode
+        """Set camera readout mode
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
@@ -329,7 +365,7 @@ class Camera(object):
         setmode_thr.start()
 
     def getmode(self, cmd, cams):
-        """ Get camera readout mode
+        """Get camera readout mode
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
@@ -350,7 +386,7 @@ class Camera(object):
         cmd.finish()
 
     def getmodestring(self, cmd):
-        """ Get mode string from the first available camera
+        """Get mode string from the first available camera
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
@@ -370,7 +406,7 @@ class Camera(object):
             cmd.fail('text="camera busy or none attached, command ignored"')
 
     def setcamtemperature(self, cmd, cam, temp):
-        """ Set CCD temperature for indivisual camera 
+        """Set CCD temperature for indivisual camera
         Args:
            cmd     - a Command object to report to. Ignored if None.
            temp    - CCD temperature
@@ -384,7 +420,7 @@ class Camera(object):
                 cmd.warn('text="Camera [%d] is busy"' % cam)
 
     def settemperature(self, cmd, temp):
-        """ Set CCD temperature
+        """Set CCD temperature
 
         Args:
            cmd     - a Command object to report to. Ignored if None.
@@ -408,7 +444,7 @@ class Camera(object):
                 cmd.finish()
 
     def setregions(self, cmd, camid, regions_str):
-        """ Set CCD regions of interested
+        """Set CCD regions of interested
 
         Args:
            cmd         - a Command object to report to. Ignored if None.
@@ -416,7 +452,7 @@ class Camera(object):
            regions_str - Regions of interest to set
         """
 
-        pars = regions_str.split(',')
+        pars = regions_str.split(",")
         if len(pars) == 3:
             # only one region
             self.cams[camid].regions = ((pars[0], pars[1], pars[2]), (0, 0, 0))
@@ -434,7 +470,7 @@ class Camera(object):
             cmd.finish()
 
     def startsequence(self, cmd, seq_id, expTime, count, cams, combined, centroid=False):
-        """ Start a exposure sequence
+        """Start a exposure sequence
 
         Args:
            cmd      - a Command object to report to. Ignored if None.
@@ -467,11 +503,23 @@ class Camera(object):
             cmd.inform('inused_seq%d="YES"' % (seq_id + 1))
 
         active_cams = [self.cams[n] for n in cams_available]
-        sequence_thr = Sequence(active_cams, expTime_ms, seq_id, count, self.seq_stat, self.seq_count, combined, centroid, cParms, iParms, cmd)
+        sequence_thr = Sequence(
+            active_cams,
+            expTime_ms,
+            seq_id,
+            count,
+            self.seq_stat,
+            self.seq_count,
+            combined,
+            centroid,
+            cParms,
+            iParms,
+            cmd,
+        )
         sequence_thr.start()
 
     def stopsequence(self, cmd, seq_id):
-        """ Stop a exposure sequence
+        """Stop a exposure sequence
 
         Args:
            cmd      - a Command object to report to. Ignored if None.
@@ -489,7 +537,7 @@ class Camera(object):
             cmd.finish()
 
     def sequence_in_use(self, seq_id):
-        """ Check if a sequence is in use """
+        """Check if a sequence is in use"""
 
         if self.seq_stat[seq_id] != SEQ_IDLE:
             return True
@@ -497,6 +545,6 @@ class Camera(object):
             return False
 
     def camera_stat(self, cam_id):
-        """ Return the status of a camera """
+        """Return the status of a camera"""
 
         return self.cams[cam_id].getStatusStr()

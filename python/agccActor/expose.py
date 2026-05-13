@@ -1,11 +1,9 @@
-import threading
-import queue
 import os
+import queue
+import threading
 import time
 
-from agccActor import writeFits
-from agccActor import photometry
-from agccActor import database
+from agccActor import photometry, writeFits
 
 # Bound on how long the main thread will wait for a per-camera photometry
 # worker to return a result. If exceeded, we assume the worker has crashed
@@ -17,11 +15,23 @@ class Exposure(threading.Thread):
     exp_lock = threading.Lock()
     n_busy = 0
 
-    def __init__(self, cams, expTime_ms, dflag, cParms, iParms, visitId, cMethod, 
-                 cmd = None, combined = False, centroid = False, seq_id = -1, 
-                 threadDelay=None, tecOFF=False):
-        
-        """ Run exposure command
+    def __init__(
+        self,
+        cams,
+        expTime_ms,
+        dflag,
+        cParms,
+        iParms,
+        visitId,
+        cMethod,
+        cmd=None,
+        combined=False,
+        centroid=False,
+        seq_id=-1,
+        threadDelay=None,
+        tecOFF=False,
+    ):
+        """Run exposure command
 
         Args:
            cams        - list of active cameras
@@ -53,7 +63,7 @@ class Exposure(threading.Thread):
 
         # update the exposure time in cParms
 
-        self.cParms['expTime']=expTime_ms/1000
+        self.cParms["expTime"] = expTime_ms / 1000
 
         self.tecOFFtemp = 20
 
@@ -66,33 +76,32 @@ class Exposure(threading.Thread):
         if threadDelay is None:
             self.timeDelay = 0.0
         else:
-            self.timeDelay = threadDelay/1000
+            self.timeDelay = threadDelay / 1000
 
         self.nframe = dbRoutinesAGCC.getNextAgcExposureId()
         self.cmd.inform(f'text="Getting agc_exposure_id = {self.nframe} from OpDB"')
-        
+
         # get nframe keyword, unique for each exposure
-        path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
-        #path = os.path.join('/data/raw', time.strftime('%Y-%m-%d', time.gmtime()), 'agcc')
+        path = os.path.join("$ICS_MHS_DATA_ROOT", "agcc")
+        # path = os.path.join('/data/raw', time.strftime('%Y-%m-%d', time.gmtime()), 'agcc')
 
         path = os.path.expandvars(os.path.expanduser(path))
         if not os.path.isdir(path):
             os.makedirs(path, 0o755)
-        filename = os.path.join(path, 'nframe.txt')
+        filename = os.path.join(path, "nframe.txt")
 
         with Exposure.exp_lock:
-            #if os.path.isfile(filename):
+            # if os.path.isfile(filename):
             #    with open(filename, 'r') as f:
             #        self.nframe = int(f.read()) + 1
-            #else:
+            # else:
             #    self.nframe = 1
             if os.path.isfile(filename):
-                with open(filename, 'w') as f:
+                with open(filename, "w") as f:
                     f.write(str(self.nframe))
             self.cmd.inform(f'text="Recording agc_exposure_id = {self.nframe} to {filename}"')
 
-        dbRoutinesAGCC.writeExposureToDB(self.visitId,self.nframe, expTime_ms/1000.0)
-
+        dbRoutinesAGCC.writeExposureToDB(self.visitId, self.nframe, expTime_ms / 1000.0)
 
     def run(self):
         # check if any camera is available
@@ -105,13 +114,13 @@ class Exposure(threading.Thread):
         with Exposure.exp_lock:
             Exposure.n_busy += len(self.cams)
             if self.cmd:
-                self.cmd.inform('agc_exposing=%d' % Exposure.n_busy)
+                self.cmd.inform("agc_exposing=%d" % Exposure.n_busy)
 
         thrs = []
         for cam in self.cams:
             self.cmd.inform(f'text="Applying time delay of {self.timeDelay} second on Cam {cam.devsn}"')
             time.sleep(self.timeDelay)
-            
+
             if self.tecOFF is True:
                 targetTemp = cam.temp
                 self.cmd.inform(f'text="AGCC sets CCD temp = {targetTemp}"')
@@ -131,29 +140,28 @@ class Exposure(threading.Thread):
         with Exposure.exp_lock:
             Exposure.n_busy -= len(self.cams)
             if self.cmd:
-                self.cmd.inform('agc_exposing=%d' % Exposure.n_busy)
-                self.cmd.inform('agc_frameid=%d' % self.nframe)
+                self.cmd.inform("agc_exposing=%d" % Exposure.n_busy)
+                self.cmd.inform("agc_frameid=%d" % self.nframe)
 
         if self.combined and self.cams[0].getTotalTime() > 0:
             writeFits.wfits_combined(self.cmd, self.visitId, self.cams, self.nframe, self.seq_id)
-        
-        
+
         if self.tecOFF is True:
-            '''
+            """
                 Turning TEC on!
-            '''
+            """
             for cam in self.cams:
                 self.cmd.inform(f'text="Turing on TEC to {targetTemp}C"')
                 cam.setTemperature(targetTemp)
-        
+
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
 
     def expose_thr(self, cam, multiproc=True):
-        """ Concurrent exposure thread for camera readouts """
+        """Concurrent exposure thread for camera readouts"""
         cam_id = cam.agcid + 1
         if self.cmd:
-            self.cmd.inform(f'agc{cam_id:d}_stat=BUSY')
+            self.cmd.inform(f"agc{cam_id:d}_stat=BUSY")
 
         try:
             cam.setExpTime(self.expTime_ms)
@@ -181,7 +189,7 @@ class Exposure(threading.Thread):
                 self.cmd.inform(f'text="AGC[{cam_id:d}]: Retrieve camera data in {tread:.2f}s"')
             else:
                 self.cmd.inform(f'text="AGC[{cam_id:d}]: Exposure aborted"')
-            self.cmd.inform(f'agc{cam_id:d}_stat=READY')
+            self.cmd.inform(f"agc{cam_id:d}_stat=READY")
 
         spots = None
         if tread > 0:
@@ -196,15 +204,21 @@ class Exposure(threading.Thread):
                         spots = cam.out_queue.get(timeout=PHOTOMETRY_TIMEOUT_S)
                     except queue.Empty:
                         if self.cmd:
-                            self.cmd.warn(f'text="AGC[{cam_id}]: photometry worker did not respond within {PHOTOMETRY_TIMEOUT_S}s -- worker may have crashed"')
+                            self.cmd.warn(
+                                f'text="AGC[{cam_id}]: photometry worker did not respond within {PHOTOMETRY_TIMEOUT_S}s -- worker may have crashed"'
+                            )
                         spots = None
                     except Exception as e:
                         if self.cmd:
-                            self.cmd.warn(f'text="AGC[{cam_id}]: photometry multiprocessing error with photometry: {e}"')
+                            self.cmd.warn(
+                                f'text="AGC[{cam_id}]: photometry multiprocessing error with photometry: {e}"'
+                            )
                         spots = None
                 else:
                     try:
-                        spots = photometry.measure(cam.data,cam.agcid,self.cParms,self.iParms,self.cMethod)
+                        spots = photometry.measure(
+                            cam.data, cam.agcid, self.cParms, self.iParms, self.cMethod
+                        )
                     except Exception as e:
                         self.cmd.warn(f'text="AGC[{cam_id}]: photometry error: {e}"')
                         spots = None
@@ -216,10 +230,10 @@ class Exposure(threading.Thread):
                     if self.cmd:
                         self.cmd.inform(f'text="AGC[{cam_id:d}]: find {len(spots):d} objects"')
                         self.cmd.inform(f'text="AGC[{cam_id:d}]: wrote centroids to database"')
-                        aa=spots['estimated_magnitude']
+                        aa = spots["estimated_magnitude"]
                         self.cmd.inform(f'text="AGC[{cam_id:d}]: estimated mags = {aa}"')
 
-                    dbRoutinesAGCC.writeCentroidsToDB(spots,self.visitId, self.nframe,cam.agcid)
+                    dbRoutinesAGCC.writeCentroidsToDB(spots, self.visitId, self.nframe, cam.agcid)
                 else:
                     self.cmd.inform(f'text="AGC[{cam_id:d}]: found no objects, skipping DB writing"')
             else:

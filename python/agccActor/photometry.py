@@ -1,30 +1,46 @@
-import numpy as np
-from agccActor import centroid as ct
-from importlib import reload
-import multiprocessing as mp
-import sep
 import logging
+import multiprocessing as mp
 
-spotDtype = np.dtype(dict(names=['image_moment_00_pix', 'centroid_x_pix', 'centroid_y_pix', 'central_image_moment_20_pix', 'central_image_moment_11_pix', 'central_image_moment_02_pix', 'peak_pixel_x_pix', 'peak_pixel_y_pix', 'peak_intensity', 'background', 'estimated_magnitude', 'flags'],
-                          formats=['f4', 'f4', 'f4', 'f4', 'f4' ,'f4', 'i2', 'i2', 'f4', 'f4', 'f4', 'i2']))
+import numpy as np
+
+from agccActor import centroid as ct
+
+spotDtype = np.dtype(
+    dict(
+        names=[
+            "image_moment_00_pix",
+            "centroid_x_pix",
+            "centroid_y_pix",
+            "central_image_moment_20_pix",
+            "central_image_moment_11_pix",
+            "central_image_moment_02_pix",
+            "peak_pixel_x_pix",
+            "peak_pixel_y_pix",
+            "peak_intensity",
+            "background",
+            "estimated_magnitude",
+            "flags",
+        ],
+        formats=["f4", "f4", "f4", "f4", "f4", "f4", "i2", "i2", "f4", "f4", "f4", "i2"],
+    )
+)
 
 
-def measure(data,agcid,cParms,iParms,cMethod,thresh=10):
+def measure(data, agcid, cParms, iParms, cMethod, thresh=10):
+    """measure centroid positions"""
 
-    """ measure centroid positions """
-        
-    if(cMethod == 'sep'):
+    if cMethod == "sep":
+        result = ct.getCentroidsSep(data, iParms, cParms, spotDtype, agcid)
 
-        result = ct.getCentroidsSep(data,iParms,cParms,spotDtype,agcid)
-        
     return result
 
-def createProc():
-    """ multiprocessing for photometry """
-    def worker(in_q, out_q):
-        logger = logging.getLogger('agcc')
-        while (True):
 
+def createProc():
+    """multiprocessing for photometry"""
+
+    def worker(in_q, out_q):
+        logger = logging.getLogger("agcc")
+        while True:
             data = in_q.get()
             agcid = in_q.get()
             cParms = in_q.get()
@@ -36,7 +52,7 @@ def createProc():
             except Exception as e:
                 # Never let the worker die silently: log, return None so the
                 # consumer's bounded .get() always sees a value (INSTRM-2920).
-                logger.exception(f'AGC[{agcid + 1}]: photometry.measure failed: {e}')
+                logger.exception(f"AGC[{agcid + 1}]: photometry.measure failed: {e}")
                 result = None
 
             out_q.put(result)

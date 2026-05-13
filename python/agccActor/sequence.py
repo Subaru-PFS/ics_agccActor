@@ -1,13 +1,28 @@
 import threading
+
 from expose import Exposure
 
 SEQ_IDLE = 0
 SEQ_RUNNING = 1
 SEQ_ABORT = 2
 
+
 class Sequence(threading.Thread):
-    def __init__(self, cams, expTime_ms, seq_id, count, seq_stat, seq_count, combined, centroid, cParms, iParms, cmd=None):
-        """ Run exposure command
+    def __init__(
+        self,
+        cams,
+        expTime_ms,
+        seq_id,
+        count,
+        seq_stat,
+        seq_count,
+        combined,
+        centroid,
+        cParms,
+        iParms,
+        cmd=None,
+    ):
+        """Run exposure command
 
         Args:
            cams        - list of active cameras
@@ -46,14 +61,25 @@ class Sequence(threading.Thread):
             return
 
         while self.seq_stat[self.seq_id] == SEQ_RUNNING and self.seq_count[self.seq_id] < self.count:
-            exp_thr = Exposure(self.cams, self.expTime_ms, False, cParms, iParms, self.cmd, self.combined, self.centroid, self.seq_id)
+            exp_thr = Exposure(
+                self.cams,
+                self.expTime_ms,
+                False,
+                cParms,
+                iParms,
+                self.cmd,
+                self.combined,
+                self.centroid,
+                self.seq_id,
+            )
             exp_thr.start()
             exp_thr.join()
 
             self.seq_count[self.seq_id] += 1
             if self.cmd:
-                self.cmd.inform('text="Sequence [%d] count [%d] done"' % \
-                                (self.seq_id + 1, self.seq_count[self.seq_id]))
+                self.cmd.inform(
+                    'text="Sequence [%d] count [%d] done"' % (self.seq_id + 1, self.seq_count[self.seq_id])
+                )
 
         self.seq_stat[self.seq_id] = SEQ_IDLE
         if self.cmd:
