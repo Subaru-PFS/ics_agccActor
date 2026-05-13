@@ -11,10 +11,23 @@ nCams = 6
 
 
 class Camera(object):
-    """Subaru PFI AG cameras"""
+    """Controller for the Subaru PFI AG (Auto Guider) cameras.
 
-    def __init__(self, config):
-        """connect to AG cameras"""
+    Manages up to ``nCams`` FLI USB CCD cameras (real or simulated), their
+    photometry worker processes, and per-camera state.
+    """
+
+    def __init__(self, config: dict):
+        """Connect to the AG cameras.
+
+        Parameters
+        ----------
+        config : dict
+            Actor configuration dictionary. Expected keys include
+            ``simulator`` (0/1), ``temperature``, ``cam1`` ... ``cam6``
+            (camera serial numbers), and optionally ``simulatedImagePath``
+            and ``db.opdb`` connection parameters.
+        """
 
         self.logger = logging.getLogger("agcc")
 
@@ -72,7 +85,8 @@ class Camera(object):
                 cam.regions = ((0, 0, 0), (0, 0, 0))
                 cam.in_queue, cam.out_queue, cam.proc = photometry.createProc()
 
-    def closeCamera(self):
+    def closeCamera(self) -> None:
+        """Stop photometry workers and close all open cameras."""
         for c_i, cam in enumerate(self.cams):
             if cam is not None:
                 # close the queue as well
@@ -86,8 +100,14 @@ class Camera(object):
                 cam.close()
                 self.cams[c_i] = None
 
-    def runningCameras(self):
-        """Return the list of valid camera Ids"""
+    def runningCameras(self) -> list:
+        """Return the list of valid (connected) camera indices.
+
+        Returns
+        -------
+        list of int
+            Zero-based indices of cameras that are currently connected.
+        """
 
         cams = []
         for n in range(nCams):
@@ -95,8 +115,14 @@ class Camera(object):
                 cams.append(n)
         return cams
 
-    def reportTEC(self, cmd):
-        """Return the AG temperature"""
+    def reportTEC(self, cmd) -> None:
+        """Report the current TEC/CCD temperature of each AG camera.
+
+        Parameters
+        ----------
+        cmd : object
+            A tron command object used to send ``inform`` keyword replies.
+        """
         cmd.inform('text="Number of AG cameras = %d"' % self.numberOfCamera)
         for n in range(nCams):
             if self.cams[n] is not None:
@@ -106,8 +132,14 @@ class Camera(object):
                     % (n + 1, self.cams[n].devname, self.cams[n].devsn, self.cams[n].getStatusStr(), tempstr)
                 )
 
-    def sendStatusKeys(self, cmd):
-        """Send our status keys to the given command."""
+    def sendStatusKeys(self, cmd) -> None:
+        """Send the status keywords (``agcN_stat``) of every camera slot.
+
+        Parameters
+        ----------
+        cmd : object
+            A tron command object used to send ``inform`` keyword replies.
+        """
 
         cmd.inform('text="Number of AG cameras = %d"' % self.numberOfCamera)
         for n in range(nCams):
@@ -149,22 +181,40 @@ class Camera(object):
         iParms,
         threadDelay=None,
         tecOFF=False,
-    ):
-        """Generate an 'exposure' image.
+    ) -> None:
+        """Take an exposure on one or more cameras.
 
-        Args:
-           cmd      - a Command object to report to. Ignored if None.
-           expTime  - the exposure time.
-           expType  - ("dark", "object", "test")
-           cams     - list of active cameras [1-6]
-           combined - Multiple FITS files/Single FITS file
-           centroid - do centroid if True else don't
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        expTime : float
+            Exposure time in seconds.
+        expType : str
+            Exposure type, one of ``"dark"``, ``"object"``, ``"test"``.
+        cams : list of int
+            List of zero-based camera indices to expose.
+        combined : bool
+            If ``True`` write one combined FITS file; otherwise write one
+            FITS file per camera.
+        centroid : bool
+            If ``True`` run centroiding on the resulting images.
+        pfsVisitId : int
+            The PFS visit identifier for this exposure.
+        cParms : dict
+            Centroiding parameters (thresholds, min area, deblend, etc.).
+        cMethod : str
+            Centroiding method (e.g. ``"sep"``).
+        iParms : dict
+            Per-camera instrumental parameters (regions, bad columns, ...).
+        threadDelay : float, optional
+            Inter-camera thread start delay in milliseconds.
+        tecOFF : bool, optional
+            If ``True`` turn the TEC off during the exposure.
 
-        Returns:
-           - NULL
-
-        Keys:
-           stat_cam[1-6]
+        Notes
+        -----
+        Updates the ``stat_cam[1-6]`` keywords on the command channel.
         """
 
         # check if any camera is available
@@ -230,12 +280,15 @@ class Camera(object):
             )
             exp_thr.start()
 
-    def abort(self, cmd, cams):
-        """Abort current exposure
+    def abort(self, cmd, cams) -> None:
+        """Abort the current exposure on the given cameras.
 
-        Args:
-           cmd     - a Command object to report to. Ignored if None.
-           cams    - list of active cameras [1-8]
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        cams : list of int
+            List of zero-based camera indices to abort.
         """
 
         for n in cams:
@@ -243,15 +296,22 @@ class Camera(object):
                 cmd.inform('text="Send abort command to AGC[%d]"' % (n + 1))
                 self.cams[n].cancelExposure()
 
-    def setframe(self, cmd, cams, bx, by, cx, cy, sx, sy):
-        """set exposure area
+    def setframe(self, cmd, cams, bx: int, by: int, cx: int, cy: int, sx: int, sy: int) -> None:
+        """Set the exposure (frame) area on the given cameras.
 
-        Args:
-           cmd     - a Command object to report to. Ignored if None.
-           cams    - list of active cameras [1-8]
-           bx,by   - binning size
-           cx,cy   - corner coordinate
-           sx,sy   - exposure area size
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        cams : list of int
+            List of zero-based camera indices.
+        bx, by : int
+            Serial (x) and parallel (y) binning sizes. Values <= 0 are
+            ignored (no change).
+        cx, cy : int
+            Pixel coordinates of the frame corner.
+        sx, sy : int
+            Frame size in pixels along x and y.
         """
 
         for n in cams:
@@ -273,12 +333,15 @@ class Camera(object):
             cmd.inform('text="Camera expose area set"')
             cmd.finish()
 
-    def openShutter(self, cmd, cams):
-        """Open shutter
+    def openShutter(self, cmd, cams) -> None:
+        """Open the shutter on the given cameras.
 
-        Args:
-           cmd     - a Command object to report to. Ignored if None.
-           cams    - list of active cameras [1-8]
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        cams : list of int
+            List of zero-based camera indices.
         """
         for n in cams:
             if self.cams[n] is not None and not self.cams[n].isReady():
@@ -295,12 +358,15 @@ class Camera(object):
             cmd.inform('text="Camera shutter opened"')
             cmd.finish()
 
-    def closeShutter(self, cmd, cams):
-        """close shutter
+    def closeShutter(self, cmd, cams) -> None:
+        """Close the shutter on the given cameras.
 
-        Args:
-           cmd     - a Command object to report to. Ignored if None.
-           cams    - list of active cameras [1-8]
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        cams : list of int
+            List of zero-based camera indices.
         """
         for n in cams:
             if self.cams[n] is not None and not self.cams[n].isReady():
@@ -317,12 +383,15 @@ class Camera(object):
             cmd.inform('text="Camera shutter closed"')
             cmd.finish()
 
-    def resetframe(self, cmd, cams):
-        """reset exposure area
+    def resetframe(self, cmd, cams) -> None:
+        """Reset the exposure area to the full frame on the given cameras.
 
-        Args:
-           cmd     - a Command object to report to. Ignored if None.
-           cams    - list of active cameras [1-8]
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        cams : list of int
+            List of zero-based camera indices.
         """
 
         for n in cams:
@@ -340,13 +409,17 @@ class Camera(object):
             cmd.inform('text="Camera expose area reset"')
             cmd.finish()
 
-    def setmode(self, cmd, mode, cams):
-        """Set camera readout mode
+    def setmode(self, cmd, mode: int, cams) -> None:
+        """Set the camera readout mode on the given cameras.
 
-        Args:
-           cmd     - a Command object to report to. Ignored if None.
-           mode    - readout mode
-           cams    - list of active cameras [1-8]
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        mode : int
+            Readout mode (e.g. ``0`` for 4 MHz, ``1`` for 500 kHz).
+        cams : list of int
+            List of zero-based camera indices.
         """
 
         cams_available = []
@@ -363,12 +436,15 @@ class Camera(object):
         setmode_thr = SetMode(active_cams, mode, cmd)
         setmode_thr.start()
 
-    def getmode(self, cmd, cams):
-        """Get camera readout mode
+    def getmode(self, cmd, cams) -> None:
+        """Get the camera readout mode of the given cameras.
 
-        Args:
-           cmd     - a Command object to report to. Ignored if None.
-           cams    - list of active cameras [1-8]
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        cams : list of int
+            List of zero-based camera indices.
         """
 
         for n in cams:
@@ -384,11 +460,13 @@ class Camera(object):
         cmd.inform('text="Camera getmode command done"')
         cmd.finish()
 
-    def getmodestring(self, cmd):
-        """Get mode string from the first available camera
+    def getmodestring(self, cmd) -> None:
+        """Get the readout-mode description strings from the first ready camera.
 
-        Args:
-           cmd     - a Command object to report to. Ignored if None.
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
         """
 
         for n in range(nCams):
@@ -404,11 +482,17 @@ class Camera(object):
         if cmd:
             cmd.fail('text="camera busy or none attached, command ignored"')
 
-    def setcamtemperature(self, cmd, cam, temp):
-        """Set CCD temperature for indivisual camera
-        Args:
-           cmd     - a Command object to report to. Ignored if None.
-           temp    - CCD temperature
+    def setcamtemperature(self, cmd, cam: int, temp: float) -> None:
+        """Set the CCD temperature for an individual camera.
+
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        cam : int
+            Zero-based camera index.
+        temp : float
+            Target CCD temperature in degrees Celsius.
         """
         if self.cams[cam].isReady():
             self.cams[cam].setTemperature(temp)
@@ -416,12 +500,15 @@ class Camera(object):
             if cmd:
                 cmd.warn('text="Camera [%d] is busy"' % cam)
 
-    def settemperature(self, cmd, temp):
-        """Set CCD temperature
+    def settemperature(self, cmd, temp: float) -> None:
+        """Set the CCD temperature on all connected cameras.
 
-        Args:
-           cmd     - a Command object to report to. Ignored if None.
-           temp    - CCD temperature
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        temp : float
+            Target CCD temperature in degrees Celsius.
         """
 
         busy = False
@@ -440,13 +527,18 @@ class Camera(object):
                 cmd.inform('text="Camera settemperature command done"')
                 cmd.finish()
 
-    def setregions(self, cmd, camid, regions_str):
-        """Set CCD regions of interested
+    def setregions(self, cmd, camid: int, regions_str: str) -> None:
+        """Set the CCD regions of interest for a single camera.
 
-        Args:
-           cmd         - a Command object to report to. Ignored if None.
-           camid       - Camera ID
-           regions_str - Regions of interest to set
+        Parameters
+        ----------
+        cmd : object or None
+            A tron command object to report to. Ignored if ``None``.
+        camid : int
+            Zero-based camera index.
+        regions_str : str
+            Comma-separated region definition. Either 3 values (one region)
+            or 6 values (two regions) of the form ``x,y,d`` each.
         """
 
         pars = regions_str.split(",")
@@ -466,7 +558,18 @@ class Camera(object):
             cmd.inform('text="setregions command done"')
             cmd.finish()
 
-    def camera_stat(self, cam_id):
-        """Return the status of a camera"""
+    def camera_stat(self, cam_id: int) -> str:
+        """Return the status string of a single camera.
+
+        Parameters
+        ----------
+        cam_id : int
+            Zero-based camera index.
+
+        Returns
+        -------
+        str
+            A short string describing the camera status.
+        """
 
         return self.cams[cam_id].getStatusStr()

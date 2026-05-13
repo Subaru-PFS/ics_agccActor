@@ -12,6 +12,22 @@ PHOTOMETRY_TIMEOUT_S = 20
 
 
 class Exposure(threading.Thread):
+    """Threaded driver for a single multi-camera AGCC exposure.
+
+    One :class:`Exposure` instance is created per ``expose`` command. It
+    starts a per-camera worker thread, gathers their results, optionally
+    triggers centroiding via the photometry worker processes, and writes
+    FITS files plus database records.
+
+    Attributes
+    ----------
+    exp_lock : threading.Lock
+        Class-level lock guarding the global busy counter.
+    n_busy : int
+        Class-level counter of cameras currently exposing across all
+        ``Exposure`` instances.
+    """
+
     exp_lock = threading.Lock()
     n_busy = 0
 
@@ -31,22 +47,43 @@ class Exposure(threading.Thread):
         threadDelay=None,
         tecOFF=False,
     ):
-        """Run exposure command
+        """Initialise the exposure driver.
 
-        Args:
-           cams        - list of active cameras
-           expTime_ms  - the exposure time in ms
-           dflag       - true for dark exposure
-           cmd         - a Command object to report to. Ignored if None.
-           combined    - Multiple FITS files/Single FITS file
-           centroid    - True if do centroid else don't
-           seq_id      - Sequence id
+        Parameters
+        ----------
+        cams : list
+            Active camera objects to expose.
+        expTime_ms : int
+            Exposure time in milliseconds.
+        dflag : bool
+            ``True`` for a dark exposure (shutter closed).
+        cParms : dict
+            Centroiding parameters. The exposure time in seconds is
+            inserted into this dict as ``cParms['expTime']``.
+        iParms : dict
+            Per-camera instrumental parameters.
+        visitId : int
+            The PFS visit identifier.
+        cMethod : str
+            Centroiding method (e.g. ``"sep"``).
+        cmd : object, optional
+            A tron command object to report to. Ignored if ``None``.
+        combined : bool, optional
+            If ``True`` write a single combined FITS file; otherwise one
+            FITS per camera.
+        centroid : bool, optional
+            If ``True`` run centroiding on each image.
+        seq_id : int, optional
+            Sequence identifier (``-1`` if not part of a sequence).
+        threadDelay : float, optional
+            Inter-camera thread start delay in milliseconds.
+        tecOFF : bool, optional
+            If ``True`` turn the TEC off during the exposure and restore
+            it afterwards.
 
-        Returns:
-           - NULL
-
-        Keys:
-           stat_cam[1-6]
+        Notes
+        -----
+        Updates the ``stat_cam[1-6]`` keywords on the command channel.
         """
         threading.Thread.__init__(self, daemon=False)
         self.cams = cams
@@ -103,7 +140,8 @@ class Exposure(threading.Thread):
 
         database.writeExposureToDB(self.visitId, self.nframe, expTime_ms / 1000.0)
 
-    def run(self):
+    def run(self) -> None:
+        """Execute the exposure: launch per-camera threads and finalise output."""
         # check if any camera is available
         if len(self.cams) <= 0:
             if self.cmd:
@@ -157,8 +195,22 @@ class Exposure(threading.Thread):
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
 
-    def expose_thr(self, cam, multiproc=True):
-        """Concurrent exposure thread for camera readouts"""
+    def expose_thr(self, cam, multiproc: bool = True) -> None:
+        """Run the exposure and post-processing for a single camera.
+
+        Sets the exposure time, triggers the exposure, retrieves the image,
+        optionally runs centroiding (in-process or via the per-camera
+        multiprocessing worker), writes a per-camera FITS file when not in
+        combined mode, and writes centroids to the database.
+
+        Parameters
+        ----------
+        cam : object
+            The camera object to drive.
+        multiproc : bool, optional
+            If ``True`` dispatch centroiding to the per-camera photometry
+            worker process; otherwise run it inline.
+        """
         cam_id = cam.agcid + 1
         if self.cmd:
             self.cmd.inform(f"agc{cam_id:d}_stat=BUSY")

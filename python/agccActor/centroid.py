@@ -6,9 +6,24 @@ import yaml
 from pfs.utils.datamodel.ag import SourceDetectionFlag
 
 
-def getCentroidParams(cmd):
-    """
-    read in the centroiding parameters from config file
+def getCentroidParams(cmd) -> dict:
+    """Read the centroiding parameters from the actor configuration file.
+
+    The defaults from ``$PFS_INSTDATA_DIR/config/actors/agcc.yaml`` are
+    optionally overridden by the ``nmin``, ``thresh`` and ``deblend``
+    keywords present in ``cmd``.
+
+    Parameters
+    ----------
+    cmd : object or None
+        A tron command object whose keywords may override defaults.
+        If ``None`` or lacking keywords, defaults are returned unchanged.
+
+    Returns
+    -------
+    dict
+        Centroiding parameters: thresholds, minimum area, deblending,
+        ellipticity bounds, etc.
     """
 
     try:
@@ -34,9 +49,19 @@ def getCentroidParams(cmd):
     return centParms
 
 
-def getImageParams(cmd):
-    """
-    read in instrumental parameters from config file
+def getImageParams(cmd) -> dict:
+    """Read the per-camera instrumental parameters from the config file.
+
+    Parameters
+    ----------
+    cmd : object or None
+        A tron command object. Currently unused; accepted for symmetry.
+
+    Returns
+    -------
+    dict
+        Per-camera parameters (regions, bad columns, saturation values,
+        magnitude-fit coefficients, ...).
     """
     fileName = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
 
@@ -47,8 +72,19 @@ def getImageParams(cmd):
 
 
 def interpBadCol(data, badCols):
-    """
-    interpolate over bad columns
+    """Interpolate over known bad columns by averaging neighbours.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        2-D image array (modified in place and returned).
+    badCols : sequence of int
+        Column indices to interpolate over.
+
+    Returns
+    -------
+    numpy.ndarray
+        The input ``data`` array with bad columns replaced.
     """
 
     for i in badCols:
@@ -57,8 +93,20 @@ def interpBadCol(data, badCols):
 
 
 def subOverscan(data):
-    """
-    remove overscan
+    """Subtract overscan-level background from each half of the image.
+
+    The image is split vertically into two halves; the median of a small
+    overscan strip in each half is subtracted from that half in place.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        2-D image array (modified in place and returned).
+
+    Returns
+    -------
+    numpy.ndarray
+        The overscan-subtracted image.
     """
 
     h, w = data.shape
@@ -73,9 +121,28 @@ def subOverscan(data):
     return data
 
 
-def centroidRegion(data, thresh, minarea, deblend):
-    """
-    wrapper that subtract the background and calls the centroiding
+def centroidRegion(data, thresh: float, minarea: int, deblend: float):
+    """Subtract the background and run SEP source extraction on a region.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        2-D image region (modified in place: background subtracted).
+    thresh : float
+        Detection threshold (in units of the per-pixel RMS).
+    minarea : int
+        Minimum number of connected pixels above ``thresh``.
+    deblend : float
+        SEP ``deblend_cont`` parameter.
+
+    Returns
+    -------
+    spots : numpy.ndarray
+        Structured array of detected sources, as returned by ``sep.extract``.
+    nspots : int
+        Number of detected sources.
+    background : numpy.ndarray
+        The 2-D background image estimated by SEP.
     """
 
     # determine the background
@@ -91,9 +158,34 @@ def centroidRegion(data, thresh, minarea, deblend):
     return spots, len(spots), background
 
 
-def getCentroidsSep(data, iParms, cParms, spotDtype, agcid):
-    """
-    runs centroiding for the sep routine and assigns the results
+def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
+    """Run SEP-based centroiding on an AG camera image.
+
+    Both halves (left and right regions) defined in ``iParms`` are
+    processed independently. Edge, ellipticity, saturation, flat-top and
+    non-convergence flags are accumulated, and final windowed second
+    moments and estimated magnitudes are filled in.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        2-D raw image from one AG camera.
+    iParms : dict
+        Per-camera instrumental parameters; must contain the camera's
+        ``reg``, ``badCols``, ``satVal1``/``satVal2`` (optional),
+        ``flatVal`` and ``magFit`` entries.
+    cParms : dict
+        Centroiding parameters: ``thresh``, ``minarea``, ``deblend``,
+        ``ellip``, ``nmin``, ``expTime``.
+    spotDtype : numpy.dtype
+        Structured dtype for the output spot record array.
+    agcid : int
+        Zero-based AG camera identifier.
+
+    Returns
+    -------
+    numpy.ndarray
+        Structured array with one entry per detected spot.
     """
 
     thresh = cParms["thresh"]
@@ -290,21 +382,33 @@ def getCentroidsSep(data, iParms, cParms, spotDtype, agcid):
     return result
 
 
-def windowedFWHM(data, xPos, yPos, region, side):
-    """
-    windowed second moments, based on pre-determined positions
+def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
+    """Compute iteratively-weighted second moments around a position.
 
+    If the point is near the edge of the region the sub-image is cropped
+    accordingly; the fit is still attempted but may produce poor results.
+    If the fit yields a non-positive determinant or size, or if the
+    iteration does not converge, a simple non-iterative weighted moment
+    is returned and a ``BAD_SHAPE`` flag is set.
 
-    If the point is near the edge of the region, we crop the image
-    appropriately; the fit will be attempted, but may produce
-    poor results.
+    Parameters
+    ----------
+    data : numpy.ndarray
+        2-D background-subtracted image.
+    xPos, yPos : float
+        Centroid (column, row) position in image coordinates.
+    region : sequence of int
+        Region bounds ``(x0, x1, y0, y1, x2, x3, y2, y3)`` defining the
+        left (``side=0``) and right (``side=1``) halves.
+    side : int
+        ``0`` for the left region, ``1`` for the right region.
 
-    IF the fitting process fails, resulting in a negative determinant
-    or negative or zero size, the flag for non-convergence will be set,
-    and a simple non-iterative weighted second moment set instead.
-
-    If the result doesn't converge, the same thing is done.
-
+    Returns
+    -------
+    sx, sy, sxy : float
+        Weighted second moments (xx, yy, xy).
+    flag : int
+        ``0`` on convergence, ``SourceDetectionFlag.BAD_SHAPE`` otherwise.
     """
 
     maxIt = 30
@@ -418,9 +522,27 @@ def windowedFWHM(data, xPos, yPos, region, side):
     return sy, sx, sxy, SourceDetectionFlag.BAD_SHAPE
 
 
-def weightedMoment(winVal, xv, yv, w11, w12, w22):
-    """
-    Calculated a weighted moment to return if the iterative process fails.
+def weightedMoment(winVal, xv, yv, w11: float, w12: float, w22: float):
+    """Compute a single-pass weighted moment as a fallback.
+
+    Used by :func:`windowedFWHM` when the iterative fit fails to converge
+    or yields a non-physical result.
+
+    Parameters
+    ----------
+    winVal : numpy.ndarray
+        2-D sub-image (background-subtracted) around the source.
+    xv, yv : numpy.ndarray
+        Coordinate meshgrids relative to the centroid.
+    w11, w12, w22 : float
+        Components of the inverse covariance matrix of the weight Gaussian.
+
+    Returns
+    -------
+    sx, sy, sxy : float
+        Weighted second moments.
+    flag : int
+        Always ``SourceDetectionFlag.BAD_SHAPE``.
     """
 
     r2 = xv * xv * w11 + yv * yv * w22 + 2 * w12 * xv * yv
@@ -433,9 +555,26 @@ def weightedMoment(winVal, xv, yv, w11, w12, w22):
     return sx, sy, sxy, SourceDetectionFlag.BAD_SHAPE
 
 
-def calculateApproximateMagnitude(iParms, instrumentFlux, expTime):
-    """
-    empirical function for gaia magnitudes
+def calculateApproximateMagnitude(iParms: dict, instrumentFlux, expTime: float):
+    """Estimate an approximate Gaia magnitude from instrumental flux.
+
+    Uses the linear ``magFit = (slope, offset)`` coefficients stored in
+    ``iParms`` applied to ``-2.5 * log10(flux / expTime)``.
+
+    Parameters
+    ----------
+    iParms : dict
+        Instrumental parameters; must contain a ``magFit`` ``(slope, offset)``
+        pair.
+    instrumentFlux : numpy.ndarray or float
+        Instrumental flux (e.g. SEP ``flux``).
+    expTime : float
+        Exposure time in seconds.
+
+    Returns
+    -------
+    numpy.ndarray or float
+        Estimated Gaia-like magnitude.
     """
 
     mag = -2.5 * np.log10(instrumentFlux / expTime) * iParms["magFit"][0] + iParms["magFit"][1]

@@ -5,8 +5,23 @@ from datetime import datetime
 from astropy.io import fits
 
 
-def wfits(cmd, visitId, cam, nframe):
-    """Write the image to a FITS file"""
+def wfits(cmd, visitId: int, cam, nframe: int) -> None:
+    """Write a single-camera image (and optional centroids) to a FITS file.
+
+    Output is written under ``/data/raw/YYYY-MM-DD/agcc/`` with name
+    ``agcc_{visitId:06d}_{nframe:08d}_cam{N}.fits``.
+
+    Parameters
+    ----------
+    cmd : object or None
+        A tron command object used for status replies. Ignored if ``None``.
+    visitId : int
+        The PFS visit identifier.
+    cam : object
+        The camera object holding the image data and metadata.
+    nframe : int
+        The AGC exposure identifier (used as FRAMEID in the header).
+    """
 
     # path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
     path = os.path.join("/data/raw", time.strftime("%Y-%m-%d", time.gmtime()), "agcc")
@@ -74,8 +89,26 @@ def wfits(cmd, visitId, cam, nframe):
         cmd.inform(f'text="AG images are NOT written into {pfsFilename}"')
 
 
-def wfits_combined(cmd, visitId, cams, nframe, seq_id=-1):
-    """Write the images to a FITS file"""
+def wfits_combined(cmd, visitId: int, cams, nframe: int, seq_id: int = -1) -> None:
+    """Write images from all cameras into a single multi-extension FITS file.
+
+    The output FITS contains one image HDU per AG camera (``cam1`` ...
+    ``cam6``) plus a binary table per camera when centroids are present.
+    Output path is ``/data/raw/YYYY-MM-DD/agcc/agcc_{visitId:06d}_{nframe:08d}.fits``.
+
+    Parameters
+    ----------
+    cmd : object or None
+        A tron command object used for status replies. Ignored if ``None``.
+    visitId : int
+        The PFS visit identifier.
+    cams : list
+        List of camera objects participating in this exposure.
+    nframe : int
+        The AGC exposure identifier (FRAMEID).
+    seq_id : int, optional
+        Sequence identifier; ``-1`` if not part of a sequence.
+    """
 
     # path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
     path = os.path.join("/data/raw", time.strftime("%Y-%m-%d", time.gmtime()), "agcc")

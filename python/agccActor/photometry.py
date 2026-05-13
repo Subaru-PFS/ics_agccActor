@@ -26,8 +26,30 @@ spotDtype = np.dtype(
 )
 
 
-def measure(data, agcid, cParms, iParms, cMethod, thresh=10):
-    """measure centroid positions"""
+def measure(data, agcid: int, cParms: dict, iParms: dict, cMethod: str, thresh: float = 10):
+    """Measure centroid positions for one camera image.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        2-D raw image array from the camera.
+    agcid : int
+        Zero-based AG camera identifier.
+    cParms : dict
+        Centroiding parameters.
+    iParms : dict
+        Per-camera instrumental parameters.
+    cMethod : str
+        Centroiding method; currently only ``"sep"`` is supported.
+    thresh : float, optional
+        Detection threshold; presently unused (taken from ``cParms``).
+
+    Returns
+    -------
+    numpy.ndarray
+        Structured array of detected spots, as produced by
+        :func:`agccActor.centroid.getCentroidsSep`.
+    """
 
     if cMethod == "sep":
         result = centroid.getCentroidsSep(data, iParms, cParms, spotDtype, agcid)
@@ -36,9 +58,24 @@ def measure(data, agcid, cParms, iParms, cMethod, thresh=10):
 
 
 def createProc():
-    """multiprocessing for photometry"""
+    """Create and start a photometry worker process for one camera.
 
-    def worker(in_q, out_q):
+    The worker pulls ``(data, agcid, cParms, iParms, cMethod)`` tuples
+    from its input queue, runs :func:`measure` on each, and pushes the
+    result (or ``None`` on failure) onto its output queue.
+
+    Returns
+    -------
+    in_q : multiprocessing.Queue
+        Queue to push exposure inputs to.
+    out_q : multiprocessing.Queue
+        Queue from which to retrieve centroid results.
+    p : multiprocessing.Process
+        The started, daemonised worker process.
+    """
+
+    def worker(in_q, out_q) -> None:
+        """Worker loop: consume input queue, run :func:`measure`, post result."""
         logger = logging.getLogger("agcc")
         while True:
             data = in_q.get()

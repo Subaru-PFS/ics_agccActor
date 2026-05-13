@@ -2,26 +2,27 @@ import threading
 
 
 class SetMode(threading.Thread):
-    def __init__(self, cams, mode, cmd=None):
-        """Run exposure command
+    """Threaded driver that sets the readout mode on several cameras in parallel."""
 
-        Args:
-           cams        - list of active cameras
-           mode        - readout mode
-           cmd         - a Command object to report to. Ignored if None.
+    def __init__(self, cams, mode: int, cmd=None):
+        """Initialise the parallel set-mode driver.
 
-        Returns:
-           - NULL
-
-        Keys:
-           stat_cam[1-6]
+        Parameters
+        ----------
+        cams : list
+            Active camera objects on which to change the readout mode.
+        mode : int
+            Readout mode value to set on each camera.
+        cmd : object, optional
+            A tron command object to report to. Ignored if ``None``.
         """
         threading.Thread.__init__(self, daemon=False)
         self.cams = cams
         self.mode = mode
         self.cmd = cmd
 
-    def run(self):
+    def run(self) -> None:
+        """Spawn one thread per camera, call ``setMode`` on each, and join."""
         # check if any camera is available
         if len(self.cams) <= 0:
             if self.cmd:
