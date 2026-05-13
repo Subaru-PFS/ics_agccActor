@@ -6,4 +6,13 @@
 *.o
 *.a
 *~
+
+**/__pycache__/
+**.egg-info/
+**checkpoint.ipynb
+
+.idea
+.junie
+
 python/agccActor/fli/fli_camera.c
+python/agccActor/version.py
