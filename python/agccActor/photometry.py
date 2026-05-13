@@ -3,7 +3,7 @@ import multiprocessing as mp
 
 import numpy as np
 
-from agccActor import centroid as ct
+from agccActor import centroid
 
 spotDtype = np.dtype(
     dict(
@@ -30,7 +30,7 @@ def measure(data, agcid, cParms, iParms, cMethod, thresh=10):
     """measure centroid positions"""
 
     if cMethod == "sep":
-        result = ct.getCentroidsSep(data, iParms, cParms, spotDtype, agcid)
+        result = centroid.getCentroidsSep(data, iParms, cParms, spotDtype, agcid)
 
     return result
 

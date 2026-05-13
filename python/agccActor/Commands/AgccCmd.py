@@ -3,9 +3,7 @@
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 
-from agccActor import centroid
-from agccActor import database
-
+from agccActor import centroid, database
 
 nCams = 6
 

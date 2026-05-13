@@ -2,8 +2,9 @@
 
 from importlib import reload
 
-import camera
 from actorcore.Actor import Actor
+
+from agccActor import camera
 
 
 class AgccActor(Actor):

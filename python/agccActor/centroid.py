@@ -63,12 +63,12 @@ def subOverscan(data):
 
     h, w = data.shape
     side0 = data[:, : w // 2]
-    side1 = data[:, w // 2 :]
+    side1 = data[:, w // 2:]
     bg0 = np.median(side0[:, :4]).astype(data.dtype)
     bg1 = np.median(side1[:, -4:]).astype(data.dtype)
 
     data[:, : w // 2] -= bg0
-    data[:, w // 2 :] -= bg1
+    data[:, w // 2:] -= bg1
 
     return data
 
@@ -108,15 +108,15 @@ def getCentroidsSep(data, iParms, cParms, spotDtype, agcid):
         satValue1 = iParms[str(agcid + 1)]["satVal1"]
         satValue2 = iParms[str(agcid + 1)]["satVal2"]
     except (KeyError, IndexError):
-        satValue1 = (2**16) - 1
-        satValue2 = (2**16) - 1
+        satValue1 = (2 ** 16) - 1
+        satValue2 = (2 ** 16) - 1
     flatVal = iParms["flatVal"]
 
     dataProc = subOverscan(data.astype("float"))
     dataProc = interpBadCol(dataProc, iParms[str(agcid + 1)]["badCols"])
 
-    _data1 = dataProc[region[2] : region[3], region[0] : region[1]].astype("float", copy=True, order="C")
-    _data2 = dataProc[region[6] : region[7], region[4] : region[5]].astype("float", copy=True, order="C")
+    _data1 = dataProc[region[2]: region[3], region[0]: region[1]].astype("float", copy=True, order="C")
+    _data2 = dataProc[region[6]: region[7], region[4]: region[5]].astype("float", copy=True, order="C")
 
     spots1, nSpots1, background1 = centroidRegion(_data1, thresh, minarea, deblend=deblend)
     spots2, nSpots2, background2 = centroidRegion(_data2, thresh, minarea, deblend=deblend)
@@ -249,8 +249,8 @@ def getCentroidsSep(data, iParms, cParms, spotDtype, agcid):
     # subract the background
 
     newData = dataProc.copy()
-    newData[region[2] : region[3], region[0] : region[1]] -= background1
-    newData[region[6] : region[7], region[4] : region[5]] -= background2
+    newData[region[2]: region[3], region[0]: region[1]] -= background1
+    newData[region[6]: region[7], region[4]: region[5]] -= background2
 
     m20 = []
     m02 = []
@@ -365,7 +365,7 @@ def windowedFWHM(data, xPos, yPos, region, side):
         ow12 = w12
         ow22 = w22
 
-        detw = sx * sy - sxy**2
+        detw = sx * sy - sxy ** 2
         w11 = sy / detw
         w12 = -sxy / detw
         w22 = sx / detw
@@ -394,7 +394,7 @@ def windowedFWHM(data, xPos, yPos, region, side):
         e2_old = e2
         sx_o = sx
 
-        detow = sxow * syow - sxy**2
+        detow = sxow * syow - sxy ** 2
         ow11 = syow / detow
         ow12 = -sxyow / detow
         ow22 = sxow / detow
