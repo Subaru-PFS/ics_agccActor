@@ -88,7 +88,7 @@ class Camera(object):
             from agccActor.fli import fake_camera
 
             self.numberOfCamera = fake_camera.numberOfCamera()
-            simImagePath = config["simulatedImagePath"]
+            simImagePath = config.get("simulatedImagePath", "")
             if len(simImagePath) == 0:
                 simImagePath = None
             else:

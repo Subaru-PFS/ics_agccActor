@@ -364,7 +364,7 @@ class AgccCmd(object):
         else:
             by = 0
         if "cx" not in cmdKeys or "cy" not in cmdKeys or "sx" not in cmdKeys or "sy" not in cmdKeys:
-            cmd.error('text="reqired parameters (cx,cy,sx,sy) missing"')
+            cmd.error('text="required parameters (cx,cy,sx,sy) missing"')
             cmd.fail()
             return
         cx = cmdKeys["cx"].values[0]
@@ -479,7 +479,7 @@ class AgccCmd(object):
         temperature = cmdKeys["temperature"].values[0]
         if "cameras" in cmdKeys:
             camList = cmdKeys["cameras"].values[0]
-            cmd.inform(f'text="Setting temerature for AG cameras = {camList}"')
+            cmd.inform(f'text="Setting temperature for AG cameras = {camList}"')
 
             for cam in camList:
                 n = int(cam) - 1
