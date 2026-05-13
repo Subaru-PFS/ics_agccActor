@@ -1,10 +1,17 @@
 import threading
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from agccActor.fli.fake_camera import Camera as FakeFliCamera
+    from agccActor.fli.fli_camera import Camera as FliCamera
+
+    FliCameraType = Union[FliCamera, FakeFliCamera]
 
 
 class SetMode(threading.Thread):
     """Threaded driver that sets the readout mode on several cameras in parallel."""
 
-    def __init__(self, cams, mode: int, cmd=None):
+    def __init__(self, cams: "list[FliCameraType]", mode: int, cmd=None):
         """Initialise the parallel set-mode driver.
 
         Parameters
@@ -17,7 +24,7 @@ class SetMode(threading.Thread):
             A tron command object to report to. Ignored if ``None``.
         """
         threading.Thread.__init__(self, daemon=False)
-        self.cams = cams
+        self.cams: "list[FliCameraType]" = cams
         self.mode = mode
         self.cmd = cmd
 

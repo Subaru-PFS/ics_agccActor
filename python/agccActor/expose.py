@@ -1,8 +1,15 @@
 import queue
 import threading
 import time
+from typing import TYPE_CHECKING, Union
 
 from agccActor import database, photometry, writeFits
+
+if TYPE_CHECKING:
+    from agccActor.fli.fake_camera import Camera as FakeFliCamera
+    from agccActor.fli.fli_camera import Camera as FliCamera
+
+    FliCameraType = Union[FliCamera, FakeFliCamera]
 
 # Bound on how long the main thread will wait for a per-camera photometry
 # worker to return a result. If exceeded, we assume the worker has crashed
@@ -32,7 +39,7 @@ class Exposure(threading.Thread):
 
     def __init__(
         self,
-        cams,
+        cams: "list[FliCameraType]",
         expTime_ms,
         dflag,
         cParms,
@@ -85,7 +92,7 @@ class Exposure(threading.Thread):
         Updates the ``stat_cam[1-6]`` keywords on the command channel.
         """
         threading.Thread.__init__(self, daemon=False)
-        self.cams = cams
+        self.cams: "list[FliCameraType]" = cams
         self.expTime_ms = expTime_ms
         self.dflag = dflag
         self.cmd = cmd
@@ -174,7 +181,7 @@ class Exposure(threading.Thread):
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
 
-    def expose_thr(self, cam, multiproc: bool = True) -> None:
+    def expose_thr(self, cam: "FliCameraType", multiproc: bool = True) -> None:
         """Run the exposure and post-processing for a single camera.
 
         Sets the exposure time, triggers the exposure, retrieves the image,

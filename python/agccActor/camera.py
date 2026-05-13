@@ -1,11 +1,18 @@
 import logging
 import os
+from typing import TYPE_CHECKING, Optional, Union
 
 from pfs.utils.database.opdb import OpDB
 
 from agccActor import photometry, writeFits
 from agccActor.expose import Exposure
 from agccActor.setmode import SetMode
+
+if TYPE_CHECKING:
+    from agccActor.fli.fake_camera import Camera as FakeFliCamera
+    from agccActor.fli.fli_camera import Camera as FliCamera
+
+    FliCameraType = Union[FliCamera, FakeFliCamera]
 
 nCams = 6
 
@@ -39,7 +46,7 @@ class Camera(object):
             self.logger.info("No database configuration for opdb found, using defaults.")
 
         simulator = config["simulator"]
-        self.cams = [None, None, None, None, None, None]
+        self.cams: list[Optional["FliCameraType"]] = [None, None, None, None, None, None]
         temp = config["temperature"]
 
         self.logger.info(f"Setting TEC to {temp}.")
