@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-
-import centroidTools as ct
-import dbRoutinesAGCC as dbRoutinesAGCC
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+
+from agccActor import centroid
+from agccActor import database
+
 
 nCams = 6
 
@@ -125,7 +126,7 @@ class AgccCmd(object):
     def insertVisit(self, cmd):
         cmdKeys = cmd.cmd.keywords
         visit = cmdKeys["visit"].values[0]
-        dbRoutinesAGCC.writeVisitToDB(visit)
+        database.writeVisitToDB(visit)
         cmd.finish()
 
     def shutterOps(self, cmd):
@@ -462,7 +463,7 @@ class AgccCmd(object):
 
         """
 
-        self.cParms = ct.getCentroidParams(cmd)
+        self.cParms = centroid.getCentroidParams(cmd)
         thresh = self.cParms["thresh"]
         deblend = self.cParms["deblend"]
         nmin = self.cParms["nmin"]
@@ -475,4 +476,4 @@ class AgccCmd(object):
         then changes any specified in the keyword arguments.
         """
         self.actor.logger.info(f"Setting image parameters: {cmd=}")
-        self.iParms = ct.getImageParams(cmd)
+        self.iParms = centroid.getImageParams(cmd)
