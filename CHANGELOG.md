@@ -69,6 +69,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   FWHM path that was never called in production (the call site had been commented out
   in favour of `windowedFWHM`). Removed along with the `lmfit` import it required.
 - **Legacy `doc/README`** — superseded by the new top-level `README.md`.
+- **Dead commented-out code** — removed stale commented-out code blocks from
+  `camera.py` (leftover `cam.close()` / `os.kill()` snippets in `connectCamera`
+  and `closeCamera`), `Commands/AgccCmd.py` (commented `connectCamera` call in
+  `reconnect`, commented `setCentroidParams` call in `expose`), `centroid.py`
+  (commented dynamic FWHM `spots['x2'].mean()` lines and the dead `fittedFWHM`
+  call site), and `main.py` (orphan `# To work` placeholder comment).
 
 ---
 

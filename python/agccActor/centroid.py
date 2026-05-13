@@ -1,9 +1,13 @@
+import logging
 import os
 
 import numpy as np
 import sep
 import yaml
 from pfs.utils.datamodel.ag import SourceDetectionFlag
+
+logger = logging.getLogger("agcc")
+logger.setLevel(logging.INFO)
 
 
 def getCentroidParams(cmd) -> dict:
@@ -220,9 +224,6 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     # flag spots near edge of region
 
     # dynamic fwhm calculation is overenthusiastic with out of focus images
-    # fx = spots1['x2'].mean()
-    # fy = spots1['y2'].mean()
-
     fx = 5
     fy = 5
 
@@ -261,9 +262,6 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     result["flags"][0:nSpots1][ind2] += SourceDetectionFlag.BAD_ELLIP
 
     # flag spots near edge of region
-
-    # fx = spots2['x2'].mean()
-    # fy = spots2['y2'].mean()
     fx = 5
     fy = 5
 
@@ -354,7 +352,6 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
         xPos = result["centroid_y_pix"][ii]
 
         xv, yv, xyv, conv = windowedFWHM(newData, yPos, xPos, region, result["flags"][ii] & 1)
-        # xv, yv = fittedFWHM(newData, yPos, xPos)
 
         # if the moment didn't converge, revert to the unweighted second moment and set flags
         if conv == 0:
@@ -374,7 +371,7 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     result["central_image_moment_02_pix"] = np.array(m02)
     result["central_image_moment_11_pix"] = np.array(m11)
     result["flags"] = result["flags"] + np.array(flags)
-    print(f"Calculating Magnitude: exptime = {cParms['expTime']}")
+    logger.debug(f"Calculating Magnitude: exptime = {cParms['expTime']}")
     result["estimated_magnitude"] = calculateApproximateMagnitude(
         iParms, result["image_moment_00_pix"], cParms["expTime"]
     )

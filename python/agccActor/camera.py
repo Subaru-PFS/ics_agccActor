@@ -63,8 +63,6 @@ class Camera(object):
                         cam.in_queue, cam.out_queue, cam.proc = photometry.createProc()
                         self.logger.info(f"Creating process ID for Cam {cam.agcid + 1} {cam.proc.pid}.")
                         break
-                # else:
-                #    cam.close()
         else:
             from agccActor.fli import fake_camera
 
@@ -91,8 +89,6 @@ class Camera(object):
             if cam is not None:
                 # close the queue as well
                 self.logger.info(f"Closing process ID {cam.proc.pid}.")
-                # if cam.proc.is_alive():
-                # os.kill(cam.proc.pid, signal.SIGTERM)
                 cam.proc.kill()  # Send stop signal to the input queue
                 self.logger.info(f"Join the process {cam.proc.pid}.")
                 cam.proc.join()

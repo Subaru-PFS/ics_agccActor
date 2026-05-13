@@ -77,10 +77,6 @@ class AgccActor(Actor):
         self.camera.sendStatusKeys(cmd)
 
 
-#
-# To work
-
-
 def main() -> None:
     """Entry point: start the AGCC tron actor."""
     actor = AgccActor("agcc", productName="agccActor")

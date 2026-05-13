@@ -112,7 +112,6 @@ class AgccCmd(object):
             The parsed tron command object.
         """
 
-        # self.actor.connectCamera(cmd, self.actor.actorConfig)
         self.actor.reloadCamera(cmd, self.actor.actorConfig)
         cmd.inform('text="AG cameras connected!"')
         cmd.finish()
@@ -243,9 +242,6 @@ class AgccCmd(object):
         if "centroid" in cmdKeys:
             if cmdKeys["centroid"].values[0] == 1:
                 centroid = True
-
-        # moved this to configurable option
-        # self.setCentroidParams(cmd)
 
         cMethod = "sep"
         if "cMethod" in cmdKeys:
