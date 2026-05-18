@@ -37,7 +37,9 @@ The actor is part of the PFS Instrument Control Software (ICS) stack and is depl
 │   ├── database.py            # OpDB writes (pfs_visit, agc_exposure, agc_data)
 │   ├── version.py             # Generated at build time by lsst-versions
 │   └── fli/                   # FLI Cython extension + fake camera backend
-├── tests/                     # (Currently empty — see Testing below)
+├── tests/                     # Automated test suite (pytest; see Testing below)
+│   └── data/run28/            # Real hardware FITS + CSV fixtures (Git LFS)
+├── .github/workflows/         # GitHub Actions CI (tests + coverage)
 ├── ups/ics_agccActor.table    # Legacy EUPS dependency declaration
 ├── pyproject.toml             # Python build / lint / version config (Cython ext too)
 ├── pytest.ini                 # Pytest configuration
@@ -190,8 +192,14 @@ uv run ruff check python/
 # Format
 uv run ruff format python/
 
-# Tests (see note below)
+# Tests
 uv run pytest
+
+# Tests with coverage (terminal)
+uv run pytest --cov=agccActor --cov-report=term-missing
+
+# Tests with coverage (HTML — open htmlcov/index.html)
+uv run pytest --cov=agccActor --cov-report=html
 ```
 
 ### Code Style
@@ -209,13 +217,67 @@ uv run pytest
 
 ### Testing
 
-The codebase currently has **minimal automated test coverage**.
-`pyproject.toml` declares a `tests/` directory but it is essentially
-empty. For now, test changes manually in **simulator mode**
-(`simulator: 1`) using `fli/fake_camera.py`, optionally pointing
-`simulatedImagePath` at a representative FITS frame.
+The test suite lives in `tests/` and is run with:
 
-Contributions adding real test coverage are very welcome.
+```bash
+uv run pytest
+```
+
+**100 tests** are collected across six files:
+
+| File | What it covers |
+|---|---|
+| `test_camera.py` | `fake_camera` unit tests and `Camera` controller (simulator mode) |
+| `test_centroid_replay.py` | Record/replay against real hardware FITS data (`images/run28/`) |
+| `test_db_routines.py` | OpDB write functions in `database.py` |
+| `test_exposure.py` | `Exposure` thread lifecycle, error paths, FITS output |
+| `test_photometry_worker.py` | Photometry worker process, timeout handling, synthetic-image detection |
+| `test_writeFits.py` | `wfits` (per-camera) and `wfits_combined` FITS output |
+
+#### Test markers
+
+- **`real_data`** — tests that replay real FLI camera frames from `images/run28/`.
+  These require two conditions (see below) and are skipped automatically when
+  either is absent.  Run them explicitly with `pytest -m real_data`.
+
+#### `PFS_INSTDATA_DIR` and auto-discovery
+
+Several tests (and the production code) need
+`$PFS_INSTDATA_DIR/config/actors/agcc.yaml` to be readable.  The test suite
+resolves this in the following order:
+
+1. **Exported env var** — if `PFS_INSTDATA_DIR` is already set in your shell,
+   it is used as-is.
+2. **Auto-discovery** — if the variable is *not* set, `conftest.py` searches
+   for a `pfs_instdata` checkout in two sibling locations relative to this
+   repository root:
+   - `../pfs_instdata` (e.g., both repos checked out under a common `ICS/` folder)
+   - `../../pfs_instdata` (two levels up)
+
+   The first path that contains `config/actors/agcc.yaml` is used and
+   `PFS_INSTDATA_DIR` is set automatically for the test process.
+
+   If neither location contains the file and the variable is unset, any test
+   that requires it will skip with a clear message rather than failing.
+
+#### Real hardware data (`images/run28/`)
+
+The centroid replay tests use real FLI camera frames from visit 143362
+(4 combined exposures, 6 cameras each).  These files are stored in
+`tests/data/run28/` using **Git LFS** — `git clone` fetches LFS pointers
+by default, but you need `git lfs pull` if you cloned before LFS was set up:
+
+```bash
+git lfs pull
+```
+
+The `real_data` tests re-run `centroid.getCentroidsSep` on those frames and
+compare results to the centroid tables embedded in the FITS files by the
+production actor, providing regression coverage for the centroiding pipeline.
+
+The `images/run28/` symlink (pointing to an external data directory) is also
+accepted as a fallback for local developer machines that have the full data
+mounted there.  `tests/data/run28/` takes priority when present.
 
 ### Versioning
 

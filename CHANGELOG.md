@@ -9,10 +9,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- **`README.md`** — new top-level project README with build, configuration, and
-  operational notes for `ics_agccActor`.
-- **`.gitignore`** — standard ignore rules for build artefacts, caches, and editor
-  files.
+- **Automated test suite** — 100 pytest tests across six new files covering the full
+  actor pipeline: `test_camera.py` (fake camera + `Camera` controller), `test_centroid_replay.py`
+  (record/replay against real FLI hardware FITS from visit 143362), `test_db_routines.py`
+  (`database.py` OpDB writes), `test_exposure.py` (`Exposure` thread lifecycle and error
+  paths), `test_photometry_worker.py` (photometry worker, timeout, synthetic-image
+  detection), and `test_writeFits.py` (`wfits` / `wfits_combined`).
+- **Real hardware test fixtures** (`tests/data/run28/`) — four combined FITS files and
+  two OpDB CSV exports from a production AGC run (visit 143362) are committed via
+  **Git LFS** and used by record/replay tests to guard against centroiding regressions.
+  The `images/run28/` symlink remains supported as a local-developer fallback.
+- **`pytest-cov` coverage reporting** — `pytest-cov` added to dev dependencies; coverage
+  config (`[tool.coverage.run/report]`) added to `pyproject.toml`. Run with
+  `uv run pytest --cov=agccActor --cov-report=term-missing` locally.
+- **GitHub Actions CI** (`.github/workflows/tests.yml`) — runs on every PR and push to
+  `master`/`main`: checks out with LFS, clones `Subaru-PFS/pfs_instdata`, lints with
+  `ruff`, runs the full test suite with coverage, posts an updating PR comment with
+  the coverage table (no third-party provider), and uploads an HTML coverage artifact.
+- **`PFS_INSTDATA_DIR` auto-discovery** — `tests/conftest.py` now searches for a
+  `pfs_instdata` sibling checkout at `../pfs_instdata` and `../../pfs_instdata` when
+  `PFS_INSTDATA_DIR` is not exported, so the `real_data` tests run without manual
+  configuration in standard ICS checkout layouts.
+- **Shared test fixtures** (`tests/conftest.py`) — `mock_cmd`, `mock_opdb`,
+  `real_data_path`, and `pfs_instdata` fixtures; stubs for `pfs.utils.database.opdb`
+  and `pfs.utils.datamodel.ag.SourceDetectionFlag` so tests run without the full PFS
+  stack installed. Fork-mode multiprocessing forced on macOS for worker-process tests.
+
+### Changed
+
+- **`pytest.ini` removed** — pytest configuration consolidated entirely into
+  `pyproject.toml` (`[tool.pytest.ini_options]`). The `real_data` marker is now
+  registered there. `addopts` no longer forces `--cov` by default; pass coverage flags
+  explicitly when needed.
+- **`README.md`** — Testing section expanded with test file table, marker documentation,
+  `PFS_INSTDATA_DIR` auto-discovery explanation, Git LFS instructions, and CI overview.
+  Repository layout updated to include `tests/data/run28/` and `.github/workflows/`.
+
+### Fixed
+
+- **`tests/conftest.py`** — replaced empty `OpDB` stub (caused `AttributeError` on
+  `set_default_connection`) with a proper class that has a no-op classmethod; added all
+  six `SourceDetectionFlag` members required by `centroid.py`.
+- **`tests/test_db_routines.py`** — corrected stale import (`dbRoutinesAGCC` → `database`)
+  that caused the entire file to error on collection.
+
+
 
 ### Changed
 

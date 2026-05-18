@@ -41,6 +41,7 @@ dynamic = ["version"]
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pytest-cov",
     "ruff",
     "mypy",
 ]
@@ -72,10 +73,31 @@ optional = true
 write_to = "python/agccActor/version.py"
 
 [tool.pytest.ini_options]
-addopts = "-ra --import-mode=importlib --cov=agccActor --cov-report=term-missing --nbval"
+addopts = "-ra --import-mode=importlib"
 testpaths = ["tests"]
 filterwarnings = [
+    "ignore::UserWarning",
     "ignore::DeprecationWarning",
+]
+markers = [
+    "real_data: mark test as requiring real hardware FITS data in tests/data/run28/ (or images/run28/)",
+]
+
+[tool.coverage.run]
+source = ["agccActor"]
+omit = [
+    "python/agccActor/fli/fake_camera.py",
+    "python/agccActor/version.py",
+    "tests/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
 ]
 
 [tool.ruff]
