@@ -74,14 +74,47 @@ The actor is part of the PFS Instrument Control Software (ICS) stack and is depl
 ```bash
 # Create / sync the virtual environment with dev extras
 uv sync --extra dev
-
-# Build the Cython FLI extension (real hardware only; needs libfli + libusb-1.0)
-pip install -e .
 ```
 
 In **simulator mode** (`simulator: 1` in the actor config) the Cython
 extension is not required — `python/agccActor/fli/fake_camera.py` is
-used instead.
+used instead and no further build steps are needed.
+
+### Building the FLI Cython extension (real hardware only)
+
+The `fli_camera` Cython extension links against the vendored FLI C library.
+Building requires two steps:
+
+**1. Build the FLI C library** (needs `libusb-1.0`):
+
+```bash
+sudo apt-get install libusb-1.0-0-dev
+
+cd c/libfli-1.999.1-180223
+make libfli.a   # only the library target; 'make all' also needs ncurses
+```
+
+**2. Build and install the Python extension:**
+
+```bash
+pip install -e . --no-build-isolation
+```
+
+`--no-build-isolation` is required so the build can locate the pre-built
+`libfli.a`. Without it, setuptools' isolated build environment cannot find
+the library.
+
+Or use the convenience script: `./scripts/build_fli.sh [--test]`
+
+**Verify the build succeeded:**
+
+```bash
+python -c "from agccActor.fli import fli_camera; print('OK')"
+```
+
+> **Note:** `optional = true` in `pyproject.toml` means `pip install`
+> silently succeeds even if the extension fails to compile. Always run
+> the import check above to confirm the build.
 
 ### Hardware Setup (FLI USB cameras)
 
@@ -239,6 +272,17 @@ uv run pytest
 - **`real_data`** — tests that replay real FLI camera frames from `images/run28/`.
   These require two conditions (see below) and are skipped automatically when
   either is absent.  Run them explicitly with `pytest -m real_data`.
+- **`fli_build`** — tests that verify the `fli_camera` Cython extension is compiled
+  and importable.  Skipped if the extension has not been built.  Run after
+  `scripts/build_fli.sh`:
+
+  ```bash
+  # Build then test
+  ./scripts/build_fli.sh --test
+
+  # Or just run the tests after a manual build
+  uv run pytest -m fli_build -v
+  ```
 
 #### `PFS_INSTDATA_DIR` and auto-discovery
 

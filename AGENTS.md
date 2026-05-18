@@ -24,15 +24,53 @@ uv run pytest --cov=agccActor --cov-report=term-missing
 uv run pytest --cov=agccActor --cov-report=html
 open htmlcov/index.html
 
-# Build the Cython FLI extension (requires libfli in c/libfli-1.999.1-180223/)
-pip install -e .
+# Build the Cython FLI extension (requires libfli built first — see below)
+pip install -e . --no-build-isolation
 ```
 
 ### Cython Extension Build
 
-The Cython extension `fli_camera` (from `python/agccActor/fli/fli_camera.pyx`) must be built against the FLI C library in `c/libfli-1.999.1-180223/`. It requires `libusb-1.0`. The extension is declared in `setup.py` (legacy sdss3tools build) and `pyproject.toml`.
+The Cython extension `fli_camera` (from `python/agccActor/fli/fli_camera.pyx`) is declared in
+`pyproject.toml` under `[[tool.setuptools.ext-modules]]` (the legacy `setup.py` was removed in
+commit `2a9d1d37`). The extension targets Linux x86_64 — the production host runs Ubuntu 16.04.
 
-When the FLI hardware is unavailable or the extension fails to build, `fli/fake_camera.py` is used instead (controlled by the `simulator: 0 | 1` key in actor config). In simulator mode, there is no need to build the extension.
+**GHA CI** builds the extension natively on `ubuntu-latest` (see `build-extension` job in
+`.github/workflows/tests.yml`): installs `libusb-1.0-0-dev`, runs `make libfli.a`, and uses
+plain `pip` to build and test the extension.
+
+**Local Linux build (two steps):**
+
+Step 1 — build the vendored FLI C library:
+
+```bash
+sudo apt-get install libusb-1.0-0-dev
+cd c/libfli-1.999.1-180223
+make libfli.a   # only the library target; 'make all' also builds flilist (needs ncurses)
+```
+
+Step 2 — build and install the Cython extension:
+
+```bash
+uv run pip install -e . --no-build-isolation
+```
+
+Or use the convenience script: `./scripts/build_fli.sh` (add `--test` to also run fli_build tests).
+
+`--no-build-isolation` is required so setuptools can find the pre-built `libfli.a`.
+
+Verify the build:
+
+```bash
+python -c "from agccActor.fli import fli_camera; print('OK')"
+```
+
+Note: `optional = true` in `pyproject.toml` means `pip install` will succeed even if the
+extension fails to compile — the error is silently swallowed. Always run the import
+verification step explicitly to confirm the build.
+
+When the FLI hardware is unavailable or the extension fails to build, `fli/fake_camera.py` is
+used instead (controlled by the `simulator: 0 | 1` key in actor config). In simulator mode
+there is no need to build the extension.
 
 ### Testing
 

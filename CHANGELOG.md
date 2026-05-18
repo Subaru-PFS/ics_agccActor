@@ -26,6 +26,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `master`/`main`: checks out with LFS, clones `Subaru-PFS/pfs_instdata`, lints with
   `ruff`, runs the full test suite with coverage, posts an updating PR comment with
   the coverage table (no third-party provider), and uploads an HTML coverage artifact.
+- **`build-extension` CI job** — second GHA job that installs `libusb-1.0-0-dev`, builds
+  the vendored FLI C library (`make` in `c/libfli-1.999.1-180223/`), and then builds the
+  Cython `fli_camera` extension via `pip install -e . --no-build-isolation`. An explicit
+  import verification step (`from agccActor.fli import fli_camera`) catches silent build
+  failures caused by `optional = true` in `pyproject.toml`.
 - **`PFS_INSTDATA_DIR` auto-discovery** — `tests/conftest.py` now searches for a
   `pfs_instdata` sibling checkout at `../pfs_instdata` and `../../pfs_instdata` when
   `PFS_INSTDATA_DIR` is not exported, so the `real_data` tests run without manual

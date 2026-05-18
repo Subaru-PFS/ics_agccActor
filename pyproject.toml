@@ -81,6 +81,7 @@ filterwarnings = [
 ]
 markers = [
     "real_data: mark test as requiring real hardware FITS data in tests/data/run28/ (or images/run28/)",
+    "fli_build: mark test as requiring the fli_camera Cython extension to be built (run scripts/build_fli.sh first)",
 ]
 
 [tool.coverage.run]
