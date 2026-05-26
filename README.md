@@ -114,28 +114,14 @@ python -c "from agccActor.fli import fli_camera; print('OK')"
 > silently succeeds even if the extension fails to compile. Always run
 > the import check above to confirm the build.
 
-### Hardware Setup (FLI USB cameras)
-
-To use the FLI USB cameras you need `libusb-1.0` and the vendored FLI
-library built on the host:
-
-- **Library** — build the vendored FLI library under
-  `c/libfli-1.999.1-180223/` by running `make` in that directory. The
-  library talks to the cameras via `libusb-1.0` in userspace; no
-  separate kernel driver is required.
-
-When provisioning a new host, ensure the `pfs` users are in the
-`plugdev` group and that a udev rule grants access to the FLI vendor /
-product IDs.
+**Host provisioning (new machines):** ensure the `pfs` user is in the `plugdev` group and add a udev rule for the FLI USB vendor/product IDs:
 
 In `/etc/group`:
-
 ```
 plugdev:x:46:pfs,pfs-data
 ```
 
 In `/etc/udev/rules.d/99-agc.rules`:
-
 ```
 SUBSYSTEM=="usb", ACTION=="add", ATTRS{idVendor}=="0f18", ATTRS{idProduct}=="000a", GROUP="plugdev"
 ```
@@ -254,7 +240,7 @@ The test suite lives in `tests/` and is run with:
 uv run pytest
 ```
 
-**100 tests** are collected across six files:
+**131 tests** are collected across six files:
 
 | File | What it covers |
 |---|---|
