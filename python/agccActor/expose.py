@@ -279,7 +279,8 @@ class Exposure(threading.Thread):
 
                     database.writeCentroidsToDB(spots, self.visitId, self.nframe, cam.agcid)
                 else:
-                    self.cmd.inform(f'text="AGC[{cam_id:d}]: found no objects, skipping DB writing"')
+                    if self.cmd:
+                        self.cmd.inform(f'text="AGC[{cam_id:d}]: found no objects, skipping DB writing"')
             else:
                 cam.spots = spots
 
