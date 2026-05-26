@@ -57,8 +57,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   six `SourceDetectionFlag` members required by `centroid.py`.
 - **`tests/test_db_routines.py`** — corrected stale import (`dbRoutinesAGCC` → `database`)
   that caused the entire file to error on collection.
-
-
+- **`photometry.py`** — `measure()` now returns `None` for unsupported centroid methods
+  instead of raising `UnboundLocalError` (the `result` variable was only assigned inside
+  the `if cMethod == "sep"` block).
+- **`expose.py`** — all `self.cmd.*` calls in `Exposure.__init__` and `run()` are now
+  consistently guarded with `if self.cmd:` (cmd is documented as optional but was called
+  unconditionally in several places, causing `AttributeError` when `cmd=None`). Fixed
+  `"Turing"` → `"Turning"` typos in TEC status messages.
+- **`fli/fake_camera.py`** — FITS file opened in `Camera.__init__` is now closed via a
+  context manager, preventing a file-descriptor leak in long-running simulator sessions.
+- **`pyproject.toml`** — corrected `[project.urls]` that pointed at the wrong repository
+  (`ics_agActor`); removed stale `per-file-ignores` entry for deleted `sequence.py`.
+- **`README.md`** — removed `sequence.py` and `pytest.ini` from the repository layout
+  (both deleted in this PR); removed "timed exposure sequences" from the feature list.
+- **`tests/test_exposure.py`** — replaced no-op assertion (`assert not exp.is_alive() or True`)
+  with a meaningful check that `cam.spots` is set after inline photometry completes.
 
 ### Changed
 
