@@ -47,9 +47,9 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/Subaru-PFS/ics_agActor"
-"Bug Tracker" = "https://github.com/Subaru-PFS/ics_agActor/issues"
-"Changelog" = "https://github.com/Subaru-PFS/ics_agActor/blob/main/CHANGELOG.md"
+"Homepage" = "https://github.com/Subaru-PFS/ics_agccActor"
+"Bug Tracker" = "https://github.com/Subaru-PFS/ics_agccActor/issues"
+"Changelog" = "https://github.com/Subaru-PFS/ics_agccActor/blob/master/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["python/"]
@@ -111,7 +111,6 @@ ignore = ["N802", "N803", "N806", "N815", "N816", "EM101", "TRY003"]
 
 [tool.ruff.lint.per-file-ignores]
 "python/agccActor/camera.py" = ["F821"]
-"python/agccActor/sequence.py" = ["F821"]
 
 [tool.pydocstyle]
 convention = "numpy"

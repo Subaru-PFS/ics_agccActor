@@ -122,7 +122,8 @@ class Exposure(threading.Thread):
             self.timeDelay = threadDelay / 1000
 
         self.nframe = database.getNextAgcExposureId()
-        self.cmd.inform(f'text="Getting agc_exposure_id = {self.nframe} from OpDB"')
+        if self.cmd:
+            self.cmd.inform(f'text="Getting agc_exposure_id = {self.nframe} from OpDB"')
 
         database.writeExposureToDB(self.visitId, self.nframe, expTime_ms / 1000.0)
 
@@ -142,24 +143,29 @@ class Exposure(threading.Thread):
 
         thrs = []
         for cam in self.cams:
-            self.cmd.inform(f'text="Applying time delay of {self.timeDelay} second on Cam {cam.devsn}"')
+            if self.cmd:
+                self.cmd.inform(f'text="Applying time delay of {self.timeDelay} second on Cam {cam.devsn}"')
             time.sleep(self.timeDelay)
 
             if self.tecOFF is True:
                 targetTemp = cam.temp
-                self.cmd.inform(f'text="AGCC sets CCD temp = {targetTemp}"')
-
-                self.cmd.inform(f'text="Turing off TEC by setting to {self.tecOFFtemp}C on Cam {cam.devsn}"')
+                if self.cmd:
+                    self.cmd.inform(f'text="AGCC sets CCD temp = {targetTemp}"')
+                    self.cmd.inform(
+                        f'text="Turning off TEC by setting to {self.tecOFFtemp}C on Cam {cam.devsn}"'
+                    )
                 cam.setTemperature(self.tecOFFtemp)
 
             thr = threading.Thread(target=self.expose_thr, args=(cam,))
             thr.start()
             thrs.append(thr)
-        self.cmd.debug(f'text="done starting {len(thrs)} exposure threads"')
+        if self.cmd:
+            self.cmd.debug(f'text="done starting {len(thrs)} exposure threads"')
 
         for thr in thrs:
             thr.join()
-        self.cmd.debug('text="done joining exposure threads"')
+        if self.cmd:
+            self.cmd.debug('text="done joining exposure threads"')
 
         with Exposure.exp_lock:
             Exposure.n_busy -= len(self.cams)
@@ -171,12 +177,10 @@ class Exposure(threading.Thread):
             writeFits.wfits_combined(self.cmd, self.visitId, self.cams, self.nframe, self.seq_id)
 
         if self.tecOFF is True:
-            """
-                Turning TEC on!
-            """
             for cam in self.cams:
-                self.cmd.inform(f'text="Turing on TEC to {targetTemp}C"')
-                cam.setTemperature(targetTemp)
+                if self.cmd:
+                    self.cmd.inform(f'text="Turning on TEC to {cam.temp}C"')
+                cam.setTemperature(cam.temp)
 
         if self.cmd and self.seq_id < 0:
             self.cmd.finish()
@@ -259,7 +263,8 @@ class Exposure(threading.Thread):
                             cam.data, cam.agcid, self.cParms, self.iParms, self.cMethod
                         )
                     except Exception as e:
-                        self.cmd.warn(f'text="AGC[{cam_id}]: photometry error: {e}"')
+                        if self.cmd:
+                            self.cmd.warn(f'text="AGC[{cam_id}]: photometry error: {e}"')
                         spots = None
 
                 cam.spots = spots

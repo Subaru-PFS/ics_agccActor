@@ -9,7 +9,7 @@ The actor is part of the PFS Instrument Control Software (ICS) stack and is depl
 ## Features
 
 - Controls up to 6 FLI USB CCDs concurrently (one worker thread + one photometry process per camera).
-- Single exposures and timed exposure sequences with per-camera and global coordination.
+- Single exposures with per-camera and global coordination.
 - TEC (thermo-electric cooler) temperature control and status reporting.
 - On-the-fly source extraction (SEP) with windowed-moment centroiding and basic photometry.
 - Writes combined and per-camera FITS files with optional centroid binary table extensions.
@@ -29,7 +29,6 @@ The actor is part of the PFS Instrument Control Software (ICS) stack and is depl
 │   ├── Commands/AgccCmd.py    # Command vocabulary and handlers
 │   ├── camera.py              # Camera manager (fixed 6-slot array)
 │   ├── expose.py              # Per-exposure threading
-│   ├── sequence.py            # Timed exposure sequences
 │   ├── setmode.py             # Parallel mode/temperature changes
 │   ├── photometry.py          # Per-camera photometry worker process
 │   ├── centroid.py            # SEP-based source extraction helpers
@@ -41,8 +40,7 @@ The actor is part of the PFS Instrument Control Software (ICS) stack and is depl
 │   └── data/run28/            # Real hardware FITS + CSV fixtures (Git LFS)
 ├── .github/workflows/         # GitHub Actions CI (tests + coverage)
 ├── ups/ics_agccActor.table    # Legacy EUPS dependency declaration
-├── pyproject.toml             # Python build / lint / version config (Cython ext too)
-├── pytest.ini                 # Pytest configuration
+├── pyproject.toml             # Python build / lint / version config (Cython ext too; pytest config)
 ├── uv.lock                    # uv lockfile
 ├── AGENTS.md                  # Agent / contributor reference
 └── REFACTORING.md             # Known issues and refactoring notes

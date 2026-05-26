@@ -340,6 +340,6 @@ def test_exposure_inline_photometry_finds_spots(cam_set, mock_cmd, mock_opdb, mi
         exp.expose_thr(cam_set.cams[0], multiproc=False)
 
     # Spots found or not — the call must complete without exception
-    assert not exp.is_alive() or True  # thread was never started, that's fine
+    assert cam_set.cams[0].spots is not None, "spots should be set after inline photometry"
 
 

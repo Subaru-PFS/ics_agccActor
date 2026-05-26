@@ -52,9 +52,9 @@ def measure(data, agcid: int, cParms: dict, iParms: dict, cMethod: str, thresh: 
     """
 
     if cMethod == "sep":
-        result = centroid.getCentroidsSep(data, iParms, cParms, spotDtype, agcid)
+        return centroid.getCentroidsSep(data, iParms, cParms, spotDtype, agcid)
 
-    return result
+    return None
 
 
 def createProc():
