@@ -1,22 +1,28 @@
 """Fake FLI USB camera module"""
 
-import numpy as np
-import astropy.io.fits as pyfits
-import time
 import os
 import threading
+import time
+
+import astropy.io.fits as pyfits
+import numpy as np
+
 
 class FliError(Exception):
     """Exception for FLI camera"""
+
     pass
+
 
 def numberOfCamera():
     """Return number of available FLI cameras"""
     return numCams
 
+
 def getLibVersion():
     """Get the current library version"""
     return "Software Development Library for Linux 1.999.1"
+
 
 class Camera:
     """FLI usb camera"""
@@ -39,14 +45,14 @@ class Camera:
 
         # read simulated image, contains single or 6 image extensions
         if imgPath is not None:
-            hdulist = pyfits.open(imgPath)
-            if len(hdulist) > 1:
-                if hdulist[id+1].data is None:
-                    self.rawdata = np.zeros((1033, 1072), dtype=np.uint16)
+            with pyfits.open(imgPath) as hdulist:
+                if len(hdulist) > 1:
+                    if hdulist[id + 1].data is None:
+                        self.rawdata = np.zeros((1033, 1072), dtype=np.uint16)
+                    else:
+                        self.rawdata = hdulist[id + 1].data.astype(np.uint16)
                 else:
-                    self.rawdata = hdulist[id+1].data.astype(np.uint16)
-            else:
-                self.rawdata = hdulist[0].data.astype(np.uint16)
+                    self.rawdata = hdulist[0].data.astype(np.uint16)
         else:
             self.rawdata = np.zeros((1033, 1072), dtype=np.uint16)
         self.lock = threading.Lock()
@@ -123,7 +129,7 @@ class Camera:
         with self.lock:
             self.xsize = width
             self.ysize = height
-            self.expArea = (x1, y1, x1+width, y1+height)
+            self.expArea = (x1, y1, x1 + width, y1 + height)
 
     def resetFrame(self):
         """Reset the image area"""
@@ -169,23 +175,23 @@ class Camera:
             else:
                 filename = self.getNextFilename("object")
         with self.lock:
-            if(self.data.size == 0):
+            if self.data.size == 0:
                 raise FliError("No image available")
             hdu = pyfits.PrimaryHDU(self.data)
         hdr = hdu.header
         with self.lock:
-            hdr.set('DATE', self.timestamp, 'exposure begin date')
-            hdr.set('INSTRUME', self.devname, 'this instrument')
-            hdr.set('SERIAL', self.devsn, 'serial number')
-            hdr.set('EXPTIME', self.exptime, 'exposure time (ms)')
-            hdr.set('VBIN', self.vbin, 'vertical binning')
-            hdr.set('HBIN', self.hbin, 'horizontal binning')
-            hdr.set('CCD-TEMP', self.temp, 'CCD temperature')
+            hdr.set("DATE", self.timestamp, "exposure begin date")
+            hdr.set("INSTRUME", self.devname, "this instrument")
+            hdr.set("SERIAL", self.devsn, "serial number")
+            hdr.set("EXPTIME", self.exptime, "exposure time (ms)")
+            hdr.set("VBIN", self.vbin, "vertical binning")
+            hdr.set("HBIN", self.hbin, "horizontal binning")
+            hdr.set("CCD-TEMP", self.temp, "CCD temperature")
             if dark != 0:
-                hdr.set('SHUTTER', 'CLOSE', 'shutter status')
+                hdr.set("SHUTTER", "CLOSE", "shutter status")
             else:
-                hdr.set('SHUTTER', 'OPEN', 'shutter status')
-            hdr.set('CCDAREA', '[%d:%d,%d:%d]' % self.expArea, 'image area')
+                hdr.set("SHUTTER", "OPEN", "shutter status")
+            hdr.set("CCDAREA", "[%d:%d,%d:%d]" % self.expArea, "image area")
         hdu.writeto(filename, overwrite=True, checksum=True)
         with self.lock:
             self.filename = filename
@@ -195,14 +201,13 @@ class Camera:
         with self.lock:
             self.exposureID += 1
             exposureID = self.exposureID
-        path = os.path.join("$ICS_MHS_DATA_ROOT", 'agcc')
+        path = os.path.join("$ICS_MHS_DATA_ROOT", "agcc")
         path = os.path.expandvars(os.path.expanduser(path))
         if not os.path.isdir(path):
             os.makedirs(path, 0o755)
         with self.lock:
             timestamp = self.timestamp
-        return os.path.join(path, 'AGC%d_%s_%06d_%s.fits' % \
-               (self.agcid + 1, expType, exposureID, timestamp))
+        return os.path.join(path, "AGC%d_%s_%06d_%s.fits" % (self.agcid + 1, expType, exposureID, timestamp))
 
     def cancelExposure(self):
         """Cancel current exposure"""
@@ -231,11 +236,11 @@ class Camera:
 
     def exposeHandler(self):
         # Check if the exposure is done and write the image
-        tstart = time.time();
+        tstart = time.time()
         with self.lock:
             # add 350ms readout time
             exptime = (self.exptime + 350.0) / 1000.0
-        while (time.time() - tstart < exptime):
+        while time.time() - tstart < exptime:
             time.sleep(POLL_TIME)
             with self.lock:
                 abort = self.abort
@@ -248,9 +253,7 @@ class Camera:
                 self.abort = 0
                 self.tend = 0
             else:
-                xsize = self.xsize
-                ysize = self.ysize
-                self.data = self.rawdata[self.expArea[1]:self.expArea[3], self.expArea[0]:self.expArea[2]]
+                self.data = self.rawdata[self.expArea[1] : self.expArea[3], self.expArea[0] : self.expArea[2]]
                 self.tend = time.time()
             self.status = READY
 
@@ -260,8 +263,7 @@ class Camera:
             self.dark = 1
             self.tstart = time.time()
             self.timestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(self.tstart))
-            imagesize = (self.expArea[3] - self.expArea[1],
-                         self.expArea[2] - self.expArea[0])
+            imagesize = (self.expArea[3] - self.expArea[1], self.expArea[2] - self.expArea[0])
             self.data = np.ones(shape=imagesize, dtype=np.uint16)
             self.tend = time.time()
 
@@ -289,7 +291,7 @@ class Camera:
             raise FliError("FLISetCameraMode failed")
 
     def getTotalTime(self):
-        """ get the total readout + exposure time in second """
+        """get the total readout + exposure time in second"""
         with self.lock:
             if self.tend == 0:
                 total = -1
@@ -300,7 +302,7 @@ class Camera:
 
 # module initialization
 CLOSED, READY, EXPOSING, SETMODE = range(4)
-Status = {CLOSED:"CLOSED", READY:"READY", EXPOSING:"EXPOSING", SETMODE:"SETMODE"}
+Status = {CLOSED: "CLOSED", READY: "READY", EXPOSING: "EXPOSING", SETMODE: "SETMODE"}
 POLL_TIME = 0.02
 CCD_TEMP = -30
 FLI_INVALID_DEVICE, FLIDEVICE_CAMERA = 0, 1
