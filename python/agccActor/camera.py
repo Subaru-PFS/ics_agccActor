@@ -281,21 +281,24 @@ class Camera(object):
             else:
                 dflag = False
 
-            exp_thr = Exposure(
-                active_cams,
-                expTime_ms,
-                dflag,
-                cParms,
-                iParms,
-                pfsVisitId,
-                cMethod,
-                cmd,
-                combined,
-                centroid,
-                threadDelay=threadDelay,
-                tecOFF=tecOFF,
-            )
-            exp_thr.start()
+            try:
+                exp_thr = Exposure(
+                    active_cams,
+                    expTime_ms,
+                    dflag,
+                    cParms,
+                    iParms,
+                    pfsVisitId,
+                    cMethod,
+                    cmd,
+                    combined,
+                    centroid,
+                    threadDelay=threadDelay,
+                    tecOFF=tecOFF,
+                )
+                exp_thr.start()
+            except Exception as e:
+                cmd.fail(f'text="Exposure setup failed: {e}"')
 
     def abort(self, cmd, cams) -> None:
         """Abort the current exposure on the given cameras.

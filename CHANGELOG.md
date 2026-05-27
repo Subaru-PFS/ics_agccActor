@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+---
+
+## [Unreleased] — tickets/INSTRM-2935
+
+### Fixed
+
+- **`insertVisit` hangs MHS on DB error** — if `database.writeVisitToDB()` raised an
+  exception the command was never completed (`cmd.finish()` / `cmd.fail()` not called),
+  hanging the MHS command infrastructure. The call is now wrapped in try/except with
+  `cmd.fail()` on error.
+- **`expose` hangs MHS on DB error** — `Exposure.__init__()` calls
+  `database.getNextAgcExposureId()` and `database.writeExposureToDB()` synchronously
+  before the exposure thread starts. If either raised, the exception escaped back into
+  `Camera.expose()` before `Exposure.start()` was called, so the `cmd.finish()` /
+  `cmd.fail()` inside `Exposure.run()` was never reached. The construction and start of
+  `Exposure` in `camera.py` are now wrapped in try/except with `cmd.fail()` on error.
+- **`gen2.updateTelStatus` result ignored in `expose`** — the return value of the
+  `updateTelStatus` gen2 call was discarded. If gen2 was slow or failed, `tel_status` /
+  `env_condition` rows would be absent and `writeExposureToDB` would raise, triggering the
+  hang above. The result is now checked and `cmd.fail()` is called immediately on failure,
+  matching the pattern already used by `getVisit` in `setOrGetVisit()`.
+
+---
+
 ## [2.0.0] — tickets/INSTRM-2928-02
 
 ### Added
