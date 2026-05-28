@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased] — tickets/INSTRM-2928-02
+## [2.0.0] — tickets/INSTRM-2928-02
 
 ### Added
 
