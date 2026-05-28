@@ -333,6 +333,7 @@ def test_exposure_inline_photometry_finds_spots(cam_set, mock_cmd, mock_opdb, mi
             combined=False,
             centroid=True,
         )
+        # nframe is set by __init__ (via getNextAgcExposureId); mock covers it.
         # Expose the camera so data is loaded into cam.data
         cam_set.cams[0].setExpTime(100)
         cam_set.cams[0].expose()

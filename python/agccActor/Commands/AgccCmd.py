@@ -172,7 +172,11 @@ class AgccCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
         visit = cmdKeys["visit"].values[0]
-        database.writeVisitToDB(visit)
+        try:
+            database.writeVisitToDB(visit)
+        except Exception as e:
+            cmd.fail(f'text="insertVisit DB error for visit={visit}: {e}"')
+            return
         cmd.finish()
 
     def shutterOps(self, cmd) -> None:
@@ -225,8 +229,13 @@ class AgccCmd(object):
         visit = self.setOrGetVisit(cmd)
         self.actor.logger.info(f"Starting exposure of type {expType} for pfs_visit_id={visit}")
 
-        # Ask gen2 updating the telescope status
-        self.actor.cmdr.call(actor="gen2", cmdStr=f"updateTelStatus caller=agcc visit={visit}", timeLim=5.0)
+        # Ask gen2 to update the telescope status; fail fast if it doesn't succeed.
+        ret = self.actor.cmdr.call(
+            actor="gen2", cmdStr=f"updateTelStatus caller=agcc visit={visit}", timeLim=5.0
+        )
+        if ret.didFail:
+            cmd.fail(f'text="updateTelStatus failed for visit={visit}; cannot write exposure record"')
+            return
 
         if "exptime" in cmdKeys:
             expTime = cmdKeys["exptime"].values[0]
