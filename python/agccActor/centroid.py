@@ -494,7 +494,7 @@ def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
         sx_o = sx
         sy_o = sy
 
-        detow = sxow * syow - sxy ** 2
+        detow = sxow * syow - sxyow ** 2
         ow11 = syow / detow
         ow12 = -sxyow / detow
         ow22 = sxow / detow
