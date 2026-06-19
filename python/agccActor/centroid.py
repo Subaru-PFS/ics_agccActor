@@ -437,8 +437,8 @@ def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
     # part of the full image
     if side == 0:
         # check for edges of image
-        dMinX = np.max([dMinX1, region[2]])
-        dMinY = np.max([dMinY1, region[0]])
+        dMinX = np.max([dMinX1, region[0]])
+        dMinY = np.max([dMinY1, region[2]])
         dMaxX = np.min([dMaxX1, region[1]])
         dMaxY = np.min([dMaxY1, region[3]])
     elif side == 1:
