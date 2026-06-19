@@ -463,10 +463,6 @@ def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
         # get the weighting function based on the current values
         # of the moments
 
-        ow11 = w11
-        ow12 = w12
-        ow22 = w22
-
         detw = sx * sy - sxy ** 2
         w11 = sy / detw
         w12 = -sxy / detw
@@ -519,7 +515,7 @@ def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
             return weightedMoment(winVal, xv, yv, w11, w12, w22)
 
     # if we haven't converged return new values
-    return sy, sx, sxy, SourceDetectionFlag.BAD_SHAPE
+    return sx, sy, sxy, SourceDetectionFlag.BAD_SHAPE
 
 
 def weightedMoment(winVal, xv, yv, w11: float, w12: float, w22: float):
