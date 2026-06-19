@@ -424,6 +424,7 @@ def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
     e1_old = 1e6
     e2_old = 1e6
     sx_o = 1e6
+    sy_o = 1e6
     tol1 = 0.001
     tol2 = 0.01
 
@@ -484,7 +485,8 @@ def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
         e2 = 2 * sxyow / d
 
         # check for convergence
-        if np.all([np.abs(e1 - e1_old) < tol1, np.abs(e2 - e2_old) < tol1, np.abs(sx / sx_o - 1) < tol2]):
+        if np.all([np.abs(e1 - e1_old) < tol1, np.abs(e2 - e2_old) < tol1,
+                   np.abs(sx / sx_o - 1) < tol2, np.abs(sy / sy_o - 1) < tol2]):
             if np.any([sxow <= 0, syow <= 0]):
                 return weightedMoment(winVal, xv, yv, w11, w12, w22)
             else:
@@ -494,6 +496,7 @@ def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
         e1_old = e1
         e2_old = e2
         sx_o = sx
+        sy_o = sy
 
         detow = sxow * syow - sxy ** 2
         ow11 = syow / detow
