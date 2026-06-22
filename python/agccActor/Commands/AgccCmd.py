@@ -2,8 +2,10 @@
 
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from actorcore.Command import Command
 
 from agccActor import centroid, database
+from agccActor.main import AgccActor
 
 nCams = 6
 
@@ -15,7 +17,7 @@ class AgccCmd(object):
     actor parser, and provides one handler per command.
     """
 
-    def __init__(self, actor):
+    def __init__(self, actor: AgccActor):
         """Register the command vocabulary and keyword dictionary.
 
         Parameters
@@ -91,7 +93,7 @@ class AgccCmd(object):
         # initialize centroid and image parameters
         self.reloadParams(None)
 
-    def ping(self, cmd) -> None:
+    def ping(self, cmd: Command) -> None:
         """Reply to a ``ping`` command to confirm liveness.
 
         Parameters
@@ -103,7 +105,7 @@ class AgccCmd(object):
         cmd.respond("text='I am AG camera actor'")
         cmd.finish()
 
-    def reconnect(self, cmd) -> None:
+    def reconnect(self, cmd: Command) -> None:
         """Reload the camera controller and reconnect the AG cameras.
 
         Parameters
@@ -116,7 +118,7 @@ class AgccCmd(object):
         cmd.inform('text="AG cameras connected!"')
         cmd.finish()
 
-    def status(self, cmd) -> None:
+    def status(self, cmd: Command) -> None:
         """Report the actor version and per-camera status.
 
         Parameters
@@ -131,7 +133,7 @@ class AgccCmd(object):
         cmd.inform('text="Present!"')
         cmd.finish()
 
-    def setOrGetVisit(self, cmd) -> int:
+    def setOrGetVisit(self, cmd: Command) -> int:
         """Return the ``visit`` from the command keys, or fetch one from gen2.
 
         Parameters
@@ -162,7 +164,7 @@ class AgccCmd(object):
 
         return self.visit
 
-    def insertVisit(self, cmd) -> None:
+    def insertVisit(self, cmd: Command) -> None:
         """Insert a row into the ``pfs_visit`` OpDB table.
 
         Parameters
@@ -179,7 +181,7 @@ class AgccCmd(object):
             return
         cmd.finish()
 
-    def shutterOps(self, cmd) -> None:
+    def shutterOps(self, cmd: Command) -> None:
         """Open or close the shutter on the requested cameras.
 
         Parameters
@@ -211,7 +213,7 @@ class AgccCmd(object):
 
         cmd.finish()
 
-    def expose(self, cmd) -> None:
+    def expose(self, cmd: Command) -> None:
         """Take an exposure on the requested cameras.
 
         Recognised command keywords include ``test``/``dark``/``object``,
@@ -309,7 +311,7 @@ class AgccCmd(object):
             tecOFF=tecOFF,
         )
 
-    def abort(self, cmd) -> None:
+    def abort(self, cmd: Command) -> None:
         """Abort the current exposure on the requested cameras.
 
         Parameters
@@ -336,7 +338,7 @@ class AgccCmd(object):
         self.actor.camera.abort(cmd, cams)
         cmd.finish('text="Last exposure aborted!"')
 
-    def setframe(self, cmd) -> None:
+    def setframe(self, cmd: Command) -> None:
         """Set the exposure area on the requested cameras.
 
         Command keywords: ``cameras``, ``bx``, ``by``, ``cx``, ``cy``,
@@ -382,7 +384,7 @@ class AgccCmd(object):
 
         self.actor.camera.setframe(cmd, cams, bx, by, cx, cy, sx, sy)
 
-    def resetframe(self, cmd) -> None:
+    def resetframe(self, cmd: Command) -> None:
         """Reset the exposure area to the full frame on the requested cameras.
 
         Parameters
@@ -408,7 +410,7 @@ class AgccCmd(object):
 
         self.actor.camera.resetframe(cmd, cams)
 
-    def setmode(self, cmd) -> None:
+    def setmode(self, cmd: Command) -> None:
         """Set the readout mode (``0`` = 4 MHz, ``1`` = 500 kHz).
 
         Parameters
@@ -436,7 +438,7 @@ class AgccCmd(object):
 
         self.actor.camera.setmode(cmd, mode, cams)
 
-    def getmode(self, cmd) -> None:
+    def getmode(self, cmd: Command) -> None:
         """Get the current readout mode on the requested cameras.
 
         Parameters
@@ -462,7 +464,7 @@ class AgccCmd(object):
 
         self.actor.camera.getmode(cmd, cams)
 
-    def getmodestring(self, cmd) -> None:
+    def getmodestring(self, cmd: Command) -> None:
         """Get the human-readable readout mode strings from the first camera.
 
         Parameters
@@ -473,7 +475,7 @@ class AgccCmd(object):
 
         self.actor.camera.getmodestring(cmd)
 
-    def settemperature(self, cmd) -> None:
+    def settemperature(self, cmd: Command) -> None:
         """Set the CCD temperature on one or more cameras.
 
         Parameters
@@ -497,7 +499,7 @@ class AgccCmd(object):
             self.actor.camera.settemperature(cmd, temperature)
         cmd.finish('text="Setting camera TEC finished!"')
 
-    def setregions(self, cmd) -> None:
+    def setregions(self, cmd: Command) -> None:
         """Set regions of interest for a given camera.
 
         Parameters
@@ -512,7 +514,7 @@ class AgccCmd(object):
         regions = cmdKeys["regions"].values[0]
         self.actor.camera.setregions(cmd, camid, regions)
 
-    def startsequence(self, cmd) -> None:
+    def startsequence(self, cmd: Command) -> None:
         """Deprecated no-op; the exposure sequence feature has been removed.
 
         Parameters
@@ -523,7 +525,7 @@ class AgccCmd(object):
 
         cmd.finish('text="startsequence is deprecated and no longer supported; command ignored"')
 
-    def stopsequence(self, cmd) -> None:
+    def stopsequence(self, cmd: Command) -> None:
         """Deprecated no-op; the exposure sequence feature has been removed.
 
         Parameters
@@ -534,7 +536,7 @@ class AgccCmd(object):
 
         cmd.finish('text="stopsequence is deprecated and no longer supported; command ignored"')
 
-    def inusesequence(self, cmd) -> None:
+    def inusesequence(self, cmd: Command) -> None:
         """Deprecated no-op; the exposure sequence feature has been removed.
 
         Parameters
@@ -545,7 +547,7 @@ class AgccCmd(object):
 
         cmd.finish('text="inusesequence is deprecated and no longer supported; command ignored"')
 
-    def inusecamera(self, cmd) -> None:
+    def inusecamera(self, cmd: Command) -> None:
         """Report whether a given camera is currently in use.
 
         Parameters
@@ -563,7 +565,7 @@ class AgccCmd(object):
         cmd.respond('stat_cam%d="%s"' % (cam_id + 1, stat))
         cmd.finish()
 
-    def reloadParams(self, cmd) -> None:
+    def reloadParams(self, cmd: Command | None = None) -> None:
         """Load centroid and instrumental parameters from the config file.
 
         Parameters
