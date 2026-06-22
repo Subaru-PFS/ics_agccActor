@@ -115,7 +115,7 @@ def subOverscan(data):
     return data
 
 
-def centroidRegion(data, thresh: float, minarea: int, deblend: float):
+def do_region_centroiding(data, thresh: float, minarea: int, deblend: float):
     """Subtract the background and run SEP source extraction on a region.
 
     Parameters
@@ -212,8 +212,8 @@ def getCentroidsSep(data, instrumentParams: dict, centroidParams: dict, spotDtyp
         "float", copy=True, order="C"
     )
 
-    spots1, nSpots1, background1 = centroidRegion(regionData1, thresh, minarea, deblend=deblend)
-    spots2, nSpots2, background2 = centroidRegion(regionData2, thresh, minarea, deblend=deblend)
+    spots1, nSpots1, background1 = do_region_centroiding(regionData1, thresh, minarea, deblend=deblend)
+    spots2, nSpots2, background2 = do_region_centroiding(regionData2, thresh, minarea, deblend=deblend)
 
     nElem = nSpots1 + nSpots2
 
