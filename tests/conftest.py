@@ -123,7 +123,7 @@ def mock_cmd():
     cmd = MagicMock()
     for method in ("inform", "warn", "fail", "finish", "respond", "debug"):
         setattr(cmd, method, MagicMock())
-    # centroid.getCentroidParams accesses cmd.cmd.keywords
+    # centroid.getParams accesses cmd.cmd.keywords
     cmd.cmd.keywords = []
     return cmd
 
@@ -180,4 +180,3 @@ def pfs_instdata():
     if not val:
         pytest.skip("PFS_INSTDATA_DIR is not set")
     return Path(val)
-

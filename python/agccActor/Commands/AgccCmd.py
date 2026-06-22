@@ -56,8 +56,8 @@ class AgccCmd(object):
             ("inusesequence", "<sequence>", self.inusesequence),
             ("inusecamera", "<camera>", self.inusecamera),
             ("insertVisit", "<visit>", self.insertVisit),
-            ("setCentroidParams", "[<nmin>] [<thresh>] [<deblend>]", self.setCentroidParams),
-            ("setImageParams", "", self.setImageParams),
+            ("setCentroidParams", "[<nmin>] [<thresh>] [<deblend>]", self.reloadParams),
+            ("setImageParams", "", self.reloadParams),
         ]
 
         # Define typed command arguments for the above commands.
@@ -88,8 +88,8 @@ class AgccCmd(object):
             keys.Key("deblend", types.Float(), help="deblend_cont for sep"),
             keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
         )
-        # initialize centroid parameters
-        self.setCentroidParams(None)
+        # initialize centroid and image parameters
+        self.reloadParams(None)
 
     def ping(self, cmd) -> None:
         """Reply to a ``ping`` command to confirm liveness.
@@ -273,7 +273,6 @@ class AgccCmd(object):
             f"Setting image params: {visit=} {expTime=} {combined=} "
             f"{centroid=} {cMethod=} {threadDelay=} {tecOFF=}"
         )
-        self.setImageParams(cmd)
 
         magFit = self.iParms["magFit"]
         cmd.inform(f'text="read magFit = {magFit}"')
@@ -564,8 +563,8 @@ class AgccCmd(object):
         cmd.respond('stat_cam%d="%s"' % (cam_id + 1, stat))
         cmd.finish()
 
-    def setCentroidParams(self, cmd) -> None:
-        """Load centroid parameters from the config file, with keyword overrides.
+    def reloadParams(self, cmd) -> None:
+        """Load centroid and instrumental parameters from the config file.
 
         Parameters
         ----------
@@ -574,20 +573,11 @@ class AgccCmd(object):
             defaults. If ``None``, defaults are loaded without a reply.
         """
 
-        self.cParms = centroid.getCentroidParams(cmd)
-        thresh = self.cParms["thresh"]
-        deblend = self.cParms["deblend"]
-        nmin = self.cParms["nmin"]
+        self.cParms, self.iParms = centroid.getParams(cmd)
         if cmd is not None:
-            cmd.finish(f'text="centroid parameters set thresh/deblend/nmin = {thresh} {deblend} {nmin}"')
-
-    def setImageParams(self, cmd) -> None:
-        """Load per-camera instrumental parameters from the config file.
-
-        Parameters
-        ----------
-        cmd : object or None
-            The parsed tron command object. Currently only used for logging.
-        """
-        self.actor.logger.info(f"Setting image parameters: {cmd=}")
-        self.iParms = centroid.getImageParams(cmd)
+            thresh = self.cParms["thresh"]
+            deblend = self.cParms["deblend"]
+            nmin = self.cParms["nmin"]
+            cmd.finish(
+                f'text="Parameters reloaded. Centroid thresh/deblend/nmin = {thresh}/{deblend}/{nmin}"'
+            )

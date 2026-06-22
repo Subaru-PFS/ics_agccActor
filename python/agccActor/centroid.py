@@ -10,38 +10,45 @@ logger = logging.getLogger("agcc")
 logger.setLevel(logging.INFO)
 
 
-def getCentroidParams(cmd) -> dict:
-    """Read the centroiding parameters from the actor configuration file.
-
-    The defaults from ``$PFS_INSTDATA_DIR/config/actors/agcc.yaml`` are
-    optionally overridden by the ``nmin``, ``thresh`` and ``deblend``
-    keywords present in ``cmd``.
-
-    Parameters
-    ----------
-    cmd : object or None
-        A tron command object whose keywords may override defaults.
-        If ``None`` or lacking keywords, defaults are returned unchanged.
+def getConfig() -> dict:
+    """Read the actor configuration file.
 
     Returns
     -------
     dict
-        Centroiding parameters: thresholds, minimum area, deblending,
-        ellipticity bounds, etc.
+        The full configuration dictionary from ``$PFS_INSTDATA_DIR/config/actors/agcc.yaml``.
     """
+    configPath = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
+    with open(configPath, "r") as configFile:
+        return yaml.safe_load(configFile)
+
+
+def getParams(cmd=None) -> tuple[dict, dict]:
+    """Read both centroiding and instrumental parameters from the configuration file.
+
+    Centroiding defaults are optionally overridden by keywords in ``cmd``.
+
+    Parameters
+    ----------
+    cmd : object, optional
+        A tron command object whose keywords (nmin, thresh, deblend) may
+        override centroiding defaults.
+
+    Returns
+    -------
+    centroidParams : dict
+        Centroiding parameters.
+    cameraParams : dict
+        Per-camera instrumental parameters.
+    """
+    config = getConfig()
+    centroidParams = config["agcc"]["centroidParams"]
+    cameraParams = config["agcc"]["cameraParams"]
 
     try:
         commandKeywords = cmd.cmd.keywords
     except AttributeError:
         commandKeywords = []
-
-    configPath = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
-
-    with open(configPath, "r") as configFile:
-        defaultConfig = yaml.safe_load(configFile)
-
-    # returns just the values dictionary
-    centroidParams = defaultConfig["agcc"]["centroidParams"]
 
     if "nmin" in commandKeywords:
         centroidParams["nmin"] = int(cmd.cmd.keywords["nmin"].values[0])
@@ -55,29 +62,7 @@ def getCentroidParams(cmd) -> dict:
     centroidParams.setdefault("halfBoxY", 5)
     centroidParams.setdefault("boxSize", 20)
 
-    return centroidParams
-
-
-def getImageParams(cmd) -> dict:
-    """Read the per-camera instrumental parameters from the config file.
-
-    Parameters
-    ----------
-    cmd : object or None
-        A tron command object. Currently unused; accepted for symmetry.
-
-    Returns
-    -------
-    dict
-        Per-camera parameters (regions, bad columns, saturation values,
-        magnitude-fit coefficients, ...).
-    """
-    configPath = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
-
-    with open(configPath, "r") as configFile:
-        imageConfig = yaml.safe_load(configFile)
-
-    return imageConfig["agcc"]["cameraParams"]
+    return centroidParams, cameraParams
 
 
 def interpBadCol(data, badCols):

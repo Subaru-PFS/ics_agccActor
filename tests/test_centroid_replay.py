@@ -52,8 +52,7 @@ def _skip_if_missing():
 def real_params():
     """Load centroiding and image parameters once for the whole module."""
     _skip_if_missing()
-    cParms = centroid.getCentroidParams(None)
-    iParms = centroid.getImageParams(None)
+    cParms, iParms = centroid.getParams(None)
     return cParms, iParms
 
 
