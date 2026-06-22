@@ -79,6 +79,8 @@ def createProc():
         logger = logging.getLogger("agcc")
         while True:
             data = in_q.get()
+            if isinstance(data, str) and data == "SHUTDOWN":
+                break
             agcid = in_q.get()
             cParms = in_q.get()
             iParms = in_q.get()

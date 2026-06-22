@@ -111,9 +111,12 @@ class Camera(object):
             if cam is not None:
                 # close the queue as well
                 self.logger.info(f"Closing process ID {cam.proc.pid}.")
-                cam.proc.kill()  # Send stop signal to the input queue
+                cam.in_queue.put("SHUTDOWN")
                 self.logger.info(f"Join the process {cam.proc.pid}.")
-                cam.proc.join()
+                cam.proc.join(timeout=5)
+                if cam.proc.is_alive():
+                    cam.proc.kill()
+                    cam.proc.join()
 
                 cam.close()
                 self.cams[c_i] = None

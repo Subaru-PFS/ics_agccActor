@@ -86,6 +86,8 @@ markers = [
 
 [tool.coverage.run]
 source = ["agccActor"]
+concurrency = ["multiprocessing"]
+parallel = true
 omit = [
     "python/agccActor/fli/fake_camera.py",
     "python/agccActor/version.py",
