@@ -31,26 +31,31 @@ def getCentroidParams(cmd) -> dict:
     """
 
     try:
-        cmdKeys = cmd.cmd.keywords
+        commandKeywords = cmd.cmd.keywords
     except AttributeError:
-        cmdKeys = []
+        commandKeywords = []
 
-    fileName = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
+    configPath = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
 
-    with open(fileName, "r") as inFile:
-        defaultParms = yaml.safe_load(inFile)
+    with open(configPath, "r") as configFile:
+        defaultConfig = yaml.safe_load(configFile)
 
     # returns just the values dictionary
-    centParms = defaultParms["agcc"]["centroidParams"]
+    centroidParams = defaultConfig["agcc"]["centroidParams"]
 
-    if "nmin" in cmdKeys:
-        centParms["nmin"] = int(cmd.cmd.keywords["nmin"].values[0])
-    if "thresh" in cmdKeys:
-        centParms["thresh"] = float(cmd.cmd.keywords["thresh"].values[0])
-    if "deblend" in cmdKeys:
-        centParms["deblend"] = float(cmd.cmd.keywords["deblend"].values[0])
+    if "nmin" in commandKeywords:
+        centroidParams["nmin"] = int(cmd.cmd.keywords["nmin"].values[0])
+    if "thresh" in commandKeywords:
+        centroidParams["thresh"] = float(cmd.cmd.keywords["thresh"].values[0])
+    if "deblend" in commandKeywords:
+        centroidParams["deblend"] = float(cmd.cmd.keywords["deblend"].values[0])
 
-    return centParms
+    # add optional box sizes for edge flagging and windowed FWHM
+    centroidParams.setdefault("halfBoxX", 5)
+    centroidParams.setdefault("halfBoxY", 5)
+    centroidParams.setdefault("boxSize", 20)
+
+    return centroidParams
 
 
 def getImageParams(cmd) -> dict:
@@ -67,12 +72,12 @@ def getImageParams(cmd) -> dict:
         Per-camera parameters (regions, bad columns, saturation values,
         magnitude-fit coefficients, ...).
     """
-    fileName = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
+    configPath = os.path.join(os.environ["PFS_INSTDATA_DIR"], "config/actors", "agcc.yaml")
 
-    with open(fileName, "r") as inFile:
-        imageParms = yaml.safe_load(inFile)
+    with open(configPath, "r") as configFile:
+        imageConfig = yaml.safe_load(configFile)
 
-    return imageParms["agcc"]["cameraParams"]
+    return imageConfig["agcc"]["cameraParams"]
 
 
 def interpBadCol(data, badCols):
@@ -115,12 +120,12 @@ def subOverscan(data):
 
     h, w = data.shape
     side0 = data[:, : w // 2]
-    side1 = data[:, w // 2:]
+    side1 = data[:, w // 2 :]
     bg0 = np.median(side0[:, :4]).astype(data.dtype)
     bg1 = np.median(side1[:, -4:]).astype(data.dtype)
 
     data[:, : w // 2] -= bg0
-    data[:, w // 2:] -= bg1
+    data[:, w // 2 :] -= bg1
 
     return data
 
@@ -150,10 +155,10 @@ def centroidRegion(data, thresh: float, minarea: int, deblend: float):
     """
 
     # determine the background
-    bgClass = sep.Background(data)
-    background = bgClass.back()
-    rms = bgClass.rms()
-    bgClass.subfrom(data)
+    backgroundEstimation = sep.Background(data)
+    background = backgroundEstimation.back()
+    rms = backgroundEstimation.rms()
+    backgroundEstimation.subfrom(data)
 
     # get spots using sourcing extractor defaults
     spots = sep.extract(data, thresh, rms, minarea=minarea, deblend_cont=deblend)
@@ -162,10 +167,10 @@ def centroidRegion(data, thresh: float, minarea: int, deblend: float):
     return spots, len(spots), background
 
 
-def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
+def getCentroidsSep(data, instrumentParams: dict, centroidParams: dict, spotDtype, agcid: int):
     """Run SEP-based centroiding on an AG camera image.
 
-    Both halves (left and right regions) defined in ``iParms`` are
+    Both halves (left and right regions) defined in ``instrumentParams`` are
     processed independently. Edge, ellipticity, saturation, flat-top and
     non-convergence flags are accumulated, and final windowed second
     moments and estimated magnitudes are filled in.
@@ -174,13 +179,14 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     ----------
     data : numpy.ndarray
         2-D raw image from one AG camera.
-    iParms : dict
+    instrumentParams : dict
         Per-camera instrumental parameters; must contain the camera's
         ``reg``, ``badCols``, ``satVal1``/``satVal2`` (optional),
         ``flatVal`` and ``magFit`` entries.
-    cParms : dict
+    centroidParams : dict
         Centroiding parameters: ``thresh``, ``minarea``, ``deblend``,
-        ``ellip``, ``nmin``, ``expTime``.
+        ``ellip``, ``nmin``, ``expTime``, and optional ``halfBoxX``,
+        ``halfBoxY``, ``boxSize``.
     spotDtype : numpy.dtype
         Structured dtype for the output spot record array.
     agcid : int
@@ -192,53 +198,60 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
         Structured array with one entry per detected spot.
     """
 
-    thresh = cParms["thresh"]
-    minarea = cParms["minarea"]
-    deblend = cParms["deblend"]
-    ellip = cParms["ellip"]
-    nmin = cParms["nmin"]
+    thresh = centroidParams["thresh"]
+    minarea = centroidParams["minarea"]
+    deblend = centroidParams["deblend"]
+    ellip = centroidParams["ellip"]
+    nmin = centroidParams["nmin"]
+    halfBoxX = centroidParams["halfBoxX"]
+    halfBoxY = centroidParams["halfBoxY"]
+    boxSize = centroidParams["boxSize"]
 
     # get region information for camera
-    region = iParms[str(agcid + 1)]["reg"]
+    region = instrumentParams[str(agcid + 1)]["reg"]
     try:
-        satValue1 = iParms[str(agcid + 1)]["satVal1"]
-        satValue2 = iParms[str(agcid + 1)]["satVal2"]
+        satValue1 = instrumentParams[str(agcid + 1)]["satVal1"]
+        satValue2 = instrumentParams[str(agcid + 1)]["satVal2"]
     except (KeyError, IndexError):
-        satValue1 = (2 ** 16) - 1
-        satValue2 = (2 ** 16) - 1
-    flatVal = iParms["flatVal"]
+        satValue1 = (2**16) - 1
+        satValue2 = (2**16) - 1
+    flatVal = instrumentParams["flatVal"]
 
-    dataProc = subOverscan(data.astype("float"))
-    dataProc = interpBadCol(dataProc, iParms[str(agcid + 1)]["badCols"])
+    processedData = subOverscan(data.astype("float"))
+    processedData = interpBadCol(processedData, instrumentParams[str(agcid + 1)]["badCols"])
 
-    _data1 = dataProc[region[2]: region[3], region[0]: region[1]].astype("float", copy=True, order="C")
-    _data2 = dataProc[region[6]: region[7], region[4]: region[5]].astype("float", copy=True, order="C")
+    regionData1 = processedData[region[2] : region[3], region[0] : region[1]].astype(
+        "float", copy=True, order="C"
+    )
+    regionData2 = processedData[region[6] : region[7], region[4] : region[5]].astype(
+        "float", copy=True, order="C"
+    )
 
-    spots1, nSpots1, background1 = centroidRegion(_data1, thresh, minarea, deblend=deblend)
-    spots2, nSpots2, background2 = centroidRegion(_data2, thresh, minarea, deblend=deblend)
+    spots1, nSpots1, background1 = centroidRegion(regionData1, thresh, minarea, deblend=deblend)
+    spots2, nSpots2, background2 = centroidRegion(regionData2, thresh, minarea, deblend=deblend)
 
     nElem = nSpots1 + nSpots2
 
     result = np.zeros(nElem, dtype=spotDtype)
 
+    # define the box size for edge detection and moment calculation
+    # boxSize is used for windowedFWHM, halfBox is used for edge flagging.
+    # We keep them separate but defined together for clarity.
+
     # flag spots near edge of region
 
-    # dynamic fwhm calculation is overenthusiastic with out of focus images
-    fx = 5
-    fy = 5
-
-    ind1 = np.where(
+    edgeIndices1 = np.where(
         np.any(
             [
-                spots1["x"] - 2 * fx < 0,
-                spots1["x"] + 2 * fx > (region[1] - region[0]),
-                spots1["y"] - 2 * fy < 0,
-                spots1["y"] + 2 * fy > (region[3] - region[2]),
+                spots1["x"] - 2 * halfBoxX < 0,
+                spots1["x"] + 2 * halfBoxX > (region[1] - region[0]),
+                spots1["y"] - 2 * halfBoxY < 0,
+                spots1["y"] + 2 * halfBoxY > (region[3] - region[2]),
             ],
             axis=0,
         )
     )
-    ind2 = np.where(
+    ellipticityIndices1 = np.where(
         np.all(
             [
                 np.any([spots1["b"] / spots1["a"] < ellip, spots1["b"] / spots1["a"] > 1 / ellip], axis=0),
@@ -258,25 +271,23 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     result["peak_pixel_y_pix"][0:nSpots1] = spots1["ypeak"] + region[2]
     result["peak_intensity"][0:nSpots1] = spots1["peak"]
     result["background"][0:nSpots1] = background1[spots1["ypeak"], spots1["xpeak"]]
-    result["flags"][0:nSpots1][ind1] += SourceDetectionFlag.EDGE
-    result["flags"][0:nSpots1][ind2] += SourceDetectionFlag.BAD_ELLIP
+    result["flags"][0:nSpots1][edgeIndices1] += SourceDetectionFlag.EDGE
+    result["flags"][0:nSpots1][ellipticityIndices1] += SourceDetectionFlag.BAD_ELLIP
 
     # flag spots near edge of region
-    fx = 5
-    fy = 5
 
-    ind1 = np.where(
+    edgeIndices2 = np.where(
         np.any(
             [
-                spots2["x"] - 2 * fx < 0,
-                spots2["x"] + 2 * fx > (region[5] - region[4]),
-                spots2["y"] - 2 * fy < 0,
-                spots2["y"] + 2 * fy > (region[7] - region[6]),
+                spots2["x"] - 2 * halfBoxX < 0,
+                spots2["x"] + 2 * halfBoxX > (region[5] - region[4]),
+                spots2["y"] - 2 * halfBoxY < 0,
+                spots2["y"] + 2 * halfBoxY > (region[7] - region[6]),
             ],
             axis=0,
         )
     )
-    ind2 = np.where(
+    ellipticityIndices2 = np.where(
         np.all(
             [
                 np.any([spots2["b"] / spots2["a"] < ellip, spots2["b"] / spots2["a"] > 1 / ellip], axis=0),
@@ -300,8 +311,8 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
 
     result["flags"][nSpots1:nElem] += SourceDetectionFlag.RIGHT
 
-    result["flags"][nSpots1:nElem][ind1] += SourceDetectionFlag.EDGE
-    result["flags"][nSpots1:nElem][ind2] += SourceDetectionFlag.BAD_ELLIP
+    result["flags"][nSpots1:nElem][edgeIndices2] += SourceDetectionFlag.EDGE
+    result["flags"][nSpots1:nElem][ellipticityIndices2] += SourceDetectionFlag.BAD_ELLIP
 
     # determine saturation off the unprocessed data
     satValue = np.zeros((len(result)))
@@ -338,20 +349,22 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
 
     # subract the background
 
-    newData = dataProc.copy()
-    newData[region[2]: region[3], region[0]: region[1]] -= background1
-    newData[region[6]: region[7], region[4]: region[5]] -= background2
+    tempData = processedData.copy()
+    tempData[region[2] : region[3], region[0] : region[1]] -= background1
+    tempData[region[6] : region[7], region[4] : region[5]] -= background2
 
     m20 = []
     m02 = []
     m11 = []
 
     flags = []
-    for ii in range(len(result)):
-        yPos = result["centroid_x_pix"][ii]
-        xPos = result["centroid_y_pix"][ii]
+    for i in range(len(result)):
+        yPos = result["centroid_x_pix"][i]
+        xPos = result["centroid_y_pix"][i]
 
-        xv, yv, xyv, conv = windowedFWHM(newData, yPos, xPos, region, result["flags"][ii] & 1)
+        xv, yv, xyv, conv = windowedFWHM(
+            tempData, yPos, xPos, region, result["flags"][i] & 1, boxSize=boxSize
+        )
 
         # if the moment didn't converge, revert to the unweighted second moment and set flags
         if conv == 0:
@@ -359,9 +372,9 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
             m02.append(yv)
             m11.append(xyv)
         else:
-            m02.append(result["central_image_moment_02_pix"][ii])
-            m20.append(result["central_image_moment_20_pix"][ii])
-            m11.append(result["central_image_moment_11_pix"][ii])
+            m02.append(result["central_image_moment_02_pix"][i])
+            m20.append(result["central_image_moment_20_pix"][i])
+            m11.append(result["central_image_moment_11_pix"][i])
 
         # add flag for non converged sources
         flags.append(conv)
@@ -371,15 +384,15 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     result["central_image_moment_02_pix"] = np.array(m02)
     result["central_image_moment_11_pix"] = np.array(m11)
     result["flags"] = result["flags"] + np.array(flags)
-    logger.debug(f"Calculating Magnitude: exptime = {cParms['expTime']}")
+    logger.debug(f"Calculating Magnitude: exptime = {centroidParams['expTime']}")
     result["estimated_magnitude"] = calculateApproximateMagnitude(
-        iParms, result["image_moment_00_pix"], cParms["expTime"]
+        instrumentParams, result["image_moment_00_pix"], centroidParams["expTime"]
     )
 
     return result
 
 
-def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
+def windowedFWHM(data, xPos: float, yPos: float, region, side: int, boxSize: int = 20):
     """Compute iteratively-weighted second moments around a position.
 
     If the point is near the edge of the region the sub-image is cropped
@@ -399,126 +412,133 @@ def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
         left (``side=0``) and right (``side=1``) halves.
     side : int
         ``0`` for the left region, ``1`` for the right region.
+    boxSize : int, optional
+        Half-size of the box used for the windowed fit.
 
     Returns
     -------
-    sx, sy, sxy : float
+    momentX, momentY, momentXY : float
         Weighted second moments (xx, yy, xy).
     flag : int
         ``0`` on convergence, ``SourceDetectionFlag.BAD_SHAPE`` otherwise.
     """
 
-    maxIt = 30
-    boxSize = 20
+    maxIterations = 30
 
     # initial values
-    sx = 6
-    sy = 6
-    sxy = 0
+    momentX = 6
+    momentY = 6
+    momentXY = 0
 
     w11 = -1
     w12 = -1
     w22 = -1
 
     # some variables for iteration
-    e1_old = 1e6
-    e2_old = 1e6
-    sx_o = 1e6
-    sy_o = 1e6
-    tol1 = 0.001
-    tol2 = 0.01
+    e1Old = 1e6
+    e2Old = 1e6
+    momentXOld = 1e6
+    momentYOld = 1e6
+    tolerance1 = 0.001
+    tolerance2 = 0.01
 
     # determine the sub-image region
-    dMinX1 = int(np.round(xPos - boxSize))
-    dMaxX1 = int(np.round(xPos + boxSize + 1))
-    dMinY1 = int(np.round(yPos - boxSize))
-    dMaxY1 = int(np.round(yPos + boxSize + 1))
+    minXInitial = int(np.round(xPos - boxSize))
+    maxXInitial = int(np.round(xPos + boxSize + 1))
+    minYInitial = int(np.round(yPos - boxSize))
+    maxYInitial = int(np.round(yPos + boxSize + 1))
 
     # check for edges of the region, and adjust accordingly. This includes the central
     # part of the full image
     if side == 0:
         # check for edges of image
-        dMinX = np.max([dMinX1, region[0]])
-        dMinY = np.max([dMinY1, region[2]])
-        dMaxX = np.min([dMaxX1, region[1]])
-        dMaxY = np.min([dMaxY1, region[3]])
+        minX = np.max([minXInitial, region[0]])
+        minY = np.max([minYInitial, region[2]])
+        maxX = np.min([maxXInitial, region[1]])
+        maxY = np.min([maxYInitial, region[3]])
     elif side == 1:
         # check for edges of image
-        dMinX = np.max([dMinX1, region[4]])
-        dMinY = np.max([dMinY1, region[6]])
-        dMaxX = np.min([dMaxX1, region[5]])
-        dMaxY = np.min([dMaxY1, region[7]])
+        minX = np.max([minXInitial, region[4]])
+        minY = np.max([minYInitial, region[6]])
+        maxX = np.min([maxXInitial, region[5]])
+        maxY = np.min([maxYInitial, region[7]])
 
     # and the sub-image
-    winVal = data[dMinY:dMaxY, dMinX:dMaxX]
+    subImage = data[minY:maxY, minX:maxX]
 
     # scale the coordinates by the central position, to avoid numeric overflow
 
-    xVal = np.arange(dMinX, dMaxX) - xPos
-    yVal = np.arange(dMinY, dMaxY) - yPos
+    xVal = np.arange(minX, maxX) - xPos
+    yVal = np.arange(minY, maxY) - yPos
     xv, yv = np.meshgrid(xVal, yVal)
 
     # now the iteration
-    for i in range(0, maxIt):
+    for i in range(0, maxIterations):
         # get the weighting function based on the current values
         # of the moments
 
-        detw = sx * sy - sxy ** 2
-        w11 = sy / detw
-        w12 = -sxy / detw
-        w22 = sx / detw
+        detw = momentX * momentY - momentXY**2
+        w11 = momentY / detw
+        w12 = -momentXY / detw
+        w22 = momentX / detw
 
         r2 = xv * xv * w11 + yv * yv * w22 + 2 * w12 * xv * yv
         w = np.exp(-r2 / 2)
 
         # and calcualte the weighted moments
-        sxow = (winVal * w * (xv) ** 2).sum() / (winVal * w).sum()
-        syow = (winVal * w * (yv) ** 2).sum() / (winVal * w).sum()
-        sxyow = (winVal * w * xv * yv).sum() / (winVal * w).sum()
+        momentXWeighted = (subImage * w * (xv) ** 2).sum() / (subImage * w).sum()
+        momentYWeighted = (subImage * w * (yv) ** 2).sum() / (subImage * w).sum()
+        momentXYWeighted = (subImage * w * xv * yv).sum() / (subImage * w).sum()
         # variables to test for convergence
-        d = sxow + syow
-        e1 = (sxow - syow) / d
-        e2 = 2 * sxyow / d
+        d = momentXWeighted + momentYWeighted
+        e1 = (momentXWeighted - momentYWeighted) / d
+        e2 = 2 * momentXYWeighted / d
 
         # check for convergence
-        if np.all([np.abs(e1 - e1_old) < tol1, np.abs(e2 - e2_old) < tol1,
-                   np.abs(sx / sx_o - 1) < tol2, np.abs(sy / sy_o - 1) < tol2]):
-            if np.any([sxow <= 0, syow <= 0]):
-                return weightedMoment(winVal, xv, yv, w11, w12, w22)
+        if np.all(
+            [
+                np.abs(e1 - e1Old) < tolerance1,
+                np.abs(e2 - e2Old) < tolerance1,
+                np.abs(momentX / momentXOld - 1) < tolerance2,
+                np.abs(momentY / momentYOld - 1) < tolerance2,
+            ]
+        ):
+            if np.any([momentXWeighted <= 0, momentYWeighted <= 0]):
+                return weightedMoment(subImage, xv, yv, w11, w12, w22)
             else:
-                return sxow, syow, sxyow, 0
+                return momentXWeighted, momentYWeighted, momentXYWeighted, 0
 
         # calculate new values
-        e1_old = e1
-        e2_old = e2
-        sx_o = sx
-        sy_o = sy
+        e1Old = e1
+        e2Old = e2
+        momentXOld = momentX
+        momentYOld = momentY
 
-        detow = sxow * syow - sxyow ** 2
-        ow11 = syow / detow
-        ow12 = -sxyow / detow
-        ow22 = sxow / detow
-        if detow <= 0:
-            return weightedMoment(winVal, xv, yv, w11, w12, w22)
+        detWeighted = momentXWeighted * momentYWeighted - momentXYWeighted**2
+        ow11 = momentYWeighted / detWeighted
+        ow12 = -momentXYWeighted / detWeighted
+        ow22 = momentXWeighted / detWeighted
+        if detWeighted <= 0:
+            return weightedMoment(subImage, xv, yv, w11, w12, w22)
 
         n11 = ow11 - w11
         n12 = ow12 - w12
         n22 = ow22 - w22
         det_n = n11 * n22 - n12 * n12
         if det_n <= 0:
-            return weightedMoment(winVal, xv, yv, w11, w12, w22)
+            return weightedMoment(subImage, xv, yv, w11, w12, w22)
 
-        sx = n22 / det_n
-        sxy = -n12 / det_n
-        sy = n11 / det_n
-        if np.any([sx <= 0, sy <= 0]):
-            return weightedMoment(winVal, xv, yv, w11, w12, w22)
+        momentX = n22 / det_n
+        momentXY = -n12 / det_n
+        momentY = n11 / det_n
+        if np.any([momentX <= 0, momentY <= 0]):
+            return weightedMoment(subImage, xv, yv, w11, w12, w22)
 
     # if we haven't converged return new values
-    return sx, sy, sxy, SourceDetectionFlag.BAD_SHAPE
+    return momentX, momentY, momentXY, SourceDetectionFlag.BAD_SHAPE
 
 
-def weightedMoment(winVal, xv, yv, w11: float, w12: float, w22: float):
+def weightedMoment(subImage, xv, yv, w11: float, w12: float, w22: float):
     """Compute a single-pass weighted moment as a fallback.
 
     Used by :func:`windowedFWHM` when the iterative fit fails to converge
@@ -526,7 +546,7 @@ def weightedMoment(winVal, xv, yv, w11: float, w12: float, w22: float):
 
     Parameters
     ----------
-    winVal : numpy.ndarray
+    subImage : numpy.ndarray
         2-D sub-image (background-subtracted) around the source.
     xv, yv : numpy.ndarray
         Coordinate meshgrids relative to the centroid.
@@ -535,7 +555,7 @@ def weightedMoment(winVal, xv, yv, w11: float, w12: float, w22: float):
 
     Returns
     -------
-    sx, sy, sxy : float
+    momentX, momentY, momentXY : float
         Weighted second moments.
     flag : int
         Always ``SourceDetectionFlag.BAD_SHAPE``.
@@ -544,22 +564,22 @@ def weightedMoment(winVal, xv, yv, w11: float, w12: float, w22: float):
     r2 = xv * xv * w11 + yv * yv * w22 + 2 * w12 * xv * yv
     w = np.exp(-r2 / 2)
 
-    sx = (winVal * w * (xv) ** 2).sum() / (winVal * w).sum()
-    sy = (winVal * w * (yv) ** 2).sum() / (winVal * w).sum()
-    sxy = (winVal * w * xv * yv).sum() / (winVal * w).sum()
+    momentX = (subImage * w * (xv) ** 2).sum() / (subImage * w).sum()
+    momentY = (subImage * w * (yv) ** 2).sum() / (subImage * w).sum()
+    momentXY = (subImage * w * xv * yv).sum() / (subImage * w).sum()
 
-    return sx, sy, sxy, SourceDetectionFlag.BAD_SHAPE
+    return momentX, momentY, momentXY, SourceDetectionFlag.BAD_SHAPE
 
 
-def calculateApproximateMagnitude(iParms: dict, instrumentFlux, expTime: float):
+def calculateApproximateMagnitude(instrumentParams: dict, instrumentFlux, expTime: float):
     """Estimate an approximate Gaia magnitude from instrumental flux.
 
     Uses the linear ``magFit = (slope, offset)`` coefficients stored in
-    ``iParms`` applied to ``-2.5 * log10(flux / expTime)``.
+    ``instrumentParams`` applied to ``-2.5 * log10(flux / expTime)``.
 
     Parameters
     ----------
-    iParms : dict
+    instrumentParams : dict
         Instrumental parameters; must contain a ``magFit`` ``(slope, offset)``
         pair.
     instrumentFlux : numpy.ndarray or float
@@ -573,6 +593,9 @@ def calculateApproximateMagnitude(iParms: dict, instrumentFlux, expTime: float):
         Estimated Gaia-like magnitude.
     """
 
-    mag = -2.5 * np.log10(instrumentFlux / expTime) * iParms["magFit"][0] + iParms["magFit"][1]
+    mag = (
+        -2.5 * np.log10(instrumentFlux / expTime) * instrumentParams["magFit"][0]
+        + instrumentParams["magFit"][1]
+    )
 
     return mag
