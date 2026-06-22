@@ -25,7 +25,8 @@ class AgccCmd(object):
         actor : object
             The owning :class:`AgccActor` instance.
         """
-        # This lets us access the rest of the actor.
+        self.cmd = None
+        self.visit = None
         self.instrumentalParams = None
         self.centroidingParams = None
         self.actor = actor
@@ -135,6 +136,34 @@ class AgccCmd(object):
         cmd.inform('text="Present!"')
         cmd.finish()
 
+    def lookup_cameras(self, cmd: Command, defaultToRunning: bool = False) -> list[int]:
+        """Parse the ``cameras`` keyword to get a list of 0-indexed camera IDs.
+
+        Parameters
+        ----------
+        cmd : object
+            The parsed tron command object.
+        defaultToRunning : bool, default False
+            If True and the ``cameras`` keyword is missing, default to the
+            currently running cameras. Otherwise, default to all cameras.
+
+        Returns
+        -------
+        list of int
+            A list of 0-indexed camera IDs.
+        """
+        cmdKeys = cmd.cmd.keywords
+        if "cameras" in cmdKeys:
+            camList = cmdKeys["cameras"].values[0]
+            return [int(cam) - 1 for cam in camList]
+
+        if defaultToRunning:
+            cams = self.actor.camera.runningCameras()
+            cmd.inform(f'text="found cameras: {cams}"')
+            return cams
+
+        return list(range(nCams))
+
     def setOrGetVisit(self, cmd: Command) -> int:
         """Return the ``visit`` from the command keys, or fetch one from gen2.
 
@@ -152,8 +181,6 @@ class AgccCmd(object):
         self.cmd = cmd
         cmdKeys = cmd.cmd.keywords
 
-        # When we start a new visit, always reset frame counter.
-        self.frameSeq = 0
         if "visit" in cmdKeys:
             self.visit = cmdKeys["visit"].values[0]
         else:
@@ -194,19 +221,7 @@ class AgccCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
         shutterMode = cmdKeys[0].name
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error(f'text="camera list error: {camList}"')
-                    cmd.fail(f'text="camera list error: {camList}"')
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         if shutterMode == "open":
             self.actor.camera.openShutter(cmd, cams)
@@ -251,10 +266,10 @@ class AgccCmd(object):
             if cmdKeys["combined"].values[0] == 0:
                 combined = False
 
-        centroid = False
+        do_centroid = False
         if "centroid" in cmdKeys:
             if cmdKeys["centroid"].values[0] == 1:
-                centroid = True
+                do_centroid = True
 
         cMethod = "sep"
         if "cMethod" in cmdKeys:
@@ -275,25 +290,13 @@ class AgccCmd(object):
 
         self.actor.logger.info(
             f"Setting image params: {visit=} {expTime=} {combined=} "
-            f"{centroid=} {cMethod=} {threadDelay=} {tecOFF=}"
+            f"{do_centroid=} {cMethod=} {threadDelay=} {tecOFF=}"
         )
 
         magFit = self.instrumentalParams["magFit"]
         cmd.inform(f'text="read magFit = {magFit}"')
 
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error(f'text="camera list error: {camList}"')
-                    cmd.fail(f'text="camera list error: {camList}"')
-                    return
-                cams.append(k)
-        else:
-            cams = self.actor.camera.runningCameras()
-            cmd.inform(f'text="found cameras: {cams}"')
+        cams = self.lookup_cameras(cmd, defaultToRunning=True)
 
         # Report TEC before taking exposure
         self.actor.camera.reportTEC(cmd)
@@ -304,7 +307,7 @@ class AgccCmd(object):
             expType,
             cams,
             combined,
-            centroid,
+            do_centroid,
             visit,
             self.centroidingParams,
             cMethod,
@@ -322,20 +325,7 @@ class AgccCmd(object):
             The parsed tron command object.
         """
 
-        cmdKeys = cmd.cmd.keywords
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error(f'text="camera list error: {camList}"')
-                    cmd.fail(f'text="camera list error: {camList}"')
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         self.actor.camera.abort(cmd, cams)
         cmd.finish('text="Last exposure aborted!"')
@@ -353,19 +343,7 @@ class AgccCmd(object):
         """
 
         cmdKeys = cmd.cmd.keywords
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error(f'text="camera list error: {camList}"')
-                    cmd.fail(f'text="camera list error: {camList}"')
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         if "bx" in cmdKeys:
             bx = cmdKeys["bx"].values[0]
@@ -395,20 +373,7 @@ class AgccCmd(object):
             The parsed tron command object.
         """
 
-        cmdKeys = cmd.cmd.keywords
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error(f'text="camera list error: {camList}"')
-                    cmd.fail(f'text="camera list error: {camList}"')
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         self.actor.camera.resetframe(cmd, cams)
 
@@ -424,19 +389,7 @@ class AgccCmd(object):
         cmdKeys = cmd.cmd.keywords
         mode = cmdKeys["mode"].values[0]
 
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error(f'text="camera list error: {camList}"')
-                    cmd.fail(f'text="camera list error: {camList}"')
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         self.actor.camera.setmode(cmd, mode, cams)
 
@@ -449,20 +402,7 @@ class AgccCmd(object):
             The parsed tron command object.
         """
 
-        cmdKeys = cmd.cmd.keywords
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error(f'text="camera list error: {camList}"')
-                    cmd.fail(f'text="camera list error: {camList}"')
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         self.actor.camera.getmode(cmd, cams)
 
@@ -490,11 +430,10 @@ class AgccCmd(object):
         cmdKeys = cmd.cmd.keywords
         temperature = cmdKeys["temperature"].values[0]
         if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            cmd.inform(f'text="Setting temperature for AG cameras = {camList}"')
+            cams = self.lookup_cameras(cmd)
+            cmd.inform(f'text="Setting temperature for AG cameras = {cmdKeys["cameras"].values[0]}"')
 
-            for cam in camList:
-                n = int(cam) - 1
+            for n in cams:
                 cmd.inform(f'text="Setting camera AG{n + 1} to {temperature}"')
                 self.actor.camera.setcamtemperature(cmd, n, temperature)
         else:

@@ -287,10 +287,12 @@ def getCentroidsSep(data, instrumentParams: dict, centroidParams: dict, spotDtyp
         start_idx = end_idx
 
     # determine saturation off the unprocessed data
-    satValue = np.concatenate([
-        np.repeat(satValue1, nSpots_list[0]),
-        np.repeat(satValue2, nSpots_list[1]),
-    ])
+    satValue = np.concatenate(
+        [
+            np.repeat(satValue1, nSpots_list[0]),
+            np.repeat(satValue2, nSpots_list[1]),
+        ]
+    )
 
     satFlag = data[result["peak_pixel_y_pix"], result["peak_pixel_x_pix"]] >= satValue
 
