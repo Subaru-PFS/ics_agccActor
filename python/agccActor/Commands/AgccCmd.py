@@ -198,8 +198,8 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
+                    cmd.error(f'text="camera list error: {camList}"')
+                    cmd.fail(f'text="camera list error: {camList}"')
                     return
                 cams.append(k)
         else:
@@ -285,8 +285,8 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
+                    cmd.error(f'text="camera list error: {camList}"')
+                    cmd.fail(f'text="camera list error: {camList}"')
                     return
                 cams.append(k)
         else:
@@ -327,8 +327,8 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
+                    cmd.error(f'text="camera list error: {camList}"')
+                    cmd.fail(f'text="camera list error: {camList}"')
                     return
                 cams.append(k)
         else:
@@ -357,8 +357,8 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
+                    cmd.error(f'text="camera list error: {camList}"')
+                    cmd.fail(f'text="camera list error: {camList}"')
                     return
                 cams.append(k)
         else:
@@ -375,7 +375,7 @@ class AgccCmd(object):
             by = 0
         if "cx" not in cmdKeys or "cy" not in cmdKeys or "sx" not in cmdKeys or "sy" not in cmdKeys:
             cmd.error('text="required parameters (cx,cy,sx,sy) missing"')
-            cmd.fail()
+            cmd.fail('text="required parameters (cx,cy,sx,sy) missing"')
             return
         cx = cmdKeys["cx"].values[0]
         cy = cmdKeys["cy"].values[0]
@@ -400,8 +400,8 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
+                    cmd.error(f'text="camera list error: {camList}"')
+                    cmd.fail(f'text="camera list error: {camList}"')
                     return
                 cams.append(k)
         else:
@@ -428,8 +428,8 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
+                    cmd.error(f'text="camera list error: {camList}"')
+                    cmd.fail(f'text="camera list error: {camList}"')
                     return
                 cams.append(k)
         else:
@@ -454,8 +454,8 @@ class AgccCmd(object):
             for cam in camList:
                 k = int(cam) - 1
                 if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
+                    cmd.error(f'text="camera list error: {camList}"')
+                    cmd.fail(f'text="camera list error: {camList}"')
                     return
                 cams.append(k)
         else:
