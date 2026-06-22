@@ -36,20 +36,22 @@ def _send_job(in_q, *, data=None, agcid=0, cParms=None, iParms=None, cMethod='se
 
 @pytest.fixture
 def worker():
-    """A live photometry worker process; killed on teardown."""
+    """A live photometry worker process; terminated gracefully on teardown."""
     in_q, out_q, p = photometry.createProc()
     yield in_q, out_q, p
     if p.is_alive():
-        p.kill()
-    p.join(timeout=5)
+        in_q.put("SHUTDOWN")
+        p.join(timeout=5)
+        if p.is_alive():
+            p.kill()
+            p.join(timeout=2)
 
 
 def test_worker_returns_none_when_measure_raises(worker):
-    """Sending an invalid cMethod makes `measure()` fall through and raise
-    UnboundLocalError on the undefined `result`. Before the INSTRM-2920 fix,
-    the worker would die silently; after the fix, it logs and emits None."""
+    """Sending None data makes `measure()` raise an exception.
+    The worker must catch this, log it, and emit None."""
     in_q, out_q, p = worker
-    _send_job(in_q, cMethod='not-a-real-method')
+    _send_job(in_q, data=None, cMethod='sep')
 
     result = out_q.get(timeout=10)
 
@@ -58,15 +60,14 @@ def test_worker_returns_none_when_measure_raises(worker):
 
 def test_worker_survives_exception_and_serves_next_job(worker):
     """A single bad job must not poison the worker. The next job must still
-    get a response (here, also None because we again pass a bad cMethod —
-    we just need to confirm the worker is still consuming and producing)."""
+    get a response."""
     in_q, out_q, p = worker
 
-    _send_job(in_q, cMethod='not-a-real-method')
+    _send_job(in_q, data=None, cMethod='sep')
     assert out_q.get(timeout=10) is None
     assert p.is_alive(), "worker died after first exception"
 
-    _send_job(in_q, cMethod='not-a-real-method')
+    _send_job(in_q, data=None, cMethod='sep')
     assert out_q.get(timeout=10) is None
     assert p.is_alive(), "worker died after second exception"
 
@@ -127,6 +128,9 @@ def _minimal_cParms() -> dict:
         "ellip": 0.5,
         "nmin": 5,
         "expTime": 5.0,
+        "halfBoxX": 5,
+        "halfBoxY": 5,
+        "boxSize": 20,
     }
 
 

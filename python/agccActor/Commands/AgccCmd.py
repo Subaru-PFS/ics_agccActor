@@ -2,8 +2,10 @@
 
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from actorcore.Command import Command
 
 from agccActor import centroid, database
+from agccActor.main import AgccActor
 
 nCams = 6
 
@@ -15,7 +17,7 @@ class AgccCmd(object):
     actor parser, and provides one handler per command.
     """
 
-    def __init__(self, actor):
+    def __init__(self, actor: AgccActor):
         """Register the command vocabulary and keyword dictionary.
 
         Parameters
@@ -23,7 +25,10 @@ class AgccCmd(object):
         actor : object
             The owning :class:`AgccActor` instance.
         """
-        # This lets us access the rest of the actor.
+        self.cmd = None
+        self.visit = None
+        self.instrumentalParams = None
+        self.centroidingParams = None
         self.actor = actor
 
         # Declare the commands we implement. When the actor is started
@@ -56,8 +61,8 @@ class AgccCmd(object):
             ("inusesequence", "<sequence>", self.inusesequence),
             ("inusecamera", "<camera>", self.inusecamera),
             ("insertVisit", "<visit>", self.insertVisit),
-            ("setCentroidParams", "[<nmin>] [<thresh>] [<deblend>]", self.setCentroidParams),
-            ("setImageParams", "", self.setImageParams),
+            ("setCentroidParams", "[<nmin>] [<thresh>] [<deblend>]", self.reloadParams),
+            ("setImageParams", "", self.reloadParams),
         ]
 
         # Define typed command arguments for the above commands.
@@ -88,10 +93,10 @@ class AgccCmd(object):
             keys.Key("deblend", types.Float(), help="deblend_cont for sep"),
             keys.Key("cMethod", types.String(), help="method to use for centroiding (win, sep)"),
         )
-        # initialize centroid parameters
-        self.setCentroidParams(None)
+        # initialize centroid and image parameters
+        self.reloadParams(None)
 
-    def ping(self, cmd) -> None:
+    def ping(self, cmd: Command) -> None:
         """Reply to a ``ping`` command to confirm liveness.
 
         Parameters
@@ -103,7 +108,7 @@ class AgccCmd(object):
         cmd.respond("text='I am AG camera actor'")
         cmd.finish()
 
-    def reconnect(self, cmd) -> None:
+    def reconnect(self, cmd: Command) -> None:
         """Reload the camera controller and reconnect the AG cameras.
 
         Parameters
@@ -116,7 +121,7 @@ class AgccCmd(object):
         cmd.inform('text="AG cameras connected!"')
         cmd.finish()
 
-    def status(self, cmd) -> None:
+    def status(self, cmd: Command) -> None:
         """Report the actor version and per-camera status.
 
         Parameters
@@ -131,7 +136,35 @@ class AgccCmd(object):
         cmd.inform('text="Present!"')
         cmd.finish()
 
-    def setOrGetVisit(self, cmd) -> int:
+    def lookup_cameras(self, cmd: Command, default_to_running: bool = False) -> list[int]:
+        """Parse the ``cameras`` keyword to get a list of 0-indexed camera IDs.
+
+        Parameters
+        ----------
+        cmd : object
+            The parsed tron command object.
+        default_to_running : bool, default False
+            If True and the ``cameras`` keyword is missing, default to the
+            currently running cameras. Otherwise, default to all cameras.
+
+        Returns
+        -------
+        list of int
+            A list of 0-indexed camera IDs.
+        """
+        cmdKeys = cmd.cmd.keywords
+        if "cameras" in cmdKeys:
+            camList = cmdKeys["cameras"].values[0]
+            return [int(cam) - 1 for cam in camList]
+
+        if default_to_running:
+            cams = self.actor.camera.runningCameras()
+            cmd.inform(f'text="found cameras: {cams}"')
+            return cams
+
+        return list(range(nCams))
+
+    def setOrGetVisit(self, cmd: Command) -> int:
         """Return the ``visit`` from the command keys, or fetch one from gen2.
 
         Parameters
@@ -148,8 +181,6 @@ class AgccCmd(object):
         self.cmd = cmd
         cmdKeys = cmd.cmd.keywords
 
-        # When we start a new visit, always reset frame counter.
-        self.frameSeq = 0
         if "visit" in cmdKeys:
             self.visit = cmdKeys["visit"].values[0]
         else:
@@ -162,7 +193,7 @@ class AgccCmd(object):
 
         return self.visit
 
-    def insertVisit(self, cmd) -> None:
+    def insertVisit(self, cmd: Command) -> None:
         """Insert a row into the ``pfs_visit`` OpDB table.
 
         Parameters
@@ -179,7 +210,7 @@ class AgccCmd(object):
             return
         cmd.finish()
 
-    def shutterOps(self, cmd) -> None:
+    def shutterOps(self, cmd: Command) -> None:
         """Open or close the shutter on the requested cameras.
 
         Parameters
@@ -190,19 +221,7 @@ class AgccCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
         shutterMode = cmdKeys[0].name
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         if shutterMode == "open":
             self.actor.camera.openShutter(cmd, cams)
@@ -211,7 +230,7 @@ class AgccCmd(object):
 
         cmd.finish()
 
-    def expose(self, cmd) -> None:
+    def expose(self, cmd: Command) -> None:
         """Take an exposure on the requested cameras.
 
         Recognised command keywords include ``test``/``dark``/``object``,
@@ -247,10 +266,10 @@ class AgccCmd(object):
             if cmdKeys["combined"].values[0] == 0:
                 combined = False
 
-        centroid = False
+        do_centroid = False
         if "centroid" in cmdKeys:
             if cmdKeys["centroid"].values[0] == 1:
-                centroid = True
+                do_centroid = True
 
         cMethod = "sep"
         if "cMethod" in cmdKeys:
@@ -271,26 +290,13 @@ class AgccCmd(object):
 
         self.actor.logger.info(
             f"Setting image params: {visit=} {expTime=} {combined=} "
-            f"{centroid=} {cMethod=} {threadDelay=} {tecOFF=}"
+            f"{do_centroid=} {cMethod=} {threadDelay=} {tecOFF=}"
         )
-        self.setImageParams(cmd)
 
-        magFit = self.iParms["magFit"]
+        magFit = self.instrumentalParams["magFit"]
         cmd.inform(f'text="read magFit = {magFit}"')
 
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
-                    return
-                cams.append(k)
-        else:
-            cams = self.actor.camera.runningCameras()
-            cmd.inform(f'text="found cameras: {cams}"')
+        cams = self.lookup_cameras(cmd, default_to_running=True)
 
         # Report TEC before taking exposure
         self.actor.camera.reportTEC(cmd)
@@ -301,16 +307,16 @@ class AgccCmd(object):
             expType,
             cams,
             combined,
-            centroid,
+            do_centroid,
             visit,
-            self.cParms,
+            self.centroidingParams,
             cMethod,
-            self.iParms,
+            self.instrumentalParams,
             threadDelay=threadDelay,
             tecOFF=tecOFF,
         )
 
-    def abort(self, cmd) -> None:
+    def abort(self, cmd: Command) -> None:
         """Abort the current exposure on the requested cameras.
 
         Parameters
@@ -319,25 +325,12 @@ class AgccCmd(object):
             The parsed tron command object.
         """
 
-        cmdKeys = cmd.cmd.keywords
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         self.actor.camera.abort(cmd, cams)
         cmd.finish('text="Last exposure aborted!"')
 
-    def setframe(self, cmd) -> None:
+    def setframe(self, cmd: Command) -> None:
         """Set the exposure area on the requested cameras.
 
         Command keywords: ``cameras``, ``bx``, ``by``, ``cx``, ``cy``,
@@ -350,19 +343,7 @@ class AgccCmd(object):
         """
 
         cmdKeys = cmd.cmd.keywords
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         if "bx" in cmdKeys:
             bx = cmdKeys["bx"].values[0]
@@ -374,7 +355,7 @@ class AgccCmd(object):
             by = 0
         if "cx" not in cmdKeys or "cy" not in cmdKeys or "sx" not in cmdKeys or "sy" not in cmdKeys:
             cmd.error('text="required parameters (cx,cy,sx,sy) missing"')
-            cmd.fail()
+            cmd.fail('text="required parameters (cx,cy,sx,sy) missing"')
             return
         cx = cmdKeys["cx"].values[0]
         cy = cmdKeys["cy"].values[0]
@@ -383,7 +364,7 @@ class AgccCmd(object):
 
         self.actor.camera.setframe(cmd, cams, bx, by, cx, cy, sx, sy)
 
-    def resetframe(self, cmd) -> None:
+    def resetframe(self, cmd: Command) -> None:
         """Reset the exposure area to the full frame on the requested cameras.
 
         Parameters
@@ -392,24 +373,11 @@ class AgccCmd(object):
             The parsed tron command object.
         """
 
-        cmdKeys = cmd.cmd.keywords
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         self.actor.camera.resetframe(cmd, cams)
 
-    def setmode(self, cmd) -> None:
+    def setmode(self, cmd: Command) -> None:
         """Set the readout mode (``0`` = 4 MHz, ``1`` = 500 kHz).
 
         Parameters
@@ -421,23 +389,11 @@ class AgccCmd(object):
         cmdKeys = cmd.cmd.keywords
         mode = cmdKeys["mode"].values[0]
 
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         self.actor.camera.setmode(cmd, mode, cams)
 
-    def getmode(self, cmd) -> None:
+    def getmode(self, cmd: Command) -> None:
         """Get the current readout mode on the requested cameras.
 
         Parameters
@@ -446,24 +402,11 @@ class AgccCmd(object):
             The parsed tron command object.
         """
 
-        cmdKeys = cmd.cmd.keywords
-        cams = []
-        if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            for cam in camList:
-                k = int(cam) - 1
-                if k < 0 or k >= nCams:
-                    cmd.error('text="camera list error: %s"' % camList)
-                    cmd.fail()
-                    return
-                cams.append(k)
-        else:
-            for k in range(nCams):
-                cams.append(k)
+        cams = self.lookup_cameras(cmd)
 
         self.actor.camera.getmode(cmd, cams)
 
-    def getmodestring(self, cmd) -> None:
+    def getmodestring(self, cmd: Command) -> None:
         """Get the human-readable readout mode strings from the first camera.
 
         Parameters
@@ -474,7 +417,7 @@ class AgccCmd(object):
 
         self.actor.camera.getmodestring(cmd)
 
-    def settemperature(self, cmd) -> None:
+    def settemperature(self, cmd: Command) -> None:
         """Set the CCD temperature on one or more cameras.
 
         Parameters
@@ -487,18 +430,17 @@ class AgccCmd(object):
         cmdKeys = cmd.cmd.keywords
         temperature = cmdKeys["temperature"].values[0]
         if "cameras" in cmdKeys:
-            camList = cmdKeys["cameras"].values[0]
-            cmd.inform(f'text="Setting temperature for AG cameras = {camList}"')
+            cams = self.lookup_cameras(cmd)
+            cmd.inform(f'text="Setting temperature for AG cameras = {cmdKeys["cameras"].values[0]}"')
 
-            for cam in camList:
-                n = int(cam) - 1
+            for n in cams:
                 cmd.inform(f'text="Setting camera AG{n + 1} to {temperature}"')
                 self.actor.camera.setcamtemperature(cmd, n, temperature)
         else:
             self.actor.camera.settemperature(cmd, temperature)
         cmd.finish('text="Setting camera TEC finished!"')
 
-    def setregions(self, cmd) -> None:
+    def setregions(self, cmd: Command) -> None:
         """Set regions of interest for a given camera.
 
         Parameters
@@ -513,7 +455,7 @@ class AgccCmd(object):
         regions = cmdKeys["regions"].values[0]
         self.actor.camera.setregions(cmd, camid, regions)
 
-    def startsequence(self, cmd) -> None:
+    def startsequence(self, cmd: Command) -> None:
         """Deprecated no-op; the exposure sequence feature has been removed.
 
         Parameters
@@ -524,7 +466,7 @@ class AgccCmd(object):
 
         cmd.finish('text="startsequence is deprecated and no longer supported; command ignored"')
 
-    def stopsequence(self, cmd) -> None:
+    def stopsequence(self, cmd: Command) -> None:
         """Deprecated no-op; the exposure sequence feature has been removed.
 
         Parameters
@@ -535,7 +477,7 @@ class AgccCmd(object):
 
         cmd.finish('text="stopsequence is deprecated and no longer supported; command ignored"')
 
-    def inusesequence(self, cmd) -> None:
+    def inusesequence(self, cmd: Command) -> None:
         """Deprecated no-op; the exposure sequence feature has been removed.
 
         Parameters
@@ -546,7 +488,7 @@ class AgccCmd(object):
 
         cmd.finish('text="inusesequence is deprecated and no longer supported; command ignored"')
 
-    def inusecamera(self, cmd) -> None:
+    def inusecamera(self, cmd: Command) -> None:
         """Report whether a given camera is currently in use.
 
         Parameters
@@ -564,8 +506,8 @@ class AgccCmd(object):
         cmd.respond('stat_cam%d="%s"' % (cam_id + 1, stat))
         cmd.finish()
 
-    def setCentroidParams(self, cmd) -> None:
-        """Load centroid parameters from the config file, with keyword overrides.
+    def reloadParams(self, cmd: Command | None = None) -> None:
+        """Load centroid and instrumental parameters from the config file.
 
         Parameters
         ----------
@@ -574,20 +516,11 @@ class AgccCmd(object):
             defaults. If ``None``, defaults are loaded without a reply.
         """
 
-        self.cParms = centroid.getCentroidParams(cmd)
-        thresh = self.cParms["thresh"]
-        deblend = self.cParms["deblend"]
-        nmin = self.cParms["nmin"]
+        self.centroidingParams, self.instrumentalParams = centroid.getParams(cmd)
         if cmd is not None:
-            cmd.finish(f'text="centroid parameters set thresh/deblend/nmin = {thresh} {deblend} {nmin}"')
-
-    def setImageParams(self, cmd) -> None:
-        """Load per-camera instrumental parameters from the config file.
-
-        Parameters
-        ----------
-        cmd : object or None
-            The parsed tron command object. Currently only used for logging.
-        """
-        self.actor.logger.info(f"Setting image parameters: {cmd=}")
-        self.iParms = centroid.getImageParams(cmd)
+            thresh = self.centroidingParams["thresh"]
+            deblend = self.centroidingParams["deblend"]
+            nmin = self.centroidingParams["nmin"]
+            cmd.finish(
+                f'text="Parameters reloaded. Centroid thresh/deblend/nmin = {thresh}/{deblend}/{nmin}"'
+            )

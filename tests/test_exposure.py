@@ -36,6 +36,9 @@ def minimal_cParms():
         "ellip": 0.5,
         "nmin": 5,
         "expTime": 0.1,
+        "halfBoxX": 5,
+        "halfBoxY": 5,
+        "boxSize": 20,
     }
 
 
@@ -342,5 +345,3 @@ def test_exposure_inline_photometry_finds_spots(cam_set, mock_cmd, mock_opdb, mi
 
     # Spots found or not — the call must complete without exception
     assert cam_set.cams[0].spots is not None, "spots should be set after inline photometry"
-
-
