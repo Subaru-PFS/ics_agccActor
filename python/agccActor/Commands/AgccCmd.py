@@ -136,14 +136,14 @@ class AgccCmd(object):
         cmd.inform('text="Present!"')
         cmd.finish()
 
-    def lookup_cameras(self, cmd: Command, defaultToRunning: bool = False) -> list[int]:
+    def lookup_cameras(self, cmd: Command, default_to_running: bool = False) -> list[int]:
         """Parse the ``cameras`` keyword to get a list of 0-indexed camera IDs.
 
         Parameters
         ----------
         cmd : object
             The parsed tron command object.
-        defaultToRunning : bool, default False
+        default_to_running : bool, default False
             If True and the ``cameras`` keyword is missing, default to the
             currently running cameras. Otherwise, default to all cameras.
 
@@ -157,7 +157,7 @@ class AgccCmd(object):
             camList = cmdKeys["cameras"].values[0]
             return [int(cam) - 1 for cam in camList]
 
-        if defaultToRunning:
+        if default_to_running:
             cams = self.actor.camera.runningCameras()
             cmd.inform(f'text="found cameras: {cams}"')
             return cams
@@ -296,7 +296,7 @@ class AgccCmd(object):
         magFit = self.instrumentalParams["magFit"]
         cmd.inform(f'text="read magFit = {magFit}"')
 
-        cams = self.lookup_cameras(cmd, defaultToRunning=True)
+        cams = self.lookup_cameras(cmd, default_to_running=True)
 
         # Report TEC before taking exposure
         self.actor.camera.reportTEC(cmd)
