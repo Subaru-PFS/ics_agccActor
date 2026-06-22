@@ -127,6 +127,9 @@ def _minimal_cParms() -> dict:
         "ellip": 0.5,
         "nmin": 5,
         "expTime": 5.0,
+        "halfBoxX": 5,
+        "halfBoxY": 5,
+        "boxSize": 20,
     }
 
 
