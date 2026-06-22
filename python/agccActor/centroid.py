@@ -192,6 +192,8 @@ def getCentroidsSep(data, instrumentParams: dict, centroidParams: dict, spotDtyp
     halfBoxY = centroidParams["halfBoxY"]
     boxSize = centroidParams["boxSize"]
 
+    logger.info(f"Running SEP centroiding on AGC camera {agcid + 1} (thresh={thresh}, minarea={minarea})")
+
     # get region information for camera
     region = instrumentParams[str(agcid + 1)]["reg"]
     try:
@@ -205,104 +207,90 @@ def getCentroidsSep(data, instrumentParams: dict, centroidParams: dict, spotDtyp
     processedData = subOverscan(data.astype("float"))
     processedData = interpBadCol(processedData, instrumentParams[str(agcid + 1)]["badCols"])
 
-    regionData1 = processedData[region[2] : region[3], region[0] : region[1]].astype(
-        "float", copy=True, order="C"
-    )
-    regionData2 = processedData[region[6] : region[7], region[4] : region[5]].astype(
-        "float", copy=True, order="C"
-    )
+    # Define bounds for the left and right halves of the detector
+    half_regions = [
+        (region[0], region[1], region[2], region[3]),  # Left half
+        (region[4], region[5], region[6], region[7]),  # Right half
+    ]
 
-    spots1, nSpots1, background1 = do_region_centroiding(regionData1, thresh, minarea, deblend=deblend)
-    spots2, nSpots2, background2 = do_region_centroiding(regionData2, thresh, minarea, deblend=deblend)
+    spots_list = []
+    nSpots_list = []
+    backgrounds = []
 
-    nElem = nSpots1 + nSpots2
+    for side, (x0, x1, y0, y1) in enumerate(half_regions):
+        regionData = processedData[y0:y1, x0:x1].astype("float", copy=True, order="C")
+        spots, nSpots, background = do_region_centroiding(regionData, thresh, minarea, deblend=deblend)
+        spots_list.append(spots)
+        nSpots_list.append(nSpots)
+        backgrounds.append(background)
+        side_name = "left" if side == 0 else "right"
+        logger.info(
+            f"AGC camera {agcid + 1} {side_name} region: detected {nSpots} spots "
+            f"(bg median={np.median(background):.1f}, std={np.std(background):.1f})"
+        )
 
+    nElem = sum(nSpots_list)
+    logger.info(f"AGC camera {agcid + 1}: detected {nElem} spots in total")
     result = np.zeros(nElem, dtype=spotDtype)
 
-    # define the box size for edge detection and moment calculation
-    # boxSize is used for windowedFWHM, halfBox is used for edge flagging.
-    # We keep them separate but defined together for clarity.
+    start_idx = 0
+    for side, (x0, x1, y0, y1) in enumerate(half_regions):
+        spots = spots_list[side]
+        nSpots = nSpots_list[side]
+        background = backgrounds[side]
 
-    # flag spots near edge of region
+        if nSpots == 0:
+            continue
 
-    edgeIndices1 = np.where(
-        np.any(
-            [
-                spots1["x"] - 2 * halfBoxX < 0,
-                spots1["x"] + 2 * halfBoxX > (region[1] - region[0]),
-                spots1["y"] - 2 * halfBoxY < 0,
-                spots1["y"] + 2 * halfBoxY > (region[3] - region[2]),
-            ],
-            axis=0,
+        end_idx = start_idx + nSpots
+        res_slice = result[start_idx:end_idx]
+
+        # flag spots near edge of region
+        edgeIndices = np.where(
+            np.any(
+                [
+                    spots["x"] - 2 * halfBoxX < 0,
+                    spots["x"] + 2 * halfBoxX > (x1 - x0),
+                    spots["y"] - 2 * halfBoxY < 0,
+                    spots["y"] + 2 * halfBoxY > (y1 - y0),
+                ],
+                axis=0,
+            )
         )
-    )
-    ellipticityIndices1 = np.where(
-        np.all(
-            [
-                np.any([spots1["b"] / spots1["a"] < ellip, spots1["b"] / spots1["a"] > 1 / ellip], axis=0),
-                spots1["npix"] < nmin,
-            ],
-            axis=0,
+        ellipticityIndices = np.where(
+            np.all(
+                [
+                    np.any([spots["b"] / spots["a"] < ellip, spots["b"] / spots["a"] > 1 / ellip], axis=0),
+                    spots["npix"] < nmin,
+                ],
+                axis=0,
+            )
         )
-    )
 
-    result["image_moment_00_pix"][0:nSpots1] = spots1["flux"]
-    result["centroid_x_pix"][0:nSpots1] = spots1["x"] + region[0]
-    result["centroid_y_pix"][0:nSpots1] = spots1["y"] + region[2]
-    result["central_image_moment_20_pix"][0:nSpots1] = spots1["x2"]
-    result["central_image_moment_11_pix"][0:nSpots1] = spots1["xy"]
-    result["central_image_moment_02_pix"][0:nSpots1] = spots1["y2"]
-    result["peak_pixel_x_pix"][0:nSpots1] = spots1["xpeak"] + region[0]
-    result["peak_pixel_y_pix"][0:nSpots1] = spots1["ypeak"] + region[2]
-    result["peak_intensity"][0:nSpots1] = spots1["peak"]
-    result["background"][0:nSpots1] = background1[spots1["ypeak"], spots1["xpeak"]]
-    result["flags"][0:nSpots1][edgeIndices1] += SourceDetectionFlag.EDGE
-    result["flags"][0:nSpots1][ellipticityIndices1] += SourceDetectionFlag.BAD_ELLIP
+        res_slice["image_moment_00_pix"] = spots["flux"]
+        res_slice["centroid_x_pix"] = spots["x"] + x0
+        res_slice["centroid_y_pix"] = spots["y"] + y0
+        res_slice["central_image_moment_20_pix"] = spots["x2"]
+        res_slice["central_image_moment_11_pix"] = spots["xy"]
+        res_slice["central_image_moment_02_pix"] = spots["y2"]
+        res_slice["peak_pixel_x_pix"] = spots["xpeak"] + x0
+        res_slice["peak_pixel_y_pix"] = spots["ypeak"] + y0
+        res_slice["peak_intensity"] = spots["peak"]
+        res_slice["background"] = background[spots["ypeak"], spots["xpeak"]]
 
-    # flag spots near edge of region
+        if side == 1:
+            res_slice["flags"] += SourceDetectionFlag.RIGHT
 
-    edgeIndices2 = np.where(
-        np.any(
-            [
-                spots2["x"] - 2 * halfBoxX < 0,
-                spots2["x"] + 2 * halfBoxX > (region[5] - region[4]),
-                spots2["y"] - 2 * halfBoxY < 0,
-                spots2["y"] + 2 * halfBoxY > (region[7] - region[6]),
-            ],
-            axis=0,
-        )
-    )
-    ellipticityIndices2 = np.where(
-        np.all(
-            [
-                np.any([spots2["b"] / spots2["a"] < ellip, spots2["b"] / spots2["a"] > 1 / ellip], axis=0),
-                spots2["npix"] < nmin,
-            ],
-            axis=0,
-        )
-    )
+        res_slice["flags"][edgeIndices] += SourceDetectionFlag.EDGE
+        res_slice["flags"][ellipticityIndices] += SourceDetectionFlag.BAD_ELLIP
 
-    result["image_moment_00_pix"][nSpots1:nElem] = spots2["flux"]
-    result["centroid_x_pix"][nSpots1:nElem] = spots2["x"] + region[4]
-    result["centroid_y_pix"][nSpots1:nElem] = spots2["y"] + region[6]
-    result["central_image_moment_20_pix"][nSpots1:nElem] = spots2["x2"]
-    result["central_image_moment_11_pix"][nSpots1:nElem] = spots2["xy"]
-    result["central_image_moment_02_pix"][nSpots1:nElem] = spots2["y2"]
-    result["peak_pixel_x_pix"][nSpots1:nElem] = spots2["xpeak"] + region[4]
-    result["peak_pixel_y_pix"][nSpots1:nElem] = spots2["ypeak"] + region[6]
-    result["peak_intensity"][nSpots1:nElem] = spots2["peak"]
-    result["background"][nSpots1:nElem] = background2[spots2["ypeak"], spots2["xpeak"]]
-    # set flag for right half of image
-
-    result["flags"][nSpots1:nElem] += SourceDetectionFlag.RIGHT
-
-    result["flags"][nSpots1:nElem][edgeIndices2] += SourceDetectionFlag.EDGE
-    result["flags"][nSpots1:nElem][ellipticityIndices2] += SourceDetectionFlag.BAD_ELLIP
+        start_idx = end_idx
 
     # determine saturation off the unprocessed data
-    satValue = np.zeros((len(result)))
-    satValue[0:nSpots1] = np.repeat(satValue1, nSpots1)
-    satValue[nSpots1:nElem] = np.repeat(satValue2, nSpots2)
+    satValue = np.concatenate([
+        np.repeat(satValue1, nSpots_list[0]),
+        np.repeat(satValue2, nSpots_list[1]),
+    ])
 
     satFlag = data[result["peak_pixel_y_pix"], result["peak_pixel_x_pix"]] >= satValue
 
@@ -335,40 +323,30 @@ def getCentroidsSep(data, instrumentParams: dict, centroidParams: dict, spotDtyp
     # subract the background
 
     tempData = processedData.copy()
-    tempData[region[2] : region[3], region[0] : region[1]] -= background1
-    tempData[region[6] : region[7], region[4] : region[5]] -= background2
+    for side, (x0, x1, y0, y1) in enumerate(half_regions):
+        tempData[y0:y1, x0:x1] -= backgrounds[side]
 
-    m20 = []
-    m02 = []
-    m11 = []
-
-    flags = []
+    non_conv_count = 0
     for i in range(len(result)):
         yPos = result["centroid_x_pix"][i]
         xPos = result["centroid_y_pix"][i]
 
         xv, yv, xyv, conv = windowedFWHM(
-            tempData, yPos, xPos, region, result["flags"][i] & 1, boxSize=boxSize
+            tempData, yPos, xPos, region, result["flags"][i] & SourceDetectionFlag.RIGHT, boxSize=boxSize
         )
 
-        # if the moment didn't converge, revert to the unweighted second moment and set flags
+        # if the moment converged, update values. otherwise keep unweighted ones and add flag.
         if conv == 0:
-            m20.append(xv)
-            m02.append(yv)
-            m11.append(xyv)
+            result["central_image_moment_20_pix"][i] = xv
+            result["central_image_moment_02_pix"][i] = yv
+            result["central_image_moment_11_pix"][i] = xyv
         else:
-            m02.append(result["central_image_moment_02_pix"][i])
-            m20.append(result["central_image_moment_20_pix"][i])
-            m11.append(result["central_image_moment_11_pix"][i])
+            result["flags"][i] += conv
+            non_conv_count += 1
 
-        # add flag for non converged sources
-        flags.append(conv)
+    if non_conv_count > 0:
+        logger.info(f"AGC camera {agcid + 1}: {non_conv_count} spots failed FWHM moment convergence")
 
-    # and update the values
-    result["central_image_moment_20_pix"] = np.array(m20)
-    result["central_image_moment_02_pix"] = np.array(m02)
-    result["central_image_moment_11_pix"] = np.array(m11)
-    result["flags"] = result["flags"] + np.array(flags)
     logger.debug(f"Calculating Magnitude: exptime = {centroidParams['expTime']}")
     result["estimated_magnitude"] = calculateApproximateMagnitude(
         instrumentParams, result["image_moment_00_pix"], centroidParams["expTime"]
