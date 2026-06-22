@@ -26,6 +26,8 @@ class AgccCmd(object):
             The owning :class:`AgccActor` instance.
         """
         # This lets us access the rest of the actor.
+        self.instrumentalParams = None
+        self.centroidingParams = None
         self.actor = actor
 
         # Declare the commands we implement. When the actor is started
@@ -276,7 +278,7 @@ class AgccCmd(object):
             f"{centroid=} {cMethod=} {threadDelay=} {tecOFF=}"
         )
 
-        magFit = self.iParms["magFit"]
+        magFit = self.instrumentalParams["magFit"]
         cmd.inform(f'text="read magFit = {magFit}"')
 
         cams = []
@@ -304,9 +306,9 @@ class AgccCmd(object):
             combined,
             centroid,
             visit,
-            self.cParms,
+            self.centroidingParams,
             cMethod,
-            self.iParms,
+            self.instrumentalParams,
             threadDelay=threadDelay,
             tecOFF=tecOFF,
         )
@@ -575,11 +577,11 @@ class AgccCmd(object):
             defaults. If ``None``, defaults are loaded without a reply.
         """
 
-        self.cParms, self.iParms = centroid.getParams(cmd)
+        self.centroidingParams, self.instrumentalParams = centroid.getParams(cmd)
         if cmd is not None:
-            thresh = self.cParms["thresh"]
-            deblend = self.cParms["deblend"]
-            nmin = self.cParms["nmin"]
+            thresh = self.centroidingParams["thresh"]
+            deblend = self.centroidingParams["deblend"]
+            nmin = self.centroidingParams["nmin"]
             cmd.finish(
                 f'text="Parameters reloaded. Centroid thresh/deblend/nmin = {thresh}/{deblend}/{nmin}"'
             )
