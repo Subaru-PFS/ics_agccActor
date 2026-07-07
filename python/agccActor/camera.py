@@ -54,7 +54,7 @@ class Camera(object):
         self.temp = temp
 
         if simulator == 0:
-            from agccActor.fli import fli_camera
+            from fli import fli_camera
             fli_camera.CameraInit()
 
             # Put available cameras in a dict by serial number.
