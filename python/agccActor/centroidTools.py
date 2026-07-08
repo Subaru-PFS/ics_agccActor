@@ -311,6 +311,7 @@ def windowedFWHM(data,xPos,yPos,region,side):
     e1_old=1e6
     e2_old=1e6
     sx_o=1e6
+    sy_o=1e6
     tol1=0.001
     tol2=0.01
 
@@ -325,8 +326,8 @@ def windowedFWHM(data,xPos,yPos,region,side):
     # part of the full image
     if(side == 0):
         # check for edges of image
-        dMinX = np.max([dMinX1,region[2]])
-        dMinY = np.max([dMinY1,region[0]])
+        dMinX = np.max([dMinX1,region[0]])
+        dMinY = np.max([dMinY1,region[2]])
         dMaxX = np.min([dMaxX1,region[1]])
         dMaxY = np.min([dMaxY1,region[3]])
     elif(side == 1):
@@ -374,7 +375,8 @@ def windowedFWHM(data,xPos,yPos,region,side):
 
 
         # check for convergence
-        if(np.all([np.abs(e1-e1_old) < tol1, np.abs(e2-e2_old) < tol1, np.abs(sx/sx_o - 1) < tol2])):
+        if np.all([np.abs(e1 - e1_old) < tol1, np.abs(e2 - e2_old) < tol1,
+                   np.abs(sx / sx_o - 1) < tol2, np.abs(sy / sy_o - 1) < tol2]):
             if(np.any([sxow <= 0, syow <= 0])):
                 return weightedMoment(winVal, xv, yv, w11, w12, w22)
             else:
@@ -385,8 +387,9 @@ def windowedFWHM(data,xPos,yPos,region,side):
         e1_old=e1
         e2_old=e2
         sx_o = sx
+        sy_o = sy
 
-        detow = sxow*syow-sxy**2
+        detow = sxow*syow-sxyow**2
         ow11 = syow/detow
         ow12 = -sxyow/detow
         ow22 = sxow/detow
@@ -407,7 +410,7 @@ def windowedFWHM(data,xPos,yPos,region,side):
             return weightedMoment(winVal, xv, yv, w11, w12, w22)
 
     # if we haven't converged return new values
-    return sy, sx, sxy, SourceDetectionFlag.BAD_SHAPE
+    return sx, sy, sxy, SourceDetectionFlag.BAD_SHAPE
 
 def weightedMoment(winVal, xv, yv, w11, w12, w22):
 
