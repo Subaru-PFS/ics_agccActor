@@ -7,7 +7,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased] — tickets/INSTRM-2935
+## [Unreleased] — libfli EUPS build support
+
+### Changed
+
+- **EUPS build now builds vendored `libfli` explicitly** — `ups/eupspkg.cfg.sh`
+  now defines a `build()` phase that runs `make -C c/libfli-1.999.1-180223
+  libfli.a`, ensuring the static FLI C library is available before the
+  `agccActor.fli.fli_camera` Cython extension is installed.
+- **EUPS install now uses the modern Python build path** — the EUPS `install()`
+  phase installs the package with `pip install . --prefix="$PREFIX" --no-deps
+  --no-build-isolation`, so the setuptools/Cython extension build declared in
+  `pyproject.toml` is used instead of the old SCons-based path.
+- **EUPS Python path bridge added** — after pip installation, `ups/eupspkg.cfg.sh`
+  now automatically discovers the versioned `lib/python3.X/site-packages`
+  directory and creates a `$PREFIX/lib/python` symlink pointing to it. This
+  preserves the legacy EUPS runtime layout (which expects code in `lib/python`)
+  while allowing pip/setuptools to install into standard versioned
+  site-packages.
+- **Packaging metadata simplified for setuptools builds** — `pyproject.toml`
+  cleanup supports the EUPS/pip build path, including normalized package
+  discovery and retaining `ups/ics_agccActor.table` as an EUPS-required
+  `data-files` install.
+
+### Removed
+
+- **SCons EUPS build support** — removed the obsolete `SConstruct` and
+  `ups/ics_agccActor.cfg` files. The EUPS build now goes through
+  `ups/eupspkg.cfg.sh`, the vendored `libfli` Makefile, and the modern
+  `pyproject.toml`/setuptools build.
+
 
 ### Fixed
 

@@ -188,7 +188,9 @@ The actor config (camera serial numbers, TEC temperature, simulator flag, DB con
   - `PFS_INSTDATA_DIR` — path to `pfs_instdata` product, needed to read `agcc.yaml`
   - `ICS_MHS_DATA_ROOT` — data output root (referenced in `expose.py`; `writeFits.py` currently hardcodes `/data/raw`)
 - **Version**: Managed by `lsst-versions`; written to `python/agccActor/version.py` at build time via `[tool.lsst_versions]` in `pyproject.toml`.
-- **EUPS/ups**: The `ups/ics_agccActor.table` file declares EUPS dependencies (`ics_actorkeys`, `tron_actorcore`, `pfs_utils`). This is the legacy EUPS build system used at Subaru alongside the modern `pyproject.toml`.
+- **EUPS/ups**: The `ups/` directory contains EUPS build and dependency configuration.
+  - `ups/ics_agccActor.table` declares EUPS dependencies (`ics_actorkeys`, `tron_actorcore`, `pfs_utils`).
+  - `ups/eupspkg.cfg.sh` overrides the EUPS build/install phases to build the vendored `libfli` and use `pip` for the Python package installation, bridging the modern site-packages layout back to the legacy EUPS `PYTHONPATH` via a symlink.
 
 ## Import Conventions and Gotchas
 

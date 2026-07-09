@@ -39,7 +39,9 @@ The actor is part of the PFS Instrument Control Software (ICS) stack and is depl
 ├── tests/                     # Automated test suite (pytest; see Testing below)
 │   └── data/run28/            # Real hardware FITS + CSV fixtures (Git LFS)
 ├── .github/workflows/         # GitHub Actions CI (tests + coverage)
-├── ups/ics_agccActor.table    # Legacy EUPS dependency declaration
+├── ups/                       # EUPS build and dependency configuration
+│   ├── ics_agccActor.table    # EUPS table file
+│   └── eupspkg.cfg.sh         # EUPS build/install overrides (modern pip build)
 ├── pyproject.toml             # Python build / lint / version config (Cython ext too; pytest config)
 ├── uv.lock                    # uv lockfile
 ├── AGENTS.md                  # Agent / contributor reference
@@ -109,6 +111,18 @@ Or use the convenience script: `./scripts/build_fli.sh [--test]`
 ```bash
 python -c "from agccActor.fli import fli_camera; print('OK')"
 ```
+
+### EUPS Build (Subaru internal)
+
+On Subaru production machines, the actor is built and installed using EUPS:
+
+```bash
+pfsinstall ics_agccActor 2.2.1
+```
+
+The `ups/eupspkg.cfg.sh` script is called as part of this process and automates 
+the `libfli` build and handles the standard Python package installation via `pip`, 
+ensuring compatibility with the legacy EUPS `PYTHONPATH` layout.
 
 > **Note:** `optional = true` in `pyproject.toml` means `pip install`
 > silently succeeds even if the extension fails to compile. Always run

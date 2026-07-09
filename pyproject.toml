@@ -3,8 +3,7 @@ requires = [
     "setuptools >= 77.0.3",
     "lsst-versions",
     "Cython",
-    "numpy",
-    "wheel",
+    "numpy",  # Keeping this is safe if Cython relies on it during generation
 ]
 build-backend = "setuptools.build_meta"
 
@@ -52,7 +51,7 @@ dev = [
 "Changelog" = "https://github.com/Subaru-PFS/ics_agccActor/blob/master/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-where = ["python/"]
+where = ["python"]
 include = ["agccActor", "agccActor.*"]
 
 [[tool.setuptools.ext-modules]]
@@ -66,6 +65,7 @@ library-dirs = ["c/libfli-1.999.1-180223"]
 libraries = ["fli", "usb-1.0"]
 optional = true
 
+# EUPS requires data-files, don't change to package_data.
 [tool.setuptools.data-files]
 "ups" = ["ups/ics_agccActor.table"]
 
@@ -126,6 +126,3 @@ disallow_untyped_defs = false
 disallow_incomplete_defs = false
 no_implicit_optional = false
 strict_optional = false
-
-[tool.hatch.metadata]
-allow-direct-references = true
