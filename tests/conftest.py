@@ -100,7 +100,7 @@ except ModuleNotFoundError:
     _ag_stub = types.ModuleType("pfs.utils.datamodel.ag")
     _SourceDetectionFlag = enum.IntFlag(
         "SourceDetectionFlag",
-        ["EDGE", "BAD_ELLIP", "RIGHT", "SATURATED", "FLAT_TOP", "BAD_SHAPE"],
+        ["EDGE", "BAD_ELLIP", "RIGHT", "SATURATED", "BAD_SHAPE"],
     )
     _ag_stub.SourceDetectionFlag = _SourceDetectionFlag
     _ag_stub.SourceDetectionFlags = _SourceDetectionFlag  # plural alias

@@ -32,6 +32,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Removed
 
+- **Flat-top flag** (INSTRM-2586) — `centroid.py` no longer sets `FLAT_TOP` (bit 0x20) or
+  reads `flatVal` from `agcc.yaml`; the test caught nothing that `SATURATED` misses (69% of
+  flat-top spots were already saturated, the rest faint spots that never matched a guide
+  star). `SATURATED` is unchanged; `flatVal` is dropped from `pfs_instdata`'s `agcc.yaml`.
 - **SCons EUPS build support** — removed the obsolete `SConstruct` and
   `ups/ics_agccActor.cfg` files. The EUPS build now goes through
   `ups/eupspkg.cfg.sh`, the vendored `libfli` Makefile, and the modern

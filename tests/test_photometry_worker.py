@@ -114,7 +114,6 @@ def _minimal_iParms(agcid: int = 0) -> dict:
             "satVal1": 65535,
             "satVal2": 65535,
         },
-        "flatVal": 0.006,
         "magFit": [0.928, 27.389],
     }
 
