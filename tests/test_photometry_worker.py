@@ -155,6 +155,24 @@ def test_measure_with_synthetic_image():
 
     assert result is not None
     assert len(result) >= 1, "Expected at least one detected spot in the synthetic image"
+    # INSTRM-2586: centroiding needs no flatVal and never sets the retired FLAT_TOP bit.
+    assert "flatVal" not in _minimal_iParms(0)
+    assert np.all(result["flags"] & 0x20 == 0)
+
+
+def test_measure_clipped_star_is_saturated_not_flat_top():
+    """A star clipped at full well gets SATURATED (0x04) only: the flat-top test is gone (INSTRM-2586)."""
+    img = _gaussian_image()
+    # Clip the core: the profile is flat over +-5 pixels, exactly what FLAT_TOP used to catch.
+    img[33:48, 33:48] = 65535
+    result = photometry.measure(
+        img, agcid=0, cParms=_minimal_cParms(), iParms=_minimal_iParms(0), cMethod="sep"
+    )
+
+    assert result is not None and len(result) >= 1
+    assert np.all(result["flags"] & 0x20 == 0)
+    # Negative control: the flags column is live, the clipped star is SATURATED.
+    assert np.any(result["flags"] & 0x04)
 
 
 def test_measure_output_dtype():

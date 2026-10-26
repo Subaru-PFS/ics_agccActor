@@ -98,9 +98,19 @@ except ModuleNotFoundError:
     _ensure_stub("pfs.utils.datamodel")
 
     _ag_stub = types.ModuleType("pfs.utils.datamodel.ag")
+    # Same bit values as pfs.utils.datamodel.ag.SourceDetectionFlags: centroid.py
+    # tests ``flags & 1`` for RIGHT, and FLAT_TOP (0x20) is retired but still decodes.
     _SourceDetectionFlag = enum.IntFlag(
         "SourceDetectionFlag",
-        ["EDGE", "BAD_ELLIP", "RIGHT", "SATURATED", "BAD_SHAPE"],
+        {
+            "RIGHT": 0x01,
+            "EDGE": 0x02,
+            "SATURATED": 0x04,
+            "BAD_SHAPE": 0x08,
+            "BAD_ELLIP": 0x10,
+            "FLAT_TOP": 0x20,
+            "BAD_SIZE": 0x40,
+        },
     )
     _ag_stub.SourceDetectionFlag = _SourceDetectionFlag
     _ag_stub.SourceDetectionFlags = _SourceDetectionFlag  # plural alias
