@@ -166,7 +166,7 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     """Run SEP-based centroiding on an AG camera image.
 
     Both halves (left and right regions) defined in ``iParms`` are
-    processed independently. Edge, ellipticity, saturation, flat-top and
+    processed independently. Edge, ellipticity, saturation and
     non-convergence flags are accumulated, and final windowed second
     moments and estimated magnitudes are filled in.
 
@@ -176,8 +176,8 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
         2-D raw image from one AG camera.
     iParms : dict
         Per-camera instrumental parameters; must contain the camera's
-        ``reg``, ``badCols``, ``satVal1``/``satVal2`` (optional),
-        ``flatVal`` and ``magFit`` entries.
+        ``reg``, ``badCols``, ``satVal1``/``satVal2`` (optional) and
+        ``magFit`` entries.
     cParms : dict
         Centroiding parameters: ``thresh``, ``minarea``, ``deblend``,
         ``ellip``, ``nmin``, ``expTime``.
@@ -206,7 +206,6 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     except (KeyError, IndexError):
         satValue1 = (2 ** 16) - 1
         satValue2 = (2 ** 16) - 1
-    flatVal = iParms["flatVal"]
 
     dataProc = subOverscan(data.astype("float"))
     dataProc = interpBadCol(dataProc, iParms[str(agcid + 1)]["badCols"])
@@ -311,28 +310,6 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     satFlag = data[result["peak_pixel_y_pix"], result["peak_pixel_x_pix"]] >= satValue
 
     result["flags"] += satFlag * SourceDetectionFlag.SATURATED
-
-    # check for flat sources
-
-    yPos = result["centroid_x_pix"][:].astype("int")
-    xPos = result["centroid_y_pix"][:].astype("int")
-
-    # for edges of image
-
-    xMin = xPos.copy() - 5
-    xMax = xPos.copy() + 5
-
-    ind = np.where(xMin < 0)
-    xMin[ind] = 0
-
-    ind = np.where(xMax >= data.shape[0])
-    xMax[ind] = data.shape[0] - 1
-
-    # diagnostic for flat topped sources
-    diag = np.array([data[xPos, yPos] - data[xMin, yPos], data[xPos, yPos] - data[xMax, yPos]]).min(axis=0)
-    diag = diag / data[xPos, yPos]
-    ind = np.where(diag < flatVal)
-    result["flags"][:][ind] += SourceDetectionFlag.FLAT_TOP
 
     # calculate more reasonable FWHMs
 
