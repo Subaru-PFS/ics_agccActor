@@ -325,7 +325,7 @@ class TestCameraCommands:
 
     @pytest.fixture
     def minimal_iParms(self):
-        base = {"flatVal": 0.006, "magFit": [0.928, 27.389]}
+        base = {"magFit": [0.928, 27.389]}
         for n in range(1, 7):
             base[str(n)] = {
                 "reg": [0, 80, 0, 80, 80, 160, 0, 80],

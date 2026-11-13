@@ -34,7 +34,24 @@ pytestmark = pytest.mark.real_data
 # Module-level paths (resolved relative to the project root)
 # ---------------------------------------------------------------------------
 _REPO_ROOT = Path(__file__).parent.parent
-_RUN28_DIR = _REPO_ROOT / "images" / "run28"
+
+
+def _resolve_run28_dir() -> Path:
+    """The committed Git LFS fixtures, or the developer ``images/run28`` symlink.
+
+    ``tests/data/run28`` holds LFS pointer files until ``git lfs pull`` has run;
+    those are skipped like a missing directory.
+    """
+    lfs_dir = _REPO_ROOT / "tests" / "data" / "run28"
+    probe = lfs_dir / "agcc_143362_01043046.fits"
+    if probe.is_file():
+        with open(probe, "rb") as f:
+            if not f.read(40).startswith(b"version https://git-lfs"):
+                return lfs_dir
+    return _REPO_ROOT / "images" / "run28"
+
+
+_RUN28_DIR = _resolve_run28_dir()
 _RUN28_FITS = _RUN28_DIR / "agcc_143362_01043046.fits"
 _RUN28_FITS_ALL = [_RUN28_DIR / f"agcc_143362_0104304{i}.fits" for i in range(6, 10)]
 _DETECTED_CSV = _RUN28_DIR / "1671605105044996096-detected.csv"
@@ -43,7 +60,7 @@ _DETECTED_CSV = _RUN28_DIR / "1671605105044996096-detected.csv"
 def _skip_if_missing():
     """Called at top of each test so the skip reason is specific."""
     if not _RUN28_DIR.is_dir():
-        pytest.skip("images/run28/ not available")
+        pytest.skip("run28 fixtures not available: run `git lfs pull` or link images/run28/")
     if not os.environ.get("PFS_INSTDATA_DIR"):
         pytest.skip("PFS_INSTDATA_DIR not set")
 
