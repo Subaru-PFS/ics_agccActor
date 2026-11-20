@@ -9,6 +9,14 @@ from pfs.utils.datamodel.ag import SourceDetectionFlag
 logger = logging.getLogger("agcc")
 logger.setLevel(logging.INFO)
 
+# The aperture photometry behind ``estimated_magnitude``, where agcc.yaml's cameraParams has
+# no ``aperturePhotometry`` entry (``radius``, ``zeroPoint``). The radius (pixels) holds about
+# 95% of a star's light. The zero point makes the magnitude agree, for a star of magnitude 16,
+# with the one stored before from the isophotal flux; it is nominal and stays fixed: the
+# calibration (per camera, colour, per run) is applied by the readers of the opdb.
+APERTURE_RADIUS_PIX = 12.0
+APERTURE_ZERO_POINT = 28.26
+
 
 def getCentroidParams(cmd) -> dict:
     """Read the centroiding parameters from the actor configuration file.
@@ -216,6 +224,19 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     spots1, nSpots1, background1 = centroidRegion(_data1, thresh, minarea, deblend=deblend)
     spots2, nSpots2, background2 = centroidRegion(_data2, thresh, minarea, deblend=deblend)
 
+    # The flux of each spot in a fixed aperture, for the magnitude. centroidRegion has subtracted
+    # the background from _data1 and _data2. A failure here must not cost the exposure its
+    # centroids: the magnitude then comes from the isophotal flux, as it did before.
+    apertureZeroPoint = APERTURE_ZERO_POINT
+    try:
+        apertureRadius, apertureZeroPoint = getAperturePhotometryParams(iParms)
+        apertureFlux = np.concatenate(
+            [apertureFluxes(_data1, spots1, apertureRadius), apertureFluxes(_data2, spots2, apertureRadius)]
+        )
+    except Exception as e:
+        logger.warning(f"AG{agcid + 1}: aperture photometry failed, storing the isophotal magnitude: {e}")
+        apertureFlux = None
+
     nElem = nSpots1 + nSpots2
 
     result = np.zeros(nElem, dtype=spotDtype)
@@ -349,9 +370,14 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     result["central_image_moment_11_pix"] = np.array(m11)
     result["flags"] = result["flags"] + np.array(flags)
     logger.debug(f"Calculating Magnitude: exptime = {cParms['expTime']}")
-    result["estimated_magnitude"] = calculateApproximateMagnitude(
-        iParms, result["image_moment_00_pix"], cParms["expTime"]
-    )
+    if apertureFlux is not None:
+        result["estimated_magnitude"] = calculateApertureMagnitude(
+            apertureFlux, cParms["expTime"], apertureZeroPoint
+        )
+    else:
+        result["estimated_magnitude"] = calculateApproximateMagnitude(
+            iParms, result["image_moment_00_pix"], cParms["expTime"]
+        )
 
     return result
 
@@ -537,10 +563,99 @@ def weightedMoment(winVal, xv, yv, w11: float, w12: float, w22: float):
     return sx, sy, sxy, SourceDetectionFlag.BAD_SHAPE
 
 
-def calculateApproximateMagnitude(iParms: dict, instrumentFlux, expTime: float):
-    """Estimate an approximate Gaia magnitude from instrumental flux.
+def getAperturePhotometryParams(iParms: dict) -> tuple[float, float]:
+    """Return the aperture radius (pixels) and zero point (mag) for ``estimated_magnitude``.
 
-    Uses the linear ``magFit = (slope, offset)`` coefficients stored in
+    Parameters
+    ----------
+    iParms : dict
+        Instrumental parameters; ``aperturePhotometry`` (``radius``, ``zeroPoint``) is
+        optional, and each value missing from it is `APERTURE_RADIUS_PIX` or
+        `APERTURE_ZERO_POINT`. So is a value that is not a finite number, or a radius that
+        is not positive, with a warning: agcc.yaml is read again at every exposure, and a
+        slip in it must not cost the magnitudes.
+    """
+    params = iParms.get("aperturePhotometry")
+    if not isinstance(params, dict):
+        if params is not None:
+            logger.warning(f"aperturePhotometry in agcc.yaml is not a mapping ({params!r}): using defaults")
+        params = {}
+    values = []
+    for key, default, mustBePositive in (
+        ("radius", APERTURE_RADIUS_PIX, True),
+        ("zeroPoint", APERTURE_ZERO_POINT, False),
+    ):
+        value = default
+        if key in params:
+            try:
+                value = float(params[key])
+            except (TypeError, ValueError):
+                value = float("nan")
+            if not np.isfinite(value) or (mustBePositive and value <= 0):
+                logger.warning(
+                    f"aperturePhotometry.{key} in agcc.yaml is {params[key]!r}: using the default, {default}"
+                )
+                value = default
+        values.append(value)
+    return values[0], values[1]
+
+
+def apertureFluxes(data, spots, radius: float):
+    """Sum each spot's flux in a circular aperture about its centroid.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        2-D background-subtracted image region the spots were found in.
+    spots : numpy.ndarray
+        The spots, as returned by ``sep.extract`` (``x``, ``y`` in the region).
+    radius : float
+        Aperture radius in pixels.
+
+    Returns
+    -------
+    numpy.ndarray
+        The flux of each spot. An aperture reaching past the region is summed over the part
+        inside it.
+    """
+    if len(spots) == 0:
+        return np.zeros(0)
+    flux, _, _ = sep.sum_circle(data, spots["x"], spots["y"], radius)
+    return flux
+
+
+def calculateApertureMagnitude(apertureFlux, expTime: float, zeroPoint: float):
+    """Return the instrumental magnitude of spots from their aperture flux.
+
+    ``-2.5 log10(flux / expTime) + zeroPoint``: linear in the star's light, unlike a magnitude
+    from the isophotal flux (`calculateApproximateMagnitude`), which holds a smaller share of a
+    fainter star's light.
+
+    Parameters
+    ----------
+    apertureFlux : numpy.ndarray
+        Flux in the aperture (`apertureFluxes`).
+    expTime : float
+        Exposure time in seconds.
+    zeroPoint : float
+        Zero point (mag).
+
+    Returns
+    -------
+    numpy.ndarray
+        The magnitudes; NaN where the flux is not positive.
+    """
+    flux = np.asarray(apertureFlux, dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(flux > 0, -2.5 * np.log10(flux / expTime) + zeroPoint, np.nan)
+
+
+def calculateApproximateMagnitude(iParms: dict, instrumentFlux, expTime: float):
+    """Estimate an approximate Gaia magnitude from the isophotal flux.
+
+    What ``estimated_magnitude`` held before the aperture magnitude
+    (`calculateApertureMagnitude`), and still does for an exposure whose aperture photometry
+    fails. Uses the linear ``magFit = (slope, offset)`` coefficients stored in
     ``iParms`` applied to ``-2.5 * log10(flux / expTime)``.
 
     Parameters
