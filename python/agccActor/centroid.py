@@ -359,6 +359,10 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
 def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
     """Compute iteratively-weighted second moments around a position.
 
+    The moments are measured under a Gaussian weight that is iterated until
+    it matches the spot (adaptive moments). On convergence the moments of
+    that weight are returned: the spot's covariance, for a Gaussian spot.
+
     If the point is near the edge of the region the sub-image is cropped
     accordingly; the fit is still attempted but may produce poor results.
     If the fit yields a non-positive determinant or size, or if the
@@ -380,7 +384,9 @@ def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
     Returns
     -------
     sx, sy, sxy : float
-        Weighted second moments (xx, yy, xy).
+        Second moments (xx, yy, xy), pix^2: those of the converged weight.
+        When ``flag`` is set they are not a measurement of the spot (a
+        single weighted pass, or the last weight tried): discard them.
     flag : int
         ``0`` on convergence, ``SourceDetectionFlag.BAD_SHAPE`` otherwise.
     """
@@ -463,7 +469,10 @@ def windowedFWHM(data, xPos: float, yPos: float, region, side: int):
             if np.any([sxow <= 0, syow <= 0]):
                 return weightedMoment(winVal, xv, yv, w11, w12, w22)
             else:
-                return sxow, syow, sxyow, 0
+                # The moments of the weight, which now matches the spot. The weighted
+                # moments of this pass (sxow, syow, sxyow) are those of the spot times
+                # the weight: half the spot's variance for a Gaussian.
+                return sx, sy, sxy, 0
 
         # calculate new values
         e1_old = e1

@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.3.0] — 2026-11-19
+
+### Fixed
+
+- **Second moments are the spot's variance** (INSTRM-3114) — `windowedFWHM` returns the
+  moments of its converged weight, not the weighted moments of its last pass, which are half
+  the spot's variance. `central_image_moment_20_pix`, `_02_pix` and `_11_pix` of every spot
+  without `BAD_SHAPE` are therefore twice what they were (within 0.1% on synthetic Moffat
+  spots with noise), in `agc_data` and in the FITS tables. `BAD_SHAPE` spots are unchanged:
+  they keep SEP's unweighted moments, already about the variance, so the columns no longer mix
+  two scales. **Deploy ics_agActor 1.1.86 first, or at the same time**: it reads
+  `version_actor` and works with moments on either scale, while an older ics_agActor doubles the
+  slope term of its focus error and sends a spot size sqrt(2) too large.
+
+### Changed
+
+- **`agc_exposure` records real versions** (INSTRM-3114) — `version_actor` and
+  `version_instdata` hold the versions of `ics_agccActor` and `pfs_instdata` from
+  `pfs.utils.versions.getVersion` (git description of a checkout, else the EUPS version),
+  looked up once when the actor starts; `"unknown"` if a lookup fails or gives `"git"`.
+  Restart the actor after changing `pfs_instdata` under it: `agcc.yaml` is re-read at each
+  exposure, the version is not. Both columns were the literal `"git"`, which now marks the
+  exposures from before this release: half the variance since the adaptive moments came into
+  use (no spot is flagged `BAD_SHAPE` before exposure 174776, 2023-04-20), SEP's unweighted
+  moments before that.
+
 ---
 
 ## [2.2.0] — 2026-11-13
