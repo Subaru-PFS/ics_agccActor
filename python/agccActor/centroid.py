@@ -227,8 +227,9 @@ def getCentroidsSep(data, iParms: dict, cParms: dict, spotDtype, agcid: int):
     # The flux of each spot in a fixed aperture, for the magnitude. centroidRegion has subtracted
     # the background from _data1 and _data2. A failure here must not cost the exposure its
     # centroids: the magnitude then comes from the isophotal flux, as it did before.
-    apertureRadius, apertureZeroPoint = getAperturePhotometryParams(iParms)
+    apertureZeroPoint = APERTURE_ZERO_POINT
     try:
+        apertureRadius, apertureZeroPoint = getAperturePhotometryParams(iParms)
         apertureFlux = np.concatenate(
             [apertureFluxes(_data1, spots1, apertureRadius), apertureFluxes(_data2, spots2, apertureRadius)]
         )
@@ -570,13 +571,33 @@ def getAperturePhotometryParams(iParms: dict) -> tuple[float, float]:
     iParms : dict
         Instrumental parameters; ``aperturePhotometry`` (``radius``, ``zeroPoint``) is
         optional, and each value missing from it is `APERTURE_RADIUS_PIX` or
-        `APERTURE_ZERO_POINT`.
+        `APERTURE_ZERO_POINT`. So is a value that is not a finite number, or a radius that
+        is not positive, with a warning: agcc.yaml is read again at every exposure, and a
+        slip in it must not cost the magnitudes.
     """
-    params = iParms.get("aperturePhotometry") or {}
-    return (
-        float(params.get("radius", APERTURE_RADIUS_PIX)),
-        float(params.get("zeroPoint", APERTURE_ZERO_POINT)),
-    )
+    params = iParms.get("aperturePhotometry")
+    if not isinstance(params, dict):
+        if params is not None:
+            logger.warning(f"aperturePhotometry in agcc.yaml is not a mapping ({params!r}): using defaults")
+        params = {}
+    values = []
+    for key, default, mustBePositive in (
+        ("radius", APERTURE_RADIUS_PIX, True),
+        ("zeroPoint", APERTURE_ZERO_POINT, False),
+    ):
+        value = default
+        if key in params:
+            try:
+                value = float(params[key])
+            except (TypeError, ValueError):
+                value = float("nan")
+            if not np.isfinite(value) or (mustBePositive and value <= 0):
+                logger.warning(
+                    f"aperturePhotometry.{key} in agcc.yaml is {params[key]!r}: using the default, {default}"
+                )
+                value = default
+        values.append(value)
+    return values[0], values[1]
 
 
 def apertureFluxes(data, spots, radius: float):

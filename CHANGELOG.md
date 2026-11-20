@@ -20,10 +20,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   matches the earlier magnitude for a star of magnitude 16) and is meant to stay fixed;
   calibration is for the readers of the opdb. Against the earlier value on those images: within
   0.03 mag from magnitude 15 to 19, 0.09 mag brighter at 13 to 15, 0.15 at 19 to 20 and 0.6
-  beyond 20. A spot with no positive aperture flux gets NaN. If the aperture step fails for
-  a camera image, the centroids are still written, with the earlier magnitude (`magFit`),
-  and a warning is logged. Exposures from this release are those whose
-  `agc_exposure.version_actor` names it. Nothing else changes: `image_moment_00_pix` is still
+  beyond 20. A spot with no positive aperture flux gets NaN, which is NULL in `agc_data`
+  (none of 3,094 real spots). Two stars closer than the aperture each read too bright (by
+  0.4 mag at 12 pixels for an equal pair; 0.8% of the spots on those images have a neighbour
+  that close), and nothing flags them: cut on the distance to the nearest spot where it
+  matters. If the aperture step fails for a camera image, the centroids are still written,
+  with the earlier magnitude (`magFit`), and a warning goes to the actor's log file only;
+  such rows are not marked, but equal `0.928 x -2.5 log10(image_moment_00_pix / agc_exptime)
+  + 27.389` exactly. A value in `aperturePhotometry` that is not a finite number, or a radius
+  that is not positive, is replaced by its default with a warning, since `agcc.yaml` is read
+  again at every exposure. The photometry workers load this code when the actor starts:
+  restart the actor, `reloadCamera` is not enough. Exposures from this release are those
+  whose `agc_exposure.version_actor` names it. Nothing else changes: `image_moment_00_pix` is still
   the isophotal flux, and positions, moments and flags are the same (identical on 3,094 spots
   of 60 camera images); the step adds under 1 ms per camera image.
 
