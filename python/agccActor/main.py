@@ -4,7 +4,7 @@ from importlib import reload
 
 from actorcore.Actor import Actor
 
-from agccActor import camera
+from agccActor import camera, database
 
 
 class AgccActor(Actor):
@@ -38,6 +38,11 @@ class AgccActor(Actor):
 
         # We will actually use a allocator with "global" sequencing
         self.exposureID = 0
+
+        # Look the versions written to agc_exposure up now, so the first exposure does not wait for them.
+        versionActor = database.getProductVersion("ics_agccActor")
+        versionInstdata = database.getProductVersion("pfs_instdata")
+        self.logger.info(f"agc_exposure versions: actor={versionActor} instdata={versionInstdata}")
 
         self.connectCamera(self.bcast, self.actorConfig)
 

@@ -1,12 +1,48 @@
 import datetime
+import functools
 import logging
 
 import numpy as np
 import pandas as pd
+from pfs.utils import versions
 from pfs.utils.database import opdb
 
 logger = logging.getLogger("agcc")
 logger.setLevel(logging.INFO)
+
+# What agc_exposure.version_actor and version_instdata held before versions were recorded.
+LEGACY_VERSION = "git"
+
+
+@functools.cache
+def getProductVersion(product: str) -> str:
+    """Return the version of an EUPS product, for the ``agc_exposure`` row.
+
+    The version ``pfs.utils.versions.getVersion`` gives: the git description of the
+    product's directory if it is a checkout, else its EUPS version. It is looked up once
+    per process, found or not: restart the actor to record a product updated underneath it.
+
+    Parameters
+    ----------
+    product : str
+        The EUPS product name, e.g. ``"ics_agccActor"`` or ``"pfs_instdata"``.
+
+    Returns
+    -------
+    str
+        The version, or ``"unknown"`` if the lookup fails. A failure is logged and never
+        raised: it must not stop an exposure. Never the literal ``"git"``, which is what
+        this actor wrote before it recorded versions and how readers know those exposures.
+    """
+    try:
+        version = versions.getVersion(product)
+    except Exception as e:
+        logger.warning(f"Could not find the version of {product}, recording it as unknown: {e}")
+        return "unknown"
+    if version == LEGACY_VERSION:
+        logger.warning(f"The version of {product} reads {version!r}, recording it as unknown.")
+        return "unknown"
+    return version
 
 
 def getNextAgcExposureId(db: opdb.OpDB | None = None) -> int:
@@ -96,8 +132,8 @@ def writeExposureToDB(visitId: int, exposureId: int, exptime: float, db: opdb.Op
         "outside_humidity": obsCond["outside_humidity"],
         "taken_at": datetime.datetime.now(),
         "measurement_algorithm": "SEP",
-        "version_actor": "git",
-        "version_instdata": "git",
+        "version_actor": getProductVersion("ics_agccActor"),
+        "version_instdata": getProductVersion("pfs_instdata"),
     }
 
     try:

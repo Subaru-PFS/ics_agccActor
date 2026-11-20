@@ -91,6 +91,21 @@ except ModuleNotFoundError:
     sys.modules["pfs.utils.database.opdb"] = _opdb_stub
     sys.modules["pfs.utils.database"].opdb = _opdb_stub  # type: ignore[attr-defined]
 
+# pfs.utils.versions ----------------------------------------------------
+try:
+    from pfs.utils import versions as _versions  # noqa: F401
+except ModuleNotFoundError:
+    _ensure_stub("pfs.utils")
+
+    _versions_stub = types.ModuleType("pfs.utils.versions")
+
+    def _stubGetVersion(productName):
+        raise RuntimeError(f"Could not determine version for product: {productName}")
+
+    _versions_stub.getVersion = _stubGetVersion
+    sys.modules["pfs.utils.versions"] = _versions_stub
+    sys.modules["pfs.utils"].versions = _versions_stub  # type: ignore[attr-defined]
+
 # pfs.utils.datamodel.ag ------------------------------------------------
 try:
     from pfs.utils.datamodel import ag as _ag  # noqa: F401
