@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased]
+## [2.3.0] — 2026-11-19
 
 ### Fixed
 
@@ -15,8 +15,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   without `BAD_SHAPE` are therefore twice what they were (within 0.1% on synthetic Moffat
   spots with noise), in `agc_data` and in the FITS tables. `BAD_SHAPE` spots are unchanged:
   they keep SEP's unweighted moments, already about the variance, so the columns no longer mix
-  two scales. **Deploy the ics_agActor release that reads `version_actor` first, or at the
-  same time**: it works with moments on either scale, while an older ics_agActor doubles the
+  two scales. **Deploy ics_agActor 1.1.86 first, or at the same time**: it reads
+  `version_actor` and works with moments on either scale, while an older ics_agActor doubles the
   slope term of its focus error and sends a spot size sqrt(2) too large.
 
 ### Changed
