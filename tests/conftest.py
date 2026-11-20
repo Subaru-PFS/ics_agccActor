@@ -94,7 +94,7 @@ except ModuleNotFoundError:
 # pfs.utils.versions ----------------------------------------------------
 try:
     from pfs.utils import versions as _versions  # noqa: F401
-except ModuleNotFoundError:
+except ImportError:  # no pfs_utils, or only the stub of pfs.utils made above
     _ensure_stub("pfs.utils")
 
     _versions_stub = types.ModuleType("pfs.utils.versions")
